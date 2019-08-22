@@ -1,0 +1,10 @@
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a45ed4a7_tskim_recon_merge.root
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a984d987_tskim_recon_merge.root
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a3cf568d_tskim_recon_merge.root
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a46e866d_tskim_recon_merge.root
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a3593de9_tskim_recon_merge.root
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a35af116_tskim_recon_merge.root
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a3eedf8a_tskim_recon_merge.root
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a9b078c8_tskim_recon_merge.root
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a965c65c_tskim_recon_merge.root
+/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a4fe4573_tskim_recon_merge.root

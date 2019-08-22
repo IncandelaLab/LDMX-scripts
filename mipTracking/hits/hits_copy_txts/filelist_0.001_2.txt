@@ -1,0 +1,10 @@
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.001.1015_unweighted_events_tskim_recon.root
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.001.3_unweighted_events_tskim_recon.root
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.001.27_unweighted_events_tskim_recon.root
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.001.13_unweighted_events_tskim_recon.root
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.001.22_unweighted_events_tskim_recon.root
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.001.40_unweighted_events_tskim_recon.root
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/0.001_tree.root
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.001.1013_unweighted_events_tskim_recon.root
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.001.32_unweighted_events_tskim_recon.root
+/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/1mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.001.7_unweighted_events_tskim_recon.root

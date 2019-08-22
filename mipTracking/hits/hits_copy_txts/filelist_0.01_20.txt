@@ -1,3 +1,0 @@
-/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/10mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.01.1055_unweighted_events_tskim_recon.root
-/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/10mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.01.1028_unweighted_events_tskim_recon.root
-/nfs/slac/g/ldmx/data/mc/v5/signal_pmax_2pt0_gev/10mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.0.01.1113_unweighted_events_tskim_recon.root

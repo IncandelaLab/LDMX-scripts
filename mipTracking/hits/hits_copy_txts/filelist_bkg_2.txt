@@ -1,9 +1,0 @@
-/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a61c519d_tskim_recon_merge.root
-/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a4db49b1_tskim_recon_merge.root
-/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a65bf3eb_tskim_recon_merge.root
-/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a5682c3b_tskim_recon_merge.root
-/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a9b5a23b_tskim_recon_merge.root
-/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a574c7a9_tskim_recon_merge.root
-/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a3367e5f_tskim_recon_merge.root
-/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a44a807a_tskim_recon_merge.root
-/nfs/slac/g/ldmx/data/mc/v5/4pt0_gev_e_ecal_pn_bdt_train_kf/4pt0_gev_1e_ecal_pn_v5_20190327_a0c9b151_tskim_recon_merge.root

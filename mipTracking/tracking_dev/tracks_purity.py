@@ -4,26 +4,27 @@ from mpl_toolkits.mplot3d import Axes3D
 import csv
 import colorsys
 
-print('################################################################ New Run ########################################################################')
+print('################################################################################## New Run ##########################################################################################')
 
 #Files to run on:
 min_track_len = 4
 min_straight_len = 4
 filePath = '/nfs/slac/g/ldmx/users/jmlazaro/ldmx-sw/scripts/mipTracking/outHitTxts/'
-showHists = False 
+Plot = False
+showHists = False
 saveHists = False
 
-bkg_file = 'hits_sim_bkg_2.txt'  
-bkg_parent_file = 'particleinfo_sim_bgk_2.txt'  
+bkg_file = 'hits_sim_bkg_2.txt'
+bkg_parent_file = 'particleinfo_sim_bkg_2.txt'
 bkg_momentum_file = 'momenta_sim_bkg_2.txt'
 bkgFiles = [bkg_file, bkg_parent_file, bkg_momentum_file]
-bkgOn = False
+bkgOn = True
 
-sig_file = 'hits_sim_1000MeV_2.txt' 
+sig_file = 'hits_sim_1000MeV_2.txt'
 sig_parent_file = 'particleinfo_sim_1000MeV_2.txt'
 sig_momentum_file = 'momenta_sim_1000MeV_2.txt'
-sigFiles = [filePath , sig_parent_file, sig_momentum_file]
-sigOn = False
+sigFiles = [sig_file, sig_parent_file, sig_momentum_file]
+sigOn = True
 
 unv_file = 'hits_sim_unvet_2.txt'
 unv_parent_file = 'particleinfo_sim_unvet_2.txt'
@@ -90,7 +91,7 @@ def neighInNextLayer(h1,h2,remembervar):
 def isolatedEnd(hit,hitlist):
     for h in hitlist:
         if h==hit:  continue
-	if hit[3]<502:
+        if hit[3]<502:
             if ((h[3]==hit[3] or hit[3]-layer_intervals[layerZs.index(hit[3])]==h[3]) and neighbors(hit,h,1)): #or far_neighbor:
                 return False
         #else:  return True, since it's at the back of the ecal
@@ -133,7 +134,7 @@ def fillDataLists(hitarr,regionMap,inputArr,i_start,i_end,lookin):
     if lookin:
         for j in range(i_start,i_end-1):
             #Add hit to corresponding list, based on the index number (j,6) provided
-	    #format of added hits: (0 = eventnum, x, y, z, 4 = E, 5 = hitID)
+            #format of added hits: (0 = eventnum, x, y, z, 4 = E, 5 = hitID)
             regionMap[int(inputArr[j,6])].append((inputArr[j,0],inputArr[j,1],inputArr[j,2],inputArr[j,3],inputArr[j,4],inputArr[j,7]))
             #Add hits that the tracking alg looks at to a separate array, hitarr
             if inputArr[j,6]==0 or inputArr[j,6]==2 or inputArr[j,6]==3:
@@ -178,7 +179,7 @@ def findStraightTracks(hitlist, mst):  #Hitlist=all hits in one event, mst = min
     hitscopy=hitlist
     hopsOn = False
 
-    for hit in hitlist: 
+    for hit in hitlist:
        if isolatedEnd(hit, hitlist):
             track=[]
             track.append(hit)
@@ -188,7 +189,7 @@ def findStraightTracks(hitlist, mst):  #Hitlist=all hits in one event, mst = min
             jumpCounter = 0  #EXPERIMENTAL
             for h in hitscopy:
                 if h[3]==currenthit[3]:
-                    possibleNeigh=True 
+                    possibleNeigh=True
                     continue
                 if not possibleNeigh:  continue
                 if currenthit[3] - h[3] > 25:
@@ -219,10 +220,10 @@ def findNormTracks(hitlist, mtl):
     normtracklist=[]
     hitscopy=hitlist
 
-    for hit in hitlist:  
+    for hit in hitlist:
         if isolatedEnd(hit, hitlist):
             track = []
-            remember_var = []   
+            remember_var = []
             track.append(hit)
             lastHit = hit   #Most recent hit added to track
 
@@ -256,80 +257,69 @@ def findNormTracks(hitlist, mtl):
     #print(normtracklist)
     return normtracklist
 
-"""
-def regCheck(trackList)
-    for track in trackList:
-	if r_squared(track) < min_r_squared: trackList.remove(track)
-"""
-
-def measurePurity(funcTracks, realTracks):
-    print('in meaurePurity')
-#    for row in funcTracks:
-#	print(row)
+def measurePurity(funcTracks, realTracks, missingEvents):    #measure the purity of tracks produced by a given track finding function on the events sample
     found_s = 0
     found_e = 0
     real_s = 0
     real_e = 0
-    #for ev in range(1, len()funcTracks[]):
     purities = []
-    #print(realTracks[14])
-    #print(realTracks[11])
+
+    """                #useful for debugging if more errors come up relating to troublesome events
+    funcEvents = []
+    realEvents = []
+    for line in funcTracks:
+        add = True
+        for eventNum in funcEvents:
+            if line[0][0] == eventNum: add = False
+        if add: funcEvents.append(line[0][0])
+    for line in realTracks:
+        add = True
+        for eventNum in realEvents:
+            if line[0][0] == eventNum: add = False
+        if add: realEvents.append(line[0][0])
+    print('funcEvents: ' + str(funcEvents))
+    print('realEvents: ' + str(realEvents))
+    """
     while found_e < len(funcTracks):
-	#print('found_e: ' + str(found_e))
-	#print(funcTracks[found_e])
-	while funcTracks[found_e][0][0] == funcTracks[found_s][0][0]:
-	    found_e += 1
-	    if found_e == len(funcTracks): continue
-	    #print('found_s: ' + str(found_s) + ', found_e: ' + str(found_e))
-	    #print('realTracks[found_s]: ' + str(realTracks[found_s]))
-	    #print('realTracks: ' + str(realTracks))
-	print('found_s: ' + str(found_s) + ', found_e: ' + str(found_e))
-	while realTracks[real_e][0][0] == funcTracks[found_s][0][0]:
-	    real_e += 1
-	#real_e += 1
-	    #print('real_s: ' + str(real_s) + ', real_e: ' + str(real_e))
-	while found_s < found_e:
-	    print('found_s: ' + str(found_s))
-	    foundIDs = []
-	    posibpurities = []
-	    #print('hitsInFoundTrack: ' + str(funcTracks[found_s]))
-	    for hit in funcTracks[found_s]:
-		foundIDs.append(hit[5])
-	    #print('foundIDs: ' + str(foundIDs))
-	    print('real_s: ' + str(real_s) + ', real_e: ' + str(real_e))
-	    # #################################################################################################i
-	    real_s_copy = real_s
-	    while real_s < real_e:
-		matches = 0
-		#print('matches: ' + str(matches))
-		#print('realTrack: ' + str(realTracks[real_s]))
-		for h in realTracks[real_s]:
-		    #print('realhit: ' + str(h))
-		    if h[5] in foundIDs:
-			matches += 1
-		    #print('matches: ' + str(matches))
-		posibpurities.append(matches / len(funcTracks[found_s]))
-	        real_s += 1
-	    if found_s < found_e: real_s = real_s_copy
-	    print('posibpurities: ' + str(posibpurities))
-	    purities.append(max(posibpurities))
-	    print('max(posibpurities): ' + str(max(posibpurities)))
-	    found_s += 1
-	real_s = real_e
-	print('found_s: ' + str(found_s) + ', found_e: ' + str(found_e))
-    print('finished measurePurity')
+        while funcTracks[found_e][0][0] == funcTracks[found_s][0][0]:
+            found_e += 1
+            if found_e == len(funcTracks): break
+        while realTracks[real_e][0][0] <= funcTracks[found_s][0][0]:
+            real_e += 1
+            if real_e == len(realTracks): break
+        while realTracks[real_s][0][0] < funcTracks[found_s][0][0]:
+            real_s += 1
+        while found_s < found_e:
+            foundIDs = []
+            posibpurities = []
+            for hit in funcTracks[found_s]:
+                foundIDs.append(hit[5])
+            real_s_copy = real_s
+            while real_s < real_e:
+                matches = 0
+                for h in realTracks[real_s]:
+                    for ID  in foundIDs:
+                        if h[5] == ID:
+                            matches += 1
+                posibpurity = float(matches)/float(len(funcTracks[found_s]))
+                if posibpurity > 1: posibpurity = 1
+                posibpurities.append(posibpurity)
+                real_s += 1
+            if found_s < found_e: real_s = real_s_copy
+            if posibpurities == []: print(funcTracks[found_s][0][0], realTracks[real_s][0][0])
+            purities.append(max(posibpurities))
+            found_s += 1
+        real_s = real_e
     return [np.mean(purities), np.std(purities), len(purities)]
 
-def totalPurity(funcTracksList,realTracks):
-    print('in totalPurity')
-    #print(funcTracksList)
+def totalPurity(funcTracksList,realTracks,missingEvents):   #loop over track finding functions and apply measurePurity then compute overall stats
     functionPurities = []
     for tracks in funcTracksList:
-	if tracks == funcTracksList[0]: #NOTE remove this line later 
-	    if tracks != []: functionPurities.append(measurePurity(tracks, realTracks))
-    totalPurity = sum([functionPurities[w][2]*functionPurities[w][0] for w in range(len(functionPurities))])/sum(functionPurities[:][2])
-    totalPuritySD = np.sqrt(sum([functionPurities[A][2]*(np.array(functionPurities[A][1]))**2 for A in range(len(functionPurities))])/sum(functionPurities[:][2]))
-    return [functionPutrities[:2], totalPurity, totalPuritySD]
+        if tracks != []: functionPurities.append(measurePurity(tracks, realTracks, missingEvents))
+    allPurities = [measure[0] for measure in functionPurities]
+    totalPurity = sum([functionPurities[w][2]*functionPurities[w][0] for w in range(len(functionPurities))])/sum([measure[2] for measure in functionPurities])
+    totalPuritySD = np.sqrt(sum([functionPurities[A][2]*(np.array(functionPurities[A][1]))**2 for A in range(len(functionPurities))])/sum([measure[2] for measure in functionPurities]))
+    return [allPurities, totalPurity, totalPuritySD]
 
 def plotEvent(dataMap,track_list,othertrack_list,otherPartList,p_electron,p_photon,eventNumb):
     #Prepare arrays for plotting
@@ -412,19 +402,23 @@ def analyze(inArr, min_len, parent_file, momentum_file):  #inArr=array of all hi
     momentaList = np.loadtxt(momentum_file)
     i_start_p = 0
     i_end_p = 0
-    events =  int(inArr[len(inArr)-1,0]) #- 850
+    events =  int(inArr[len(inArr)-1,0]) #- 935
     mom_row = 0  #Store current row in momenta file
+    noTrackEvents1 = []
+    noTrackEvents2 = []
+    skipEvents = [noTrackEvents1, noTrackEvents2]
 
     for i in range(1, events+1):  #i=current event being examined
         #print('#################################################### New Event: ' + str(i) + ' ####################################################')
-	while not i_end == len(inArr) and i == inArr[i_end,0]:        #print('i_end='+str(i_end))
+        while not i_end == len(inArr) and i == inArr[i_end,0]:        #print('i_end='+str(i_end))
             i_end += 1
         if i_end == len(inArr):  i_end += 1
         if i%100 == 0:
             print("Processing event "+str(i))
         if i_start == i_end:
-            print(i_start)
-	    missingEventNum += 1
+            #print('missingEventsish: ' + str (inArr[i_start, 0]))
+            skipEvents.append(i)
+            missingEventNum += 1
             i_start = i_end
             continue
 
@@ -443,13 +437,20 @@ def analyze(inArr, min_len, parent_file, momentum_file):  #inArr=array of all hi
             p_photon = momentaList[mom_row,2]
         #Check for presence of e- traj.  If none, discard event.
         if inArr[i_start,6] == 4 and inArr[i_start+1,6] == 4 and not inArr[i_start+2,6] == 5 and not inArr[i_start+3,6] == 5:
+            skipEvents.append(i)
             missingPNum += 1
             i_start = i_end
             continue
         if not (inArr[i_start,6] == 4 and inArr[i_start+1,6] == 4 and inArr[i_start+2,6]==5 and inArr[i_start+3,6]==5):
+            #print('problem: ' + str(i))
+            skipEvents.append(i)
             missingEPNum += 1
             i_start = i_end
+            while not i_end_p == len(parentsList) and i == parentsList[i_end_p][0]:        #print('i_end='+str(i_end))
+                i_end_p += 1
+            if i_end_p == len(parentsList):  i_end_p += 1
             continue
+
         #print(np.array([inArr[i_start+1,1],inArr[i_start+1,2],inArr[i_start+1,3]]))
         #print(np.array([inArr[i_start,1],inArr[i_start,2],inArr[i_start,3]]))
         e_traj = np.array([inArr[i_start+1,1],inArr[i_start+1,2],inArr[i_start+1,3]]) - np.array([inArr[i_start,1],inArr[i_start,2],inArr[i_start,3]])
@@ -463,7 +464,7 @@ def analyze(inArr, min_len, parent_file, momentum_file):  #inArr=array of all hi
         colinear = abs(np.dot(e_traj_norm,p_traj_norm)) > .97  #14 deg
         lookin = neartraj and colinear
 
-        #Now, the range i_start to i_end-1 of fileArr[] contains all points for event i.
+        #New, the range i_start to i_end-1 of fileArr[] contains all points for event i.
         #To make things easier, create list of event coordinates:
         #print("Processing event "+str(i))
         hits     = []
@@ -476,19 +477,26 @@ def analyze(inArr, min_len, parent_file, momentum_file):  #inArr=array of all hi
         categoryMap = {0:outside, 1:insideE, 2:insideP, 3:insideEP, 4:etraj, 5:ptraj}
 
         fillDataLists(hits, categoryMap, inArr, i_start, i_end,lookin)
-       
+
         #print("Finding tracks, first iteration")
         straighttracklist = findStraightTracks(hits, min_straight_len)  #Perform full tracking algorithm
         straightTracks.append(straighttracklist)
-	normtracklist = findNormTracks(hits,min_len)
-	normTracks.append(normtracklist)
+        normtracklist = findNormTracks(hits,min_len)
+        normTracks.append(normtracklist)
         #regtracklist = findregTracks(hits, min_len, etraj, ptraj)
         #regtracklist = []
         #regTracks.append(regtracklist)
         allTracks.append(straighttracklist + normtracklist)   # + regtracklist)
-	funcTracksList[0].extend(straighttracklist)
-	funcTracksList[1].extend(normtracklist)
-	#if i == 1 or i == 2: print(funcTracksList)
+        if straighttracklist == []:
+            noTrackEvents1.append(i)
+        if normtracklist == []:
+            noTrackEvents2.append(i)
+            #print(straighttracklist)
+            #print(normtracklist)
+        funcTracksList[0].extend(straighttracklist)
+        funcTracksList[1].extend(normtracklist)
+        #print('normtracklist: ' + str(normtracklist))
+        #if i == 1 or i == 2: print(funcTracksList)
 
         #Prep for parent plotting info:
         while not i_end_p == len(parentsList) and i == parentsList[i_end_p][0]:        #print('i_end='+str(i_end))
@@ -504,39 +512,45 @@ def analyze(inArr, min_len, parent_file, momentum_file):  #inArr=array of all hi
             #Read in real track info, turn into list of points, add to acttracklist
             currentTrack = []
             #Read through each row of parentsList
-	    #print(i_start_p, i_end_p)
-            hitIDs = parentsList[i_start_p][2:]  #Grab list of hit IDs
+            #print(i_start_p, i_end_p)
+            hitIDs = parentsList[i_start_p][2:]  #Grab list of hit IDs (Needs to be changed to [3:] when using a momenta file with the bdt score)
             #print("row = "+str(row))
             #Grab corresponding hit coordinates
             for h in hitlistFull:
-                if h[5] in hitIDs:
-                    currentTrack.append(h)
+                for ID in hitIDs:
+                    if h[5] == ID:
+                        currentTrack.append(h)
+            #print([h[5] for h in currentTrack])
             currentTrack.sort(key=lambda tup: tup[3], reverse=True)
+            #print([h[5] for h in currentTrack])
             #print("CurrentTrack = "+str(currentTrack))
             if currentTrack != [] and len(currentTrack)>0: #not like but i guess if a track has 2/3  or even 1/3 it should be recorded
                 acttracklist.append(currentTrack)
                 actpartlist.append(parentsList[i_start_p][1])
             i_start_p += 1
-	#print('len(acttracklist): ' + str(len(acttracklist)))
-	realTracks.extend(acttracklist)
-	    #print('len(acttracklist): ' + str(len(acttracklist)))
-	#print('True track list: ' + str(acttracklist))
-	#print('Particle list: ' + str(actpartlist))
+        #print('len(acttracklist): ' + str(len(acttracklist)))
+        realTracks.extend(acttracklist)
+            #print('len(acttracklist): ' + str(len(acttracklist)))
+        #print('True track list: ' + str(acttracklist))
+        #print('Particle list: ' + str(actpartlist))
 
         #print("Done.  Plotting...")
-        if False:  #len(straighttracklist+normtracklist)>0:
+        if Plot:  #len(straighttracklist+normtracklist)>0:
             print("Plotting event "+str(i)+"...")
             plotEvent(categoryMap, normtracklist+straighttracklist, acttracklist, actpartlist, p_electron, p_photon,i)
 
         i_start = i_end
 
-   
     eventsUsed = (events - missingEventNum - missingEPNum - missingPNum)
     print('Number of events missing: ' + str(missingEventNum))
     print('Number of events missing photon trajectory: ' + str(missingPNum))
     print('Number of events missing e- and photon trajectory: ' + str(missingEPNum))
     print('Fraction of  events used: ' + str(eventsUsed)+'/'+str(events))
-    print(totalPurity(funcTracksList,realTracks))
+    purityInfo = totalPurity(funcTracksList,realTracks,skipEvents)   #calculate purities of all tracks found in Events Sample
+    print('Straighttracks Purity: ' + str(purityInfo[0][0]))
+    print('Normtracks Purity: ' + str(purityInfo[1]))
+    print('Overall Purity: ' + str(purityInfo[1]))
+    print('Overall SD: ' + str(purityInfo[2]))
     return allTracks
 
 
@@ -547,8 +561,8 @@ unvATracks = []
 foundTracks = [bkgATracks, sigATracks, unvATracks]
 for q in range(len(runList)):
     if runList[q]:
-	fileArr = np.loadtxt(filePath+filesArr[q][0])
-	foundTracks[q].extend(analyze(fileArr, min_track_len, filePath+filesArr[q][1], filePath+filesArr[q][2]))
+        fileArr = np.loadtxt(filePath+filesArr[q][0])
+        foundTracks[q].extend(analyze(fileArr, min_track_len, filePath+filesArr[q][1], filePath+filesArr[q][2]))
 print('Finished counting tracks.')
 
 #Histogram Plotting
@@ -559,7 +573,7 @@ qualifier = "with straight tracks"
 if bkgOn and showHists:
     bkgNTracks = []
     for trks in bkgATracks:
-	bkgNTracks.append(len(trks))
+        bkgNTracks.append(len(trks))
     plt.figure(3)
     plt.hist(bkgNTracks, bins=x_max, range=(0,x_max))
     plt.title("bkg, "+qualifier+", min len="+str(min_track_len))
@@ -571,7 +585,7 @@ if bkgOn and showHists:
 if sigOn and showHists:
     sigNTracks = []
     for trks in sigATracks:
-	sigNTracks.append(len(trks))
+        sigNTracks.append(len(trks))
     plt.figure(4)
     plt.hist(sigNTracks, bins=x_max, range=(0,x_max))
     plt.title("sig, "+qualifier+", min len="+str(min_track_len))
@@ -583,7 +597,7 @@ if sigOn and showHists:
 if unvOn and showHists:
     unvNTracks = []
     for trks in unvATracks:
-	unvNTracks.append(len(trks))
+        unvNTracks.append(len(trks))
     print('Number of tracks by event: '+str(unvNTracks))
     plt.figure(5)
     plt.hist(unvNTracks, bins=x_max, range=(0,x_max))
@@ -592,5 +606,3 @@ if unvOn and showHists:
     plt.ylabel("Number of events")
     plt.show()
     if saveHists: plt.savefig("linreg_figs/unvet_"+adds+"_"+str(min_track_len)+".png")
-  
-

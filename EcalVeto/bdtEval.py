@@ -23,24 +23,25 @@ from sklearn import metrics
 class sampleContainer:
     def __init__(self, fns, outn, outd, model):
         print "Initializing Container!"
+        #self.tin = r.TChain('EcalVeto')
+        #for fn in fns:
+        #    self.tin.Add(fn)
+        #self.tfile = root_open(fn,'r+')
+        #with root_open(fn,'r+') as f:
+        #self.tin = self.tfile.EcalVeto
+        #self.tin.Print()
         self.tin = TreeChain('EcalVeto',fns)
-        #Fernand is the name of the current default BDT (different major iterations of the BDT that make it into ldmx-sw are named after hurricane names in alphabetical order)
-        #Note that the actual Fernand in ldmx-sw was trained using a slightly different setup, so you may get slightly different results when trying to reproduce it
-        self.tin.create_branches({'discValue_fernand' : 'F'})
+        self.tin.create_branches({'discValue_gabrielle' : 'F'})
         self.model = model
 
         self.outdir = outd
         self.outname = outn
         self.outfile = root_open(outn, 'RECREATE')
-        #self.outtree = Tree('EcalVeto')
-        #self.outtree.set_buffer(self.tin._buffer,create_branches=True)
-        #self.tout = self.tin.CloneTree(0)
         self.tout = Tree('EcalVeto')
         self.tout.set_buffer(self.tin._buffer, create_branches=True)
 
         self.events =  []
         #print self.tin.GetEntries()
-        #for event in xrange(min(self.maxEvts,self.tin.GetEntries())):
         for event in self.tin:
             #if len(self.events)>10:
             #    continue
@@ -56,10 +57,44 @@ class sampleContainer:
             evt.append(event.avgLayerHit)
             evt.append(event.deepestLayerHit)
             evt.append(event.stdLayerHit)
+            #new features
+            evt.append(event.ele68ContEnergy)
+            evt.append(event.ele68x2ContEnergy)
+            evt.append(event.ele68x3ContEnergy)
+            evt.append(event.ele68x4ContEnergy)
+            evt.append(event.ele68x5ContEnergy)
+            evt.append(event.photon68ContEnergy)
+            evt.append(event.photon68x2ContEnergy)
+            evt.append(event.photon68x3ContEnergy)
+            evt.append(event.photon68x4ContEnergy)
+            evt.append(event.photon68x5ContEnergy)
+            evt.append(event.outside68ContEnergy)
+            evt.append(event.outside68x2ContEnergy)
+            evt.append(event.outside68x3ContEnergy)
+            evt.append(event.outside68x4ContEnergy)
+            evt.append(event.outside68x5ContEnergy)
+            evt.append(event.outside68ContNHits)
+            evt.append(event.outside68x2ContNHits)
+            evt.append(event.outside68x3ContNHits)
+            evt.append(event.outside68x4ContNHits)
+            evt.append(event.outside68x5ContNHits)
+            evt.append(event.outside68ContXstd)
+            evt.append(event.outside68x2ContXstd)
+            evt.append(event.outside68x3ContXstd)
+            evt.append(event.outside68x4ContXstd)
+            evt.append(event.outside68x5ContXstd)
+            evt.append(event.outside68ContYstd)
+            evt.append(event.outside68x2ContYstd)
+            evt.append(event.outside68x3ContYstd)
+            evt.append(event.outside68x4ContYstd)
+            evt.append(event.outside68x5ContYstd)
+
+            evt.append(event.ecalBackEnergy)
+
             evtarray = np.array([evt])
             pred = float(model.predict(xgb.DMatrix(evtarray))[0])
             #print pred
-            event.discValue_fernand = pred
+            event.discValue_gabrielle = pred
             self.tout.Fill()
 ######################################################################################
             self.events.append(evt)
@@ -90,7 +125,7 @@ if __name__ == "__main__":
     parser.add_argument('--tree_number', dest='tree_number',type=int,  default=1000, help='Tree Number')
     parser.add_argument('--depth', dest='depth',type=int,  default=10, help='Max Tree Depth')
     parser.add_argument('-i','--in_files', dest='in_files', nargs='*', default=['bdttrain_kaon_fix_032519/bkg_bdttest_subtree.root'], help='list of input files')
-    parser.add_argument('-p','--pkl_file', dest='pkl_file', default='bdt_kf_nonewvars_0/bdt_kf_nonewvars_0_weights.pkl', help='name of BDT pkl file')
+    parser.add_argument('-p','--pkl_file', dest='pkl_file', default='/nfs/slac/g/ldmx/users/vdutta/ldmx-sw/scripts/bdt_nodup_3x_plus_v2_0/bdt_nodup_3x_plus_v2_0_weights.pkl', help='name of BDT pkl file')
     parser.add_argument('--filelist', dest='filelist', default = '', help='Text file with list of input files')
   
 
@@ -146,4 +181,4 @@ if __name__ == "__main__":
     print 'Removing tmp directory %s' % tmp_dir
     os.system('rm -rf %s' % tmp_dir)
 
-print "Files saved in: ", args.out_file
+print "Files saved in: ", args.out_file#+'_'+str(adds)

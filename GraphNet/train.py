@@ -3,7 +3,6 @@ from __future__ import print_function
 import resource
 resource.setrlimit(resource.RLIMIT_NOFILE, (1048576, 1048576))
 
-import pickle
 import numpy as np
 import torch
 import torch.nn as nn
@@ -17,18 +16,18 @@ import datetime
 import argparse
 
 from ParticleNet import ParticleNet
+import dataset
 from dataset import DGLGraphDatasetECALHits, collate_wrapper
-
-from analysis_tools import ROC_from_model, save_ROC, inv_bkg_at_threshold, accuracy
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--demo', action='store_true', default=False)
-parser.add_argument('--train-sig', type=str, default='/data/hqu/ldmx/mc/v9/signal_bdt_training/*/*.root')
-parser.add_argument('--train-bkg', type=str, default='/data/hqu/ldmx/mc/v9/4pt0_gev_e_ecal_pn_bdt_training/*.root')
-parser.add_argument('--test-sig', type=str, default='')
-parser.add_argument('--test-bkg', type=str, default='')
+# parser.add_argument('--train-sig', type=str, default='/data/hqu/ldmx/mc/v9/signal_hs/*/*.root')
+# parser.add_argument('--train-bkg', type=str, default='/data/hqu/ldmx/mc/v9/4pt0_gev_e_ecal_pn_bdt_training/*.root')
+# parser.add_argument('--test-sig', type=str, default='')
+# parser.add_argument('--test-bkg', type=str, default='')
 # parser.add_argument('--data-format', type=str, default='particle', choices=['particle', 'lund'])
 # parser.add_argument('--lund-dim', type=int, default=0)
+parser.add_argument('--predict', action='store_true', default=False)
 parser.add_argument('--network', type=str, default='particle-net-lite', choices=['particle-net', 'particle-net-lite', 'particle-net-k5', 'particle-net-k7'])
 parser.add_argument('--focal-loss-gamma', type=float, default=0)
 parser.add_argument('--load-model-path', type=str, default='')
@@ -43,15 +42,25 @@ parser.add_argument('--device', type=str, default='cuda:0')
 args = parser.parse_args()
 
 if args.demo:
-    args.train_sig = '/data/hqu/ldmx/mc/v9/4pt0_gev_e_ecal_pn_bdt_training/4pt0_gev_1e_ecal_pn_v5_20190507_1eaf2f76_tskim_recon.root'
-    args.train_bkg = '/data/hqu/ldmx/mc/v9/signal_bdt_training/1000mev/LDMX_W_UndecayedAP.4.0GeV.W.pMax.2.0.mA.1.0.2004_unweighted_events_tskim_recon.root'
+    dataset.bkglist = {
+        # label: (filepath, num_events_for_training)
+        0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/4gev_1e_ecal_pn_v9_1.8e8eot_20190507_00388e25_tskim_recon.root', -1)
+        }
+
+    dataset.siglist = {
+        # label: (filepath, num_events_for_training)
+        1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 1000),
+        10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 1000),
+        100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 1000),
+        1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 1000)
+        }
 
 # training/testing mode
-if args.train_bkg and args.train_sig:
-    training_mode = True
-else:
+if args.predict:
     assert(args.load_model_path)
     training_mode = False
+else:
+    training_mode = True
 
 # data format
 DGLGraphDataset = DGLGraphDatasetECALHits
@@ -91,22 +100,21 @@ dev = torch.device(args.device)
 # load data
 collate_fn = partial(collate_wrapper, k=conv_params[0][0])
 if training_mode:
-    train_data = DGLGraphDataset(args.train_bkg, args.train_sig, fraction=(0.2, 1))
-    val_data = DGLGraphDataset(args.train_bkg, args.train_sig, fraction=(0, 0.2))
+    train_data = DGLGraphDataset(fraction=(0.2, 1))
+    val_data = DGLGraphDataset(fraction=(0, 0.2))
     train_loader = DataLoader(train_data, num_workers=args.num_workers, batch_size=args.batch_size,
                               collate_fn=collate_fn, shuffle=True, drop_last=True, pin_memory=True)
     val_loader = DataLoader(val_data, num_workers=args.num_workers, batch_size=args.batch_size,
-                            collate_fn=collate_fn, shuffle=False, drop_last=True, pin_memory=True)
-    print('Train: %d events, Val: %d events' % (len(train_data), len(val_data)))
-
-if args.test_sig and args.test_bkg:
-    test_data = DGLGraphDataset(args.test_bkg, args.test_sig, fraction=(0, 0.2))
-    test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
-else:
+    print('Train: %d events, Val: %d events' % (len(train_data), len(val_data)))
     print('Using val sample for testing!')
     test_data = val_data
     test_loader = val_loader
+else:
+    test_data = DGLGraphDataset(fraction=(0, 0.2), ignore_evt_limits=True)
+    test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
+                            collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
+
 input_dims = test_data.num_features
 
 # model
@@ -216,14 +224,15 @@ if training_mode:
                     os.makedirs(dirname)
                 torch.save(model.state_dict(), args.save_model_path + '_state.pt')
                 torch.save(model, args.save_model_path + '_full.pt')
+        torch.save(model.state_dict(), args.save_model_path + '_state_epoch-%d_acc-%.4f.pt' % (epoch, valid_acc))
         print('Current validation acc: %.5f (best: %.5f)' % (valid_acc, best_valid_acc))
 
-else:
-    # load saved model
-    model_path = args.load_model_path
-    if not model_path.endswith('.pt'):
-        model_path += '_state.pt'
-    model.load_state_dict(torch.load(model_path))
+# load saved model
+model_path = args.load_model_path if args.predict else args.save_model_path
+if not model_path.endswith('.pt'):
+    model_path += '_state.pt'
+print('Loading model %s for eval' % model_path)
+model.load_state_dict(torch.load(model_path))
 
 # evaluate model on test dataset
 path, name = os.path.split(args.test_output_path)
@@ -232,25 +241,29 @@ if path and not os.path.exists(path):
 
 test_preds = evaluate(model, test_loader, dev, return_scores=True)
 test_labels = test_data.label.cpu().detach().numpy()
+test_extra_labels = test_data.extra_labels
 
 info_dict = {'model_name':args.network,
              'model_params': {'conv_params':conv_params, 'fc_params':fc_params},
              'date': str(datetime.date.today()),
              'model_path': args.load_model_path,
-             'test_sig': args.test_sig,
-             'test_bkg': args.test_bkg,
-             'label': test_labels,
-             'prediction':test_preds}
+             'siglist': dataset.siglist,
+             'bkglist': dataset.bkglist,
+             'presel_eff': test_data.presel_eff,
+             }
 if training_mode:
-    info_dict.update({'train_sig': args.train_sig,
-                      'train_bkg': args.train_bkg,
-                      'model_path': args.save_model_path})
+    info_dict.update({'model_path': args.save_model_path})
 
-eff_s, eff_b, auc = ROC_from_model(None, test_preds, test_labels)
-info_dict['accuracy'] = accuracy(test_preds, test_labels)
-info_dict['auc'] = auc
-info_dict['inv_bkg_at_sig_50'] = inv_bkg_at_threshold(eff_s, eff_b, 0.5)
-info_dict['inv_bkg_at_sig_30'] = inv_bkg_at_threshold(eff_s, eff_b, 0.3)
+from plot_utils import plotROC, get_signal_effs
+for k in dataset.siglist:
+    mass = '%d MeV' % k
+    fpr, tpr, auc, acc = plotROC(test_preds, test_labels, sample_weight=np.logical_or(test_extra_labels == 0, test_extra_labels == k),
+                                 sig_eff=test_data.presel_eff[k], bkg_eff=test_data.presel_eff[0],
+                                 output=os.path.splitext(args.test_output_path)[0] + 'ROC_%s.pdf' % mass, label=mass, xlim=[1e-6, .01], ylim=[0, 1], logx=True)
+    info_dict[mass] = {'auc-presel': auc,
+                       'acc-presel': acc,
+                       'effs': get_signal_effs(fpr, tpr)
+                       }
 
 print(' === Summary ===')
 for k in info_dict:
@@ -261,8 +274,7 @@ with open(info_file, 'w') as f:
     for k in info_dict:
         f.write('%s: %s\n' % (k, info_dict[k]))
 
-info_file = os.path.splitext(args.test_output_path)[0] + '_pred.pickle'
-with open(info_file, 'wb') as f:
-    pickle.dump({'prediction':test_preds, 'label':test_labels}, f)
-
-save_ROC(None, test_preds, test_labels, name=name, path=path, show=False, description=str(args))
+import pickle
+pred_file = os.path.splitext(args.test_output_path)[0] + '_pred.pickle'
+with open(pred_file, 'wb') as f:
+    pickle.dump({'prediction':test_preds, 'label':test_extra_labels}, f)

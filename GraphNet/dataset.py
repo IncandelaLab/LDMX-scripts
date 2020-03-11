@@ -24,10 +24,10 @@ bkglist = {
 
 siglist = {
     # (filepath, num_events_for_training)
-    1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 150000),
-    10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 150000),
-    100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 150000),
-    1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 150000),
+    1: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.001*.root', 150000),
+    10: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.01*.root', 150000),
+#     100: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.1*.root', 150000),
+#     1000: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.1.0*.root', 150000),
     }
 
 MAX_NUM_ECAL_HITS = 50

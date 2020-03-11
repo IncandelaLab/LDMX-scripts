@@ -21,7 +21,7 @@ from dataset import DGLGraphDatasetECALHits, collate_wrapper
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--demo', action='store_true', default=False)
-# parser.add_argument('--train-sig', type=str, default='/data/hqu/ldmx/mc/v9/signal_hs/*/*.root')
+# parser.add_argument('--train-sig', type=str, default='/data/hqu/ldmx/mc/v9/signal_correct_bs/*/*.root')
 # parser.add_argument('--train-bkg', type=str, default='/data/hqu/ldmx/mc/v9/4pt0_gev_e_ecal_pn_bdt_training/*.root')
 # parser.add_argument('--test-sig', type=str, default='')
 # parser.add_argument('--test-bkg', type=str, default='')
@@ -49,10 +49,10 @@ if args.demo:
 
     dataset.siglist = {
         # label: (filepath, num_events_for_training)
-        1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 1000),
-        10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 1000),
-        100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 1000),
-        1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 1000)
+        1: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.001*.root', 1000),
+        10: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.01*.root', 1000),
+        100: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.1*.root', 1000),
+        1000: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.1.0*.root', 1000)
         }
 
 # training/testing mode

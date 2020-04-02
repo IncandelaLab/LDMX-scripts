@@ -1,10 +1,45 @@
 from __future__ import print_function
 
-import dgl
-import dgl.function as fn
-from dgl.transform import remove_self_loop
+import numpy as np
+import torch
 import torch.nn as nn
-from dgl_utils import segmented_knn_graph
+
+'''Based on https://github.com/WangYueFt/dgcnn/blob/master/pytorch/model.py.'''
+
+
+def knn(x, k):
+    inner = -2 * torch.matmul(x.transpose(2, 1), x)
+    xx = torch.sum(x ** 2, dim=1, keepdim=True)
+    pairwise_distance = -xx - inner - xx.transpose(2, 1)
+    idx = pairwise_distance.topk(k=k + 1, dim=-1)[1][:, :, 1:]  # (batch_size, num_points, k)
+    return idx
+
+
+def get_graph_feature(x, k, idx):
+    batch_size, num_dims, num_points = x.size()
+
+    idx_base = torch.arange(0, batch_size, device=x.device).view(-1, 1, 1) * num_points
+    idx = idx + idx_base
+    idx = idx.view(-1)
+
+    x = x.transpose(2, 1).contiguous()  # -> (batch_size, num_points, num_dims)
+    feature = x.view(batch_size * num_points, -1)[idx, :]
+    feature = feature.view(batch_size, num_points, k, num_dims)
+    x = x.view(batch_size, num_points, 1, num_dims).repeat(1, 1, k, 1)
+
+    feature = torch.cat((feature - x, x), dim=3).permute(0, 3, 1, 2)  # (batch_size, 2*num_dims, num_points, num_dims)
+    return feature
+
+
+class Mish(nn.Module):
+    '''https://github.com/digantamisra98/Mish'''
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        x = x * (torch.tanh(torch.nn.functional.softplus(x)))
+        return x
 
 
 class EdgeConvBlock(nn.Module):
@@ -25,88 +60,58 @@ class EdgeConvBlock(nn.Module):
         Whether to include batch normalization on messages.
     """
 
-    def __init__(self, in_feat, out_feats, batch_norm=True, activation=True):
+    def __init__(self, k, in_feat, out_feats, batch_norm=True, activation=True):
         super(EdgeConvBlock, self).__init__()
+        self.k = k
         self.batch_norm = batch_norm
         self.activation = activation
         self.num_layers = len(out_feats)
 
-        out_feat = out_feats[0]
-        self.theta = nn.Linear(in_feat, out_feat, bias=False if self.batch_norm else True)
-        self.phi = nn.Linear(in_feat, out_feat, bias=False if self.batch_norm else True)
-        self.fcs = nn.ModuleList()
-        for i in range(1, self.num_layers):
-            self.fcs.append(nn.Linear(out_feats[i - 1], out_feats[i], bias=False if self.batch_norm else True))
+        self.convs = nn.ModuleList()
+        for i in range(self.num_layers):
+            self.convs.append(nn.Conv2d(2 * in_feat if i == 0 else out_feats[i - 1], out_feats[i], kernel_size=1, bias=False if self.batch_norm else True))
 
         if batch_norm:
             self.bns = nn.ModuleList()
             for i in range(self.num_layers):
-                self.bns.append(nn.BatchNorm1d(out_feats[i]))
+                self.bns.append(nn.BatchNorm2d(out_feats[i]))
 
         if activation:
             self.acts = nn.ModuleList()
             for i in range(self.num_layers):
-                self.acts.append(nn.ReLU())
+                self.acts.append(Mish())
 
         if in_feat == out_feats[-1]:
             self.sc = None
         else:
-            self.sc = nn.Linear(in_feat, out_feats[-1], bias=False if self.batch_norm else True)
+            self.sc = nn.Conv1d(in_feat, out_feats[-1], kernel_size=1, bias=False)
             self.sc_bn = nn.BatchNorm1d(out_feats[-1])
 
         if activation:
-            self.sc_act = nn.ReLU()
+            self.sc_act = Mish()
 
-    def message(self, edges):
-        """The message computation function.
-        """
-        theta_x = self.theta(edges.dst['x'] - edges.src['x'])
-        phi_x = self.phi(edges.src['x'])
-        return {'e': theta_x + phi_x}
+    def forward(self, points, features):
 
-    def forward(self, g, h):
-        """Forward computation
-        Parameters
-        ----------
-        g : DGLGraph
-            The graph.
-        h : Tensor
-            :math:`(N, D)` where :math:`N` is the number of nodes and
-            :math:`D` is the number of feature dimensions.
-        Returns
-        -------
-        torch.Tensor
-            New node features.
-        """
-        with g.local_scope():
-            g.ndata['x'] = h
-            # generate the message and store it on the edges
-            g.apply_edges(self.message)
-            # process the message
-            e = g.edata['e']
-            for i in range(self.num_layers):
-                if i > 0:
-                    e = self.fcs[i - 1](e)
-                if self.batch_norm:
-                    e = self.bns[i](e)
-                if self.activation:
-                    e = self.acts[i](e)
-            g.edata['e'] = e
-            # pass the message and update the nodes
-            g.update_all(fn.copy_e('e', 'e'), fn.mean('e', 'x'))
-            # shortcut connection
-            x = g.ndata.pop('x')
-            g.edata.pop('e')
-            if self.sc is None:
-                sc = h
-            else:
-                sc = self.sc(h)
-                if self.batch_norm:
-                    sc = self.sc_bn(sc)
-            if self.activation:
-                return self.sc_act(x + sc)
-            else:
-                return x + sc
+        topk_indices = knn(points, self.k)
+        x = get_graph_feature(features, self.k, topk_indices)
+
+        for conv, bn, act in zip(self.convs, self.bns, self.acts):
+            x = conv(x)  # (N, C', P, K)
+            if bn:
+                x = bn(x)
+            if act:
+                x = act(x)
+
+        fts = torch.mean(x, axis=-1)  # (N, C, P)
+
+        # shortcut
+        if self.sc:
+            sc = self.sc(features)  # (N, C_out, P)
+            sc = self.sc_bn(sc)
+        else:
+            sc = features
+
+        return self.sc_act(sc + fts)  # (N, C_out, P)
 
 
 class ParticleNet(nn.Module):
@@ -116,39 +121,56 @@ class ParticleNet(nn.Module):
                  num_classes,
                  conv_params=[(7, (32, 32, 32)), (7, (64, 64, 64))],
                  fc_params=[(128, 0.1)],
+                 use_fusion=False,
+                 return_softmax=False,
                  **kwargs):
         super(ParticleNet, self).__init__(**kwargs)
 
         self.bn_fts = nn.BatchNorm1d(input_dims)
 
-        self.k_neighbors = []
         self.edge_convs = nn.ModuleList()
         for idx, layer_param in enumerate(conv_params):
             k, channels = layer_param
             in_feat = input_dims if idx == 0 else conv_params[idx - 1][1][-1]
-            self.edge_convs.append(EdgeConvBlock(in_feat=in_feat, out_feats=channels))
-            self.k_neighbors.append(k)
+            self.edge_convs.append(EdgeConvBlock(k=k, in_feat=in_feat, out_feats=channels))
+
+        self.use_fusion = use_fusion
+        if self.use_fusion:
+            in_chn = sum(x[-1] for _, x in conv_params)
+            out_chn = np.clip((in_chn // 128) * 128, 128, 1024)
+            self.fusion_block = nn.Sequential(nn.Conv1d(in_chn, out_chn, kernel_size=1), nn.BatchNorm1d(out_chn), Mish())
 
         fcs = []
         for idx, layer_param in enumerate(fc_params):
             channels, drop_rate = layer_param
             if idx == 0:
-                in_chn = conv_params[-1][1][-1]
+                in_chn = out_chn if self.use_fusion else conv_params[-1][1][-1]
             else:
                 in_chn = fc_params[idx - 1][0]
-            fcs.append(nn.Sequential(nn.Linear(in_chn, channels), nn.ReLU(), nn.Dropout(drop_rate)))
+            fcs.append(nn.Sequential(nn.Linear(in_chn, channels), Mish(), nn.Dropout(drop_rate)))
         fcs.append(nn.Linear(fc_params[-1][0], num_classes))
         self.fc = nn.Sequential(*fcs)
 
+        self.return_softmax = return_softmax
 
-    def forward(self, batch_graph, features):
-        g = batch_graph
+    def forward(self, points, features, mask=None):
+        if mask is None:
+            mask = (features.abs().sum(dim=1, keepdim=True) != 0)  # (N, 1, P)
+        coord_shift = (mask == 0) * 9999.
+        counts = mask.float().sum(dim=-1)
+        counts = torch.max(counts, torch.ones_like(counts))  # >=1
+
         fts = self.bn_fts(features)
-        for idx, (k, conv) in enumerate(zip(self.k_neighbors, self.edge_convs)):
-            if idx > 0:
-                g = remove_self_loop(segmented_knn_graph(fts, k + 1, batch_graph.batch_num_nodes))
-            fts = conv(g, fts)
-
-        batch_graph.ndata['fts'] = fts
-        x = dgl.mean_nodes(batch_graph, 'fts')
-        return self.fc(x)
+        outputs = []
+        for idx, conv in enumerate(self.edge_convs):
+            pts = (points if idx == 0 else fts) + coord_shift
+            fts = conv(pts, fts) * mask
+            if self.use_fusion:
+                outputs.append(fts)
+        if self.use_fusion:
+            fts = self.fusion_block(torch.cat(outputs, dim=1))
+        x = fts.sum(axis=-1) / counts  # divide by the real counts
+        output = self.fc(x)
+        if self.return_softmax:
+            output = torch.softmax(output, dim=1)
+        return output

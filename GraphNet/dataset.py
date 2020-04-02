@@ -1,179 +1,254 @@
 from __future__ import print_function
 
-import dgl
 import numpy as np
-from dgl.transform import remove_self_loop
-from dgl_utils import knn_graph
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset
+import glob
+import tqdm
 import uproot
+import awkward
 import concurrent.futures
 executor = concurrent.futures.ThreadPoolExecutor(12)
-
-'''TODO:
- - use only hits w/ E>0
- - preselection: nHits<50
- - # events
-'''
-
-bkglist = {
-    # (filepath, num_events_for_training)
-    0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', -1)
-    }
-
-siglist = {
-    # (filepath, num_events_for_training)
-    1: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.001*.root', 150000),
-    10: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.01*.root', 150000),
-#     100: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.1*.root', 150000),
-#     1000: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.1.0*.root', 150000),
-    }
 
 MAX_NUM_ECAL_HITS = 50
 
 branches = [
     'ecalDigis_recon.id_',
     'ecalDigis_recon.energy_',
-#     'ecalDigis_recon.amplitude_',
-#     'ecalDigis_recon.time_',
     ]
 
+def _concat(arrays, axis=0):
+    if len(arrays) == 0:
+        return np.array()
+    if isinstance(arrays[0], np.ndarray):
+        return np.concatenate(arrays, axis=axis)
+    else:
+        return awkward.concatenate(arrays, axis=axis)
 
-class DGLGraphDatasetECALHits(Dataset):
 
-    def __init__(self, fraction=(0, 1), apply_preselection=True, ignore_evt_limits=False):
-        super(DGLGraphDatasetECALHits, self).__init__()
+def _pad(a, pad_value=0):
+    return a.pad(MAX_NUM_ECAL_HITS, clip=True).fillna(0).regular()
+
+
+class ECalHitsDataset(Dataset):
+
+    def __init__(self, siglist, bkglist, load_range=(0, 1), apply_preselection=True, ignore_evt_limits=False, obs_branches=[], coord_ref=None):
+        super(ECalHitsDataset, self).__init__()
         # first load cell map
         self._load_cellMap()
 
-        self.data = []
         self.extra_labels = []
         self.presel_eff = {}
+        self.var_data = {}
+        self.obs_data = {k:[] for k in obs_branches}
 
-        def _load_data(data, out):
-            start, stop = [int(x * len(data['ecalDigis_recon.id_'])) for x in fraction]
-            data_id = data['ecalDigis_recon.id_'][start:stop]
-            data_e = data['ecalDigis_recon.energy_'][start:stop]
-            n_total = len(data_id)
+        print('Using coord_ref=%s' % coord_ref)
+        def _load_coord_ref(t, table):
+            if coord_ref is None or (coord_ref == 'none' or coord_ref == 'ecal_centroid'):
+                table['x_ref'] = np.zeros(t.numentries, dtype='float32')
+                table['y_ref'] = np.zeros(t.numentries, dtype='float32')
+            elif coord_ref == 'ecal_sp':
+                el = (t['EcalScoringPlaneHits_sim.pdgID_'].array() == 11) * \
+                     (t['EcalScoringPlaneHits_sim.layerID_'].array() == 1) * \
+                     (t['EcalScoringPlaneHits_sim.pz_'].array() > 0)
+                table['x_ref'] = t['EcalScoringPlaneHits_sim.x_'].array()[el].pad(1, clip=True).fillna(0).flatten()
+                table['y_ref'] = t['EcalScoringPlaneHits_sim.y_'].array()[el].pad(1, clip=True).fillna(0).flatten()
+            elif coord_ref == 'target_sp':
+                el = (t['TargetScoringPlaneHits_sim.pdgID_'].array() == 11) * \
+                     (t['TargetScoringPlaneHits_sim.layerID_'].array() == 2) * \
+                     (t['TargetScoringPlaneHits_sim.pz_'].array() > 0)
+                table['x_ref'] = t['TargetScoringPlaneHits_sim.x_'].array()[el].pad(1, clip=True).fillna(0).flatten()
+                table['y_ref'] = t['TargetScoringPlaneHits_sim.y_'].array()[el].pad(1, clip=True).fillna(0).flatten()
+            else:
+                raise RuntimeError('Invalid coord_ref: %s' % coord_ref)
+
+        def _load_recoil_pt(t, table):
+            if len(obs_branches):
+                el = (t['TargetScoringPlaneHits_sim.pdgID_'].array() == 11) * \
+                     (t['TargetScoringPlaneHits_sim.layerID_'].array() == 2) * \
+                     (t['TargetScoringPlaneHits_sim.pz_'].array() > 0)
+                table['TargetSPRecoilE_pt'] = np.sqrt(t['TargetScoringPlaneHits_sim.px_'].array()[el] ** 2 + t['TargetScoringPlaneHits_sim.py_'].array()[el] ** 2).pad(1, clip=True).fillna(-999).flatten()
+
+        def _read_file(table):
+            # load data from one file
+            start, stop = [int(x * len(table[branches[0]])) for x in load_range]
+            for k in table:
+                table[k] = table[k][start:stop]
+            n_inclusive = len(table[branches[0]])  # before preselection
+
             if apply_preselection:
-                num_hits_per_evt = (data_e != 0).sum()
-                pos_pass_presel = num_hits_per_evt < MAX_NUM_ECAL_HITS
-                data_id = data_id[pos_pass_presel]
-                data_e = data_e[pos_pass_presel]
+                pos_pass_presel = (table['ecalDigis_recon.energy_'] > 0).sum() < MAX_NUM_ECAL_HITS
+                for k in table:
+                    table[k] = table[k][pos_pass_presel]
+            n_selected = len(table[branches[0]])  # after preselection
 
-            for cid, e in zip(data_id, data_e):
-                # filter out hits w/ zero energy
-                pos = (e > 0)
-                cid = cid[pos]
-                e = e[pos]
-                # iterate over each event
-                g = dgl.DGLGraph()
-                if len(cid) == 0:
-                    g.add_nodes(1, {'coordinates':torch.zeros((1, 3), dtype=torch.float32), 'features':torch.zeros((1, 4), dtype=torch.float32)})
-                else:
-                    coords = self._parse_cellId(cid)
-                    e = np.asfarray(e, dtype='float32').reshape((-1, 1))
-                    features = np.concatenate([coords, np.log(e)], axis=1)  # use log(energy)
-                    g.add_nodes(len(coords), {'coordinates':torch.tensor(coords, dtype=torch.float32), 'features':torch.tensor(features, dtype=torch.float32)})
-                out.append(g)
-            return n_total
+            for k in table:
+                if isinstance(table[k], awkward.array.objects.ObjectArray):
+                    table[k] = awkward.JaggedArray.fromiter(table[k]).flatten()
+
+            eid = table['ecalDigis_recon.id_']
+            energy = table['ecalDigis_recon.energy_']
+            pos = (energy > 0)
+            eid = eid[pos]
+            energy = energy[pos]
+
+            (x, y, z), layer_id = self._parse_cid(eid)
+            if coord_ref == 'ecal_centroid':
+                e_sum = np.maximum(energy.sum(), 1e-6)
+                table['x_ref'] = (x * energy).sum() / e_sum
+                table['y_ref'] = (y * energy).sum() / e_sum
+            x = x - table['x_ref']
+            y = y - table['y_ref']
+
+            var_dict = {'ecalDigis_recon.id_':eid, 'ecalDigis_recon.energy_':energy,
+                        'x':x, 'y':y, 'z':z, 'layer_id':layer_id,
+                        'x_ref':table['x_ref'], 'y_ref':table['y_ref']}
+            obs_dict = {k: table[k] for k in obs_branches}
+
+            return (n_inclusive, n_selected), var_dict, obs_dict
 
         def _load_dataset(filelist, name):
+            # load data from all files in the siglist or bkglist
+            n_sum = 0
             for extra_label in filelist:
                 filepath, max_event = filelist[extra_label]
+                if len(glob.glob(filepath)) == 0:
+                    print('No matches for filepath %s: %s, skipping...' % (extra_label, filepath))
+                    return
                 if ignore_evt_limits:
                     max_event = -1
-                n_total_in_files = 0
-                outputs = []
+                n_total_inclusive = 0
+                n_total_selected = 0
+                var_dict = {}
+                obs_dict = {k:[] for k in obs_branches}
                 print('Start loading dataset %s (%s)' % (filepath, name))
-                for data in uproot.iterate(filepath, 'LDMX_Events', branches, namedecode='utf-8', executor=executor):
-                    # iterate over the chunk
-                    n_total_in_files += _load_data(data, outputs)
-                    if max_event > 0 and len(outputs) >= max_event:
-                        break
+
+                with tqdm.tqdm(glob.glob(filepath)) as tq:
+                    for fp in tq:
+                        t = uproot.open(fp)['LDMX_Events']
+                        if len(t.keys()) == 0:
+#                             print('... ignoring empty file %s' % fp)
+                            continue
+                        load_branches = [k for k in branches + obs_branches if '.' in k and k[-1] == '_']
+                        table = t.arrays(load_branches, namedecode='utf-8', executor=executor)
+                        _load_coord_ref(t, table)
+                        _load_recoil_pt(t, table)
+                        (n_inc, n_sel), v_d, o_d = _read_file(table)
+                        n_total_inclusive += n_inc
+                        n_total_selected += n_sel
+                        for k in v_d:
+                            if k in var_dict:
+                                var_dict[k].append(v_d[k])
+                            else:
+                                var_dict[k] = [v_d[k]]
+                        for k in obs_dict:
+                            obs_dict[k].append(o_d[k])
+                        if max_event > 0 and n_total_selected >= max_event:
+                            break
+
                 # calc preselection eff before dropping events more than `max_event`
-                self.presel_eff[extra_label] = len(outputs) / float(n_total_in_files)
-                # now we remove the extra events
-                if max_event > 0 and len(outputs) > max_event:
-                    outputs = outputs[:max_event]
-                print('Loaded %d events out of %d.' % (len(outputs), n_total_in_files))
-                self.data.extend(outputs)
-                self.extra_labels.append(extra_label * np.ones(len(outputs), dtype='int32'))
+                self.presel_eff[extra_label] = float(n_total_selected) / n_total_inclusive
+                # now we concat the arrays and remove the extra events if needed
+                n_total_loaded = None
+                upper = None
+                if max_event > 0 and max_event < n_total_selected:
+                    upper = max_event - n_total_selected
+                for k in var_dict:
+                    var_dict[k] = _concat(var_dict[k])[:upper]
+                    if n_total_loaded is None:
+                        n_total_loaded = len(var_dict[k])
+                    else:
+                        assert(n_total_loaded == len(var_dict[k]))
+                for k in obs_dict:
+                    obs_dict[k] = _concat(obs_dict[k])[:upper]
+                    assert(n_total_loaded == len(obs_dict[k]))
+                print('Total %d events, selected %d events, finally loaded %d events.' % (n_total_inclusive, n_total_selected, n_total_loaded))
 
-        _load_dataset(bkglist, 'bkg')
-        nbkg = len(self.data)
+                self.extra_labels.append(extra_label * np.ones(n_total_loaded, dtype='int32'))
+                for k in var_dict:
+                    if k in self.var_data:
+                        self.var_data[k].append(var_dict[k])
+                    else:
+                        self.var_data[k] = [var_dict[k]]
+                for k in obs_branches:
+                    self.obs_data[k].append(obs_dict[k])
+                n_sum += n_total_loaded
+            return n_sum
 
-        _load_dataset(siglist, 'sig')
-        ntotal = len(self.data)
-
-        self.label = torch.zeros(ntotal, dtype=torch.float32)
-        self.label[nbkg:] = 1
+        nsig = _load_dataset(siglist, 'sig')
+        nbkg = _load_dataset(bkglist, 'bkg')
+        # label for training
+        self.label = np.zeros(nsig + nbkg, dtype='float32')
+        self.label[:nsig] = 1
 
         self.extra_labels = np.concatenate(self.extra_labels)
+        for k in self.var_data:
+            self.var_data[k] = _concat(self.var_data[k])
+        for k in obs_branches:
+            self.obs_data[k] = _concat(self.obs_data[k])
 
-    def _load_cellMap(self, filename = 'cellmodule.txt'):
+        # training features
+        xyz = [_pad(a) for a in (self.var_data['x'], self.var_data['y'], self.var_data['z'])]
+        layer_id = _pad(self.var_data['layer_id'])
+        log_e = _pad(np.log(self.var_data['ecalDigis_recon.energy_']))
+        self.coordinates = np.stack(xyz, axis=1).astype('float32')
+        self.features = np.stack(xyz + [layer_id, log_e], axis=1).astype('float32')
+
+        assert(len(self.coordinates) == len(self.label))
+        assert(len(self.features) == len(self.label))
+
+    def _load_cellMap(self, filename='cellmodule.txt'):
         self._cellMap = {}
         for i, x, y in np.loadtxt(filename):
             self._cellMap[i] = (x, y)
-        self._layerZs = [223.8000030517578, 226.6999969482422, 233.0500030517578, 237.4499969482422, 245.3000030517578, 251.1999969482422, 260.29998779296875,
+        self._layerZs = np.array([223.8000030517578, 226.6999969482422, 233.0500030517578, 237.4499969482422, 245.3000030517578, 251.1999969482422, 260.29998779296875,
             266.70001220703125, 275.79998779296875, 282.20001220703125, 291.29998779296875, 297.70001220703125, 306.79998779296875, 313.20001220703125,
             322.29998779296875, 328.70001220703125, 337.79998779296875, 344.20001220703125, 353.29998779296875, 359.70001220703125, 368.79998779296875,
             375.20001220703125, 384.29998779296875, 390.70001220703125, 403.29998779296875, 413.20001220703125, 425.79998779296875, 435.70001220703125,
-            448.29998779296875, 458.20001220703125, 470.79998779296875, 480.70001220703125, 493.29998779296875, 503.20001220703125]
+            448.29998779296875, 458.20001220703125, 470.79998779296875, 480.70001220703125, 493.29998779296875, 503.20001220703125], dtype='float32')
 
-    def _parse_cellId(self, cid):
-        cell = (cid & 0xFFFF8000) >> 15
-        module = (cid & 0x7000) >> 12
-        layer = (cid & 0xFF0) >> 4
+    def _parse_cid(self, cid):
+        cell = (cid.content & 0xFFFF8000) >> 15
+        module = (cid.content & 0x7000) >> 12
+        layer = (cid.content & 0xFF0) >> 4
         mcid = 10 * cell + module
         x, y = zip(*map(self._cellMap.__getitem__, mcid))
         z = list(map(self._layerZs.__getitem__, layer))
-        return np.asfarray(np.stack([x, y, z], axis=1), dtype='float32')
+        x = cid.copy(content=np.array(x, dtype='float32'))
+        y = cid.copy(content=np.array(y, dtype='float32'))
+        z = cid.copy(content=np.array(z, dtype='float32'))
+        layer_id = cid.copy(content=np.array(layer, dtype='float32'))
+        return (x, y, z), layer_id
 
     @property
     def num_features(self):
-        return self.data[0].ndata['features'].shape[1]
+        return self.features.shape[1]
 
     def __len__(self):
-        return len(self.data)
+        return len(self.features)
 
     def __getitem__(self, i):
-        x = self.data[i]
+        pts = self.coordinates[i]
+        fts = self.features[i]
         y = self.label[i]
-        return x, y
-
-
-def pad_array(a, min_len=20, pad_value=0):
-    if a.shape[0] < min_len:
-        return F.pad(a, (0, 0, 0, min_len - a.shape[0]), mode='constant', value=pad_value)
-    else:
-        return a
+        return pts, fts, y
 
 
 class _SimpleCustomBatch:
 
-    def __init__(self, data, k, min_nodes=20):
-        transposed_data = list(zip(*data))
-        graphs = []
-        features = []
-        for g in transposed_data[0]:
-            nng = remove_self_loop(knn_graph(g.ndata['coordinates'], min(g.number_of_nodes(), k + 1)))
-            if nng.number_of_nodes() < min_nodes:
-                nng.add_nodes(min_nodes - nng.number_of_nodes())
-            graphs.append(nng)
-            fts = pad_array(g.ndata['features'], min_nodes, 0)
-            features.append(fts)
-            assert(nng.number_of_nodes() == fts.shape[0])
-        self.batch_graph = dgl.batch(graphs)
-        self.features = torch.cat(features, 0)
-        self.label = torch.tensor(transposed_data[1])
+    def __init__(self, data, min_nodes=None):
+        pts, fts, labels = list(zip(*data))
+        self.coordinates = torch.tensor(pts)
+        self.features = torch.tensor(fts)
+        self.label = torch.tensor(labels)
 
     def pin_memory(self):
+        self.coordinates = self.coordinates.pin_memory()
         self.features = self.features.pin_memory()
         self.label = self.label.pin_memory()
         return self
 
 
-def collate_wrapper(batch, k):
-    return _SimpleCustomBatch(batch, k)
+def collate_wrapper(batch):
+    return _SimpleCustomBatch(batch)

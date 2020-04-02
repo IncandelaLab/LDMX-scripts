@@ -5,65 +5,144 @@ resource.setrlimit(resource.RLIMIT_NOFILE, (1048576, 1048576))
 
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import DataLoader
 
 import tqdm
-from functools import partial
 import os
 import datetime
 import argparse
 
 from ParticleNet import ParticleNet
-import dataset
-from dataset import DGLGraphDatasetECALHits, collate_wrapper
+from dataset import ECalHitsDataset
+from dataset import collate_wrapper as collate_fn
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--demo', action='store_true', default=False)
-# parser.add_argument('--train-sig', type=str, default='/data/hqu/ldmx/mc/v9/signal_correct_bs/*/*.root')
-# parser.add_argument('--train-bkg', type=str, default='/data/hqu/ldmx/mc/v9/4pt0_gev_e_ecal_pn_bdt_training/*.root')
-# parser.add_argument('--test-sig', type=str, default='')
-# parser.add_argument('--test-bkg', type=str, default='')
-# parser.add_argument('--data-format', type=str, default='particle', choices=['particle', 'lund'])
-# parser.add_argument('--lund-dim', type=int, default=0)
-parser.add_argument('--predict', action='store_true', default=False)
-parser.add_argument('--network', type=str, default='particle-net-lite', choices=['particle-net', 'particle-net-lite', 'particle-net-k5', 'particle-net-k7'])
-parser.add_argument('--focal-loss-gamma', type=float, default=0)
-parser.add_argument('--load-model-path', type=str, default='')
-parser.add_argument('--save-model-path', type=str, default='')
-parser.add_argument('--test-output-path', type=str, default='')
-parser.add_argument('--num-epochs', type=int, default=30)
-parser.add_argument('--start-lr', type=float, default=0.001)
-parser.add_argument('--lr-steps', type=str, default='10,20')
-parser.add_argument('--num-workers', type=int, default=2)
-parser.add_argument('--batch-size', type=int, default=1024)
-parser.add_argument('--device', type=str, default='cuda:0')
+parser.add_argument('--demo', action='store_true', default=False,
+                    help='quickly test the setup by running over only a small number of events')
+parser.add_argument('--coord-ref', type=str, default='none', choices=['none', 'ecal_sp', 'target_sp', 'ecal_centroid'],
+                    help='refernce points for the x-y coordinates')
+parser.add_argument('--network', type=str, default='particle-net-lite', choices=['particle-net', 'particle-net-lite', 'particle-net-k5', 'particle-net-k7'],
+                    help='network architecture')
+parser.add_argument('--focal-loss-gamma', type=float, default=2,
+                    help='value of the gamma parameter if focal loss is used; when setting to 0, will use simple cross-entropy loss')
+parser.add_argument('--save-model-path', type=str, default='models/particle_net_model',
+                    help='path to save the model during training')
+parser.add_argument('--num-epochs', type=int, default=20,
+                    help='number of epochs')
+parser.add_argument('--optimizer', type=str, default='ranger', choices=['adam', 'ranger'],
+                    help='optimizer for the training')
+parser.add_argument('--start-lr', type=float, default=5e-3,
+                    help='start learning rate')
+parser.add_argument('--lr-steps', type=str, default='10,20',
+                    help='steps to reduce the lr')
+parser.add_argument('--batch-size', type=int, default=128,
+                    help='batch size')
+parser.add_argument('--device', type=str, default='cuda:0',
+                    help='device for the training')
+parser.add_argument('--num-workers', type=int, default=2,
+                    help='number of threads to load the dataset')
+
+parser.add_argument('--predict', action='store_true', default=False,
+                    help='run prediction instead of training')
+parser.add_argument('--load-model-path', type=str, default='',
+                    help='path to the model for prediction')
+parser.add_argument('--test-sig', type=str, default='',
+                    help='signal sample to be used for testing')
+parser.add_argument('--test-bkg', type=str, default='',
+                    help='background sample to be used for testing')
+parser.add_argument('--save-extra', action='store_true', default=False,
+                    help='save extra information defined in `obs_branches` to the prediction output')
+parser.add_argument('--test-output-path', type=str, default='test-outputs/particle_net_output',
+                    help='path to save the prediction output')
+
 args = parser.parse_args()
 
+###### location of the signal and background files ######
+bkglist = {
+    # (filepath, num_events_for_training)
+    0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', -1)
+    }
+
+siglist = {
+    # (filepath, num_events_for_training)
+    1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 200000),
+    10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 200000),
+    100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 200000),
+    1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 200000),
+    }
+
 if args.demo:
-    dataset.bkglist = {
-        # label: (filepath, num_events_for_training)
-        0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/4gev_1e_ecal_pn_v9_1.8e8eot_20190507_00388e25_tskim_recon.root', -1)
+    bkglist = {
+        # (filepath, num_events_for_training)
+        0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', 4000)
         }
 
-    dataset.siglist = {
-        # label: (filepath, num_events_for_training)
-        1: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.001*.root', 1000),
-        10: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.01*.root', 1000),
-        100: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.0.1*.root', 1000),
-        1000: ('/data/hqu/ldmx/mc/v9/signal_correct_bs/*mA.1.0*.root', 1000)
+    siglist = {
+        # (filepath, num_events_for_training)
+        1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 1000),
+        10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 1000),
+        100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 1000),
+        1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 1000),
         }
+#########################################################
+
+###### `observer` variables to be saved in the prediction output ######
+obs_branches = []
+if args.save_extra:
+    obs_branches = [
+        'ecalDigis_recon.id_',
+        'ecalDigis_recon.energy_',
+
+        'EcalVetoGabriel_recon.nReadoutHits_',
+        'EcalVetoGabriel_recon.deepestLayerHit_',
+        'EcalVetoGabriel_recon.summedDet_',
+        'EcalVetoGabriel_recon.summedTightIso_',
+        'EcalVetoGabriel_recon.maxCellDep_',
+        'EcalVetoGabriel_recon.showerRMS_',
+        'EcalVetoGabriel_recon.xStd_',
+        'EcalVetoGabriel_recon.yStd_',
+        'EcalVetoGabriel_recon.avgLayerHit_',
+        'EcalVetoGabriel_recon.stdLayerHit_',
+        'EcalVetoGabriel_recon.ecalBackEnergy_',
+        'EcalVetoGabriel_recon.electronContainmentEnergy_',
+        'EcalVetoGabriel_recon.photonContainmentEnergy_',
+        'EcalVetoGabriel_recon.outsideContainmentEnergy_',
+        'EcalVetoGabriel_recon.outsideContainmentNHits_',
+        'EcalVetoGabriel_recon.outsideContainmentXStd_',
+        'EcalVetoGabriel_recon.outsideContainmentYStd_',
+        'EcalVetoGabriel_recon.discValue_',
+        'EcalVetoGabriel_recon.recoilPx_',
+        'EcalVetoGabriel_recon.recoilPy_',
+        'EcalVetoGabriel_recon.recoilPz_',
+        'EcalVetoGabriel_recon.recoilX_',
+        'EcalVetoGabriel_recon.recoilY_',
+        'EcalVetoGabriel_recon.ecalLayerEdepReadout_',
+
+        'TargetSPRecoilE_pt',
+        ]
+#########################################################
+#########################################################
 
 # training/testing mode
 if args.predict:
     assert(args.load_model_path)
     training_mode = False
+    if args.test_sig or args.test_bkg:
+        bkglist = {}
+        siglist = {}
+        if args.test_sig:
+            siglist = {
+                # label: (filepath, num_events_for_training)
+                -1: (args.test_sig, -1)
+                }
+
+        if args.test_bkg:
+            bkglist = {
+                # label: (filepath, num_events_for_training)
+                0: (args.test_bkg, -1),
+                }
 else:
     training_mode = True
-
-# data format
-DGLGraphDataset = DGLGraphDatasetECALHits
 
 # model parameter
 if args.network == 'particle-net':
@@ -94,14 +173,17 @@ elif args.network == 'particle-net-k7':
         ]
     fc_params = [(256, 0.1)]
 
+print('conv_params: %s' % conv_params)
+print('fc_params: %s' % fc_params)
+
 # device
 dev = torch.device(args.device)
 
 # load data
-collate_fn = partial(collate_wrapper, k=conv_params[0][0])
 if training_mode:
-    train_data = DGLGraphDataset(fraction=(0.2, 1))
-    val_data = DGLGraphDataset(fraction=(0, 0.2))
+    # for training: we use the first 0-20% for testing, and 20-80% for training
+    train_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), coord_ref=args.coord_ref)
+    val_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), coord_ref=args.coord_ref)
     train_loader = DataLoader(train_data, num_workers=args.num_workers, batch_size=args.batch_size,
                               collate_fn=collate_fn, shuffle=True, drop_last=True, pin_memory=True)
     val_loader = DataLoader(val_data, num_workers=args.num_workers, batch_size=args.batch_size,
@@ -111,7 +193,8 @@ if training_mode:
     test_data = val_data
     test_loader = val_loader
 else:
-    test_data = DGLGraphDataset(fraction=(0, 0.2), ignore_evt_limits=True)
+    test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
+    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, ignore_evt_limits=(not args.demo), obs_branches=obs_branches, coord_ref=args.coord_ref)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
 
@@ -120,7 +203,8 @@ input_dims = test_data.num_features
 # model
 model = ParticleNet(input_dims=input_dims, num_classes=2,
                     conv_params=conv_params,
-                    fc_params=fc_params)
+                    fc_params=fc_params,
+                    use_fusion=True)
 model = model.to(dev)
 
 
@@ -131,13 +215,13 @@ def train(model, opt, scheduler, train_loader, dev):
     num_batches = 0
     total_correct = 0
     count = 0
-    with tqdm.tqdm(train_loader, ascii=True) as tq:
+    with tqdm.tqdm(train_loader) as tq:
         for batch in tq:
             label = batch.label
             num_examples = label.shape[0]
             label = label.to(dev).squeeze().long()
             opt.zero_grad()
-            logits = model(batch.batch_graph, batch.features.to(dev))
+            logits = model(batch.coordinates.to(dev), batch.features.to(dev))
             loss = loss_func(logits, label)
             loss.backward()
             opt.step()
@@ -168,12 +252,12 @@ def evaluate(model, test_loader, dev, return_scores=False):
     scores = []
 
     with torch.no_grad():
-        with tqdm.tqdm(test_loader, ascii=True) as tq:
+        with tqdm.tqdm(test_loader) as tq:
             for batch in tq:
                 label = batch.label
                 num_examples = label.shape[0]
                 label = label.to(dev).squeeze().long()
-                logits = model(batch.batch_graph, batch.features.to(dev))
+                logits = model(batch.coordinates.to(dev), batch.features.to(dev))
                 _, preds = logits.max(1)
 
                 if return_scores:
@@ -200,14 +284,19 @@ if training_mode:
         from focal_loss import FocalLoss
         loss_func = FocalLoss(gamma=args.focal_loss_gamma)
     else:
-        loss_func = nn.CrossEntropyLoss()
+        loss_func = torch.nn.CrossEntropyLoss()
 
-    # optimizer
-    opt = optim.Adam(model.parameters(), lr=args.start_lr)
-
-    # learning rate
-    lr_steps = [int(x) for x in args.lr_steps.split(',')]
-    scheduler = optim.lr_scheduler.MultiStepLR(opt, milestones=lr_steps, gamma=0.1)
+    # optimizer & learning rate
+    if args.optimizer == 'adam':
+        opt = torch.optim.Adam(model.parameters(), lr=args.start_lr)
+        lr_steps = [int(x) for x in args.lr_steps.split(',')]
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=lr_steps, gamma=0.1)
+    else:
+        from ranger import Ranger
+        opt = Ranger(model.parameters(), lr=args.start_lr)
+        lr_decay_epochs = int(args.num_epochs * 0.3)
+        lr_decay_rate = 0.01 ** (1. / lr_decay_epochs)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=list(range(args.num_epochs - lr_decay_epochs, args.num_epochs)), gamma=lr_decay_rate)
 
     # training loop
     best_valid_acc = 0
@@ -240,30 +329,32 @@ if path and not os.path.exists(path):
     os.makedirs(path)
 
 test_preds = evaluate(model, test_loader, dev, return_scores=True)
-test_labels = test_data.label.cpu().detach().numpy()
+test_labels = test_data.label
 test_extra_labels = test_data.extra_labels
 
 info_dict = {'model_name':args.network,
              'model_params': {'conv_params':conv_params, 'fc_params':fc_params},
+             'coord_ref':args.coord_ref,
              'date': str(datetime.date.today()),
              'model_path': args.load_model_path,
-             'siglist': dataset.siglist,
-             'bkglist': dataset.bkglist,
+             'siglist': siglist,
+             'bkglist': bkglist,
              'presel_eff': test_data.presel_eff,
              }
 if training_mode:
     info_dict.update({'model_path': args.save_model_path})
 
 from plot_utils import plotROC, get_signal_effs
-for k in dataset.siglist:
-    mass = '%d MeV' % k
-    fpr, tpr, auc, acc = plotROC(test_preds, test_labels, sample_weight=np.logical_or(test_extra_labels == 0, test_extra_labels == k),
-                                 sig_eff=test_data.presel_eff[k], bkg_eff=test_data.presel_eff[0],
-                                 output=os.path.splitext(args.test_output_path)[0] + 'ROC_%s.pdf' % mass, label=mass, xlim=[1e-6, .01], ylim=[0, 1], logx=True)
-    info_dict[mass] = {'auc-presel': auc,
-                       'acc-presel': acc,
-                       'effs': get_signal_effs(fpr, tpr)
-                       }
+for k in siglist:
+    if k > 0:
+        mass = '%d MeV' % k
+        fpr, tpr, auc, acc = plotROC(test_preds, test_labels, sample_weight=np.logical_or(test_extra_labels == 0, test_extra_labels == k),
+                                     sig_eff=test_data.presel_eff[k], bkg_eff=test_data.presel_eff[0],
+                                     output=os.path.splitext(args.test_output_path)[0] + 'ROC_%s.pdf' % mass, label=mass, xlim=[1e-6, .01], ylim=[0, 1], logx=True)
+        info_dict[mass] = {'auc-presel': auc,
+                           'acc-presel': acc,
+                           'effs': get_signal_effs(fpr, tpr)
+                           }
 
 print(' === Summary ===')
 for k in info_dict:
@@ -274,7 +365,29 @@ with open(info_file, 'w') as f:
     for k in info_dict:
         f.write('%s: %s\n' % (k, info_dict[k]))
 
-import pickle
-pred_file = os.path.splitext(args.test_output_path)[0] + '_pred.pickle'
-with open(pred_file, 'wb') as f:
-    pickle.dump({'prediction':test_preds, 'label':test_extra_labels}, f)
+# save prediction output
+import awkward
+pred_file = os.path.splitext(args.test_output_path)[0] + '_OUTPUT'
+out_data = test_data.obs_data
+out_data['ParticleNet_extra_label'] = test_extra_labels
+out_data['ParticleNet_disc'] = test_preds[:, 1]
+awkward.save(pred_file, out_data, mode='w')
+
+# export to onnx
+if args.predict:
+    import torch.onnx
+    model_softmax = ParticleNet(input_dims=input_dims, num_classes=2,
+                                conv_params=conv_params,
+                                fc_params=fc_params,
+                                use_fusion=True,
+                                return_softmax=True)  # add softmax to convert output to [0, 1]
+    model_softmax.to(dev)
+    for batch in test_loader:
+        model_softmax.eval()
+        inputs = (batch.coordinates.to(dev), batch.features.to(dev))
+        torch.onnx.export(model_softmax, inputs, os.path.join(os.path.dirname(args.test_output_path), os.path.basename(model_path).replace('.pt', '.onnx')),
+                          input_names=['coordinates', 'features'],
+                          output_names=['output'],
+                          dynamic_axes={'coordinates':[0], 'features':[0]},
+                          opset_version=11)
+        break

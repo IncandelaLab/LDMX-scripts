@@ -13,7 +13,7 @@ import os
 import datetime
 import argparse
 
-from ParticleNet import ParticleNet
+from utils.ParticleNet import ParticleNet
 from dataset import ECalHitsDataset
 from dataset import collate_wrapper as collate_fn
 

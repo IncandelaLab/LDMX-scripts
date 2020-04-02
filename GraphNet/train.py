@@ -12,7 +12,7 @@ import os
 import datetime
 import argparse
 
-from ParticleNet import ParticleNet
+from utils.ParticleNet import ParticleNet
 from dataset import ECalHitsDataset
 from dataset import collate_wrapper as collate_fn
 
@@ -281,7 +281,7 @@ if training_mode:
     # loss function
     if args.focal_loss_gamma > 0:
         print('Using focal loss w/ gamma=%s' % args.focal_loss_gamma)
-        from focal_loss import FocalLoss
+        from utils.focal_loss import FocalLoss
         loss_func = FocalLoss(gamma=args.focal_loss_gamma)
     else:
         loss_func = torch.nn.CrossEntropyLoss()
@@ -292,7 +292,7 @@ if training_mode:
         lr_steps = [int(x) for x in args.lr_steps.split(',')]
         scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=lr_steps, gamma=0.1)
     else:
-        from ranger import Ranger
+        from utils.ranger import Ranger
         opt = Ranger(model.parameters(), lr=args.start_lr)
         lr_decay_epochs = int(args.num_epochs * 0.3)
         lr_decay_rate = 0.01 ** (1. / lr_decay_epochs)
@@ -344,7 +344,7 @@ info_dict = {'model_name':args.network,
 if training_mode:
     info_dict.update({'model_path': args.save_model_path})
 
-from plot_utils import plotROC, get_signal_effs
+from utils.plot_utils import plotROC, get_signal_effs
 for k in siglist:
     if k > 0:
         mass = '%d MeV' % k
@@ -374,20 +374,22 @@ out_data['ParticleNet_disc'] = test_preds[:, 1]
 awkward.save(pred_file, out_data, mode='w')
 
 # export to onnx
-if args.predict:
-    import torch.onnx
-    model_softmax = ParticleNet(input_dims=input_dims, num_classes=2,
-                                conv_params=conv_params,
-                                fc_params=fc_params,
-                                use_fusion=True,
-                                return_softmax=True)  # add softmax to convert output to [0, 1]
-    model_softmax.to(dev)
-    for batch in test_loader:
-        model_softmax.eval()
-        inputs = (batch.coordinates.to(dev), batch.features.to(dev))
-        torch.onnx.export(model_softmax, inputs, os.path.join(os.path.dirname(args.test_output_path), os.path.basename(model_path).replace('.pt', '.onnx')),
-                          input_names=['coordinates', 'features'],
-                          output_names=['output'],
-                          dynamic_axes={'coordinates':[0], 'features':[0]},
-                          opset_version=11)
-        break
+onnx_output = os.path.join(os.path.dirname(args.test_output_path), os.path.basename(model_path).replace('.pt', '.onnx'))
+print('Exporting ONNX model to %s' % onnx_output)
+import torch.onnx
+model_softmax = ParticleNet(input_dims=input_dims, num_classes=2,
+                            conv_params=conv_params,
+                            fc_params=fc_params,
+                            use_fusion=True,
+                            return_softmax=True)  # add softmax to convert output to [0, 1]
+model_softmax.load_state_dict(torch.load(model_path))
+model_softmax.to(dev)
+for batch in test_loader:
+    model_softmax.eval()
+    inputs = (batch.coordinates.to(dev), batch.features.to(dev))
+    torch.onnx.export(model_softmax, inputs, onnx_output,
+                      input_names=['coordinates', 'features'],
+                      output_names=['output'],
+                      dynamic_axes={'coordinates':[0], 'features':[0]},
+                      opset_version=11)
+    break

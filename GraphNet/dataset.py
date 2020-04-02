@@ -13,11 +13,6 @@ executor = concurrent.futures.ThreadPoolExecutor(12)
 
 MAX_NUM_ECAL_HITS = 50
 
-branches = [
-    'ecalDigis_recon.id_',
-    'ecalDigis_recon.energy_',
-    ]
-
 def _concat(arrays, axis=0):
     if len(arrays) == 0:
         return np.array()
@@ -33,10 +28,16 @@ def _pad(a, pad_value=0):
 
 class ECalHitsDataset(Dataset):
 
-    def __init__(self, siglist, bkglist, load_range=(0, 1), apply_preselection=True, ignore_evt_limits=False, obs_branches=[], coord_ref=None):
+    def __init__(self, siglist, bkglist, load_range=(0, 1), apply_preselection=True, ignore_evt_limits=False, obs_branches=[], coord_ref=None, detector_version='v9'):
         super(ECalHitsDataset, self).__init__()
         # first load cell map
-        self._load_cellMap()
+        self._load_cellMap(version=detector_version)
+        self._id_branch = 'EcalRecHits_sim.id_'
+        self._energy_branch = 'EcalRecHits_sim.energy_'
+        if detector_version == 'v9':
+            self._id_branch = 'ecalDigis_recon.id_'
+            self._energy_branch = 'ecalDigis_recon.energy_'
+        self._branches = [self._id_branch, self._energy_branch]
 
         self.extra_labels = []
         self.presel_eff = {}
@@ -72,23 +73,23 @@ class ECalHitsDataset(Dataset):
 
         def _read_file(table):
             # load data from one file
-            start, stop = [int(x * len(table[branches[0]])) for x in load_range]
+            start, stop = [int(x * len(table[self._branches[0]])) for x in load_range]
             for k in table:
                 table[k] = table[k][start:stop]
-            n_inclusive = len(table[branches[0]])  # before preselection
+            n_inclusive = len(table[self._branches[0]])  # before preselection
 
             if apply_preselection:
-                pos_pass_presel = (table['ecalDigis_recon.energy_'] > 0).sum() < MAX_NUM_ECAL_HITS
+                pos_pass_presel = (table[self._energy_branch] > 0).sum() < MAX_NUM_ECAL_HITS
                 for k in table:
                     table[k] = table[k][pos_pass_presel]
-            n_selected = len(table[branches[0]])  # after preselection
+            n_selected = len(table[self._branches[0]])  # after preselection
 
             for k in table:
                 if isinstance(table[k], awkward.array.objects.ObjectArray):
                     table[k] = awkward.JaggedArray.fromiter(table[k]).flatten()
 
-            eid = table['ecalDigis_recon.id_']
-            energy = table['ecalDigis_recon.energy_']
+            eid = table[self._id_branch]
+            energy = table[self._energy_branch]
             pos = (energy > 0)
             eid = eid[pos]
             energy = energy[pos]
@@ -101,7 +102,7 @@ class ECalHitsDataset(Dataset):
             x = x - table['x_ref']
             y = y - table['y_ref']
 
-            var_dict = {'ecalDigis_recon.id_':eid, 'ecalDigis_recon.energy_':energy,
+            var_dict = {self._id_branch:eid, self._energy_branch:energy,
                         'x':x, 'y':y, 'z':z, 'layer_id':layer_id,
                         'x_ref':table['x_ref'], 'y_ref':table['y_ref']}
             obs_dict = {k: table[k] for k in obs_branches}
@@ -130,7 +131,7 @@ class ECalHitsDataset(Dataset):
                         if len(t.keys()) == 0:
 #                             print('... ignoring empty file %s' % fp)
                             continue
-                        load_branches = [k for k in branches + obs_branches if '.' in k and k[-1] == '_']
+                        load_branches = [k for k in self._branches + obs_branches if '.' in k and k[-1] == '_']
                         table = t.arrays(load_branches, namedecode='utf-8', executor=executor)
                         _load_coord_ref(t, table)
                         _load_recoil_pt(t, table)
@@ -191,22 +192,18 @@ class ECalHitsDataset(Dataset):
         # training features
         xyz = [_pad(a) for a in (self.var_data['x'], self.var_data['y'], self.var_data['z'])]
         layer_id = _pad(self.var_data['layer_id'])
-        log_e = _pad(np.log(self.var_data['ecalDigis_recon.energy_']))
+        log_e = _pad(np.log(self.var_data[self._energy_branch]))
         self.coordinates = np.stack(xyz, axis=1).astype('float32')
         self.features = np.stack(xyz + [layer_id, log_e], axis=1).astype('float32')
 
         assert(len(self.coordinates) == len(self.label))
         assert(len(self.features) == len(self.label))
 
-    def _load_cellMap(self, filename='cellmodule.txt'):
+    def _load_cellMap(self, version='v9'):
         self._cellMap = {}
-        for i, x, y in np.loadtxt(filename):
+        for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
             self._cellMap[i] = (x, y)
-        self._layerZs = np.array([223.8000030517578, 226.6999969482422, 233.0500030517578, 237.4499969482422, 245.3000030517578, 251.1999969482422, 260.29998779296875,
-            266.70001220703125, 275.79998779296875, 282.20001220703125, 291.29998779296875, 297.70001220703125, 306.79998779296875, 313.20001220703125,
-            322.29998779296875, 328.70001220703125, 337.79998779296875, 344.20001220703125, 353.29998779296875, 359.70001220703125, 368.79998779296875,
-            375.20001220703125, 384.29998779296875, 390.70001220703125, 403.29998779296875, 413.20001220703125, 425.79998779296875, 435.70001220703125,
-            448.29998779296875, 458.20001220703125, 470.79998779296875, 480.70001220703125, 493.29998779296875, 503.20001220703125], dtype='float32')
+        self._layerZs = np.loadtxt('data/%s/layer.txt' % version)
 
     def _parse_cid(self, cid):
         cell = (cid.content & 0xFFFF8000) >> 15

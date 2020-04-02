@@ -154,6 +154,8 @@ class ParticleNet(nn.Module):
         self.return_softmax = return_softmax
 
     def forward(self, points, features, mask=None):
+#         print('points:\n', points)
+#         print('features:\n', features)
         if mask is None:
             mask = (features.abs().sum(dim=1, keepdim=True) != 0)  # (N, 1, P)
         coord_shift = (mask == 0) * 9999.
@@ -173,4 +175,5 @@ class ParticleNet(nn.Module):
         output = self.fc(x)
         if self.return_softmax:
             output = torch.softmax(output, dim=1)
+#         print('output:\n', output)
         return output

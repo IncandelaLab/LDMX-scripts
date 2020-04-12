@@ -22,13 +22,12 @@ def get_graph_feature(x, k, idx):
     idx = idx + idx_base
     idx = idx.view(-1)
 
-    x = x.transpose(2, 1).contiguous()  # -> (batch_size, num_points, num_dims)
-    feature = x.view(batch_size * num_points, -1)[idx, :]
-    feature = feature.view(batch_size, num_points, k, num_dims)
-    x = x.view(batch_size, num_points, 1, num_dims).repeat(1, 1, k, 1)
-
-    feature = torch.cat((feature - x, x), dim=3).permute(0, 3, 1, 2)  # (batch_size, 2*num_dims, num_points, num_dims)
-    return feature
+    fts = x.transpose(2, 1).reshape(-1, num_dims)  # -> (batch_size, num_points, num_dims) -> (batch_size*num_points, num_dims)
+    fts = fts[idx, :].view(batch_size, num_points, k, num_dims)  # neighbors: -> (batch_size*num_points*k, num_dims) -> ...
+    fts = fts.permute(0, 3, 1, 2)  # (batch_size, num_dims, num_points, k)
+    x = x.view(batch_size, num_dims, num_points, 1).repeat(1, 1, 1, k)
+    fts = torch.cat((x, fts - x), dim=1)  # ->(batch_size, 2*num_dims, num_points, k)
+    return fts
 
 
 class Mish(nn.Module):

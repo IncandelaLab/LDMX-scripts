@@ -15,6 +15,8 @@ import argparse
 from utils.ParticleNet import ParticleNet
 from dataset import ECalHitsDataset
 from dataset import collate_wrapper as collate_fn
+# NEW:
+from utils.SplitNet import SplitNet
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--demo', action='store_true', default=False,
@@ -154,7 +156,7 @@ if args.network == 'particle-net':
     fc_params = [(256, 0.1)]
 elif args.network == 'particle-net-lite':
     conv_params = [
-        (7, (32, 32, 32)),
+        (7, (32, 32, 32)),  #MODIFIED 7->5 FOR NEW PN
         (7, (64, 64, 64))
         ]
     fc_params = [(128, 0.1)]
@@ -201,10 +203,10 @@ else:
 input_dims = test_data.num_features
 
 # model
-model = ParticleNet(input_dims=input_dims, num_classes=2,
-                    conv_params=conv_params,
-                    fc_params=fc_params,
-                    use_fusion=True)
+model = SplitNet(input_dims=input_dims, num_classes=2,
+                 conv_params=conv_params,
+                 fc_params=fc_params,
+                 use_fusion=True)
 model = model.to(dev)
 
 
@@ -222,6 +224,9 @@ def train(model, opt, scheduler, train_loader, dev):
             label = label.to(dev).squeeze().long()
             opt.zero_grad()
             logits = model(batch.coordinates.to(dev), batch.features.to(dev))
+            #print("label.shape=", label.shape)
+            #print("logits.shape=", logits.shape)
+            #print("label =", label)
             loss = loss_func(logits, label)
             loss.backward()
             opt.step()
@@ -377,11 +382,11 @@ awkward.save(pred_file, out_data, mode='w')
 onnx_output = os.path.join(os.path.dirname(args.test_output_path), os.path.basename(model_path).replace('.pt', '.onnx'))
 print('Exporting ONNX model to %s' % onnx_output)
 import torch.onnx
-model_softmax = ParticleNet(input_dims=input_dims, num_classes=2,
-                            conv_params=conv_params,
-                            fc_params=fc_params,
-                            use_fusion=True,
-                            return_softmax=True)  # add softmax to convert output to [0, 1]
+model_softmax = SplitNet(input_dims=input_dims, num_classes=2,
+                         conv_params=conv_params,
+                         fc_params=fc_params,
+                         use_fusion=True,
+                         return_softmax=True)  # add softmax to convert output to [0, 1]
 model_softmax.load_state_dict(torch.load(model_path))
 model_softmax.to(dev)
 for batch in test_loader:

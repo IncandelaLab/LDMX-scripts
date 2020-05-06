@@ -159,8 +159,9 @@ class EcalVetoEvent(TreeModel):
     stdLayerHit = FloatCol()
     deepestLayerHit = IntCol()
     discValue = FloatCol()
-    discValueFernand = FloatCol()
     hcalMaxPE = FloatCol()
+    passHcalVeto = BoolCol()
+    passTrackerVeto = BoolCol()
     recoilPx = FloatCol()
     recoilPy = FloatCol()
     recoilPz = FloatCol()
@@ -256,8 +257,8 @@ class bdtTreeMaker:
         # Setup to read the collections we care about
         self.evHeader = r.ldmx.EventHeader()
         self.ecalVetoRes = r.TClonesArray('ldmx::EcalVetoResult')
-        self.ecalVetoResFernand = r.TClonesArray('ldmx::EcalVetoResult')
         self.hcalVetoRes = r.TClonesArray('ldmx::HcalVetoResult')
+        self.trackerVetoRes = r.TClonesArray('ldmx::TrackerVetoResult')
         self.hcalhits = r.TClonesArray('ldmx::HcalHit') #added by Jack
         self.trigRes = r.TClonesArray('ldmx::TriggerResult')
         self.hcalhits = r.TClonesArray('ldmx::HcalHit') #added by Jack
@@ -268,8 +269,8 @@ class bdtTreeMaker:
 
         self.intree.SetBranchAddress('EventHeader',r.AddressOf(self.evHeader))
         self.intree.SetBranchAddress('EcalVeto_recon',r.AddressOf(self.ecalVetoRes))
-        self.intree.SetBranchAddress('EcalVetoFernand_recon',r.AddressOf(self.ecalVetoResFernand))
         self.intree.SetBranchAddress('HcalVeto_recon',r.AddressOf(self.hcalVetoRes))
+        self.intree.SetBranchAddress('TrackerVeto_recon',r.AddressOf(self.trackerVetoRes))
         self.intree.SetBranchAddress('ecalDigis_recon',r.AddressOf(self.ecalhits)) 
         self.intree.SetBranchAddress('hcalDigis_recon',r.AddressOf(self.hcalhits)) 
         self.intree.SetBranchAddress('SimParticles_sim',r.AddressOf(self.simParticles))
@@ -334,18 +335,12 @@ class bdtTreeMaker:
 
         # Stored value of bdt discriminator
         self.tree.discValue = self.ecalVetoRes[0].getDisc()
-        self.tree.discValueFernand = self.ecalVetoResFernand[0].getDisc()
         #print self.event_count,self.evHeader.getEventNumber(),self.ecalVetoRes[0].getDisc(),self.trigRes[0].passed()
 
         # HCal MaxPE value, needed for HCAL veto
-        #self.tree.hcalMaxPE = self.hcalVetoRes[0].getMaxPEHit().getPE()
-        maxPE = 0
-        for hit in self.hcalhits:
-            if hit.getTime() < 50.0 and hit.getZ() < 4000.0:
-                pe = hit.getPE()
-                if pe > maxPE:
-                    maxPE = pe
-        self.tree.hcalMaxPE = maxPE
+        self.tree.hcalMaxPE = self.hcalVetoRes[0].getMaxPEHit().getPE()
+        self.tree.passHcalVeto = self.hcalVetoRes[0].passesVeto()
+        self.tree.passTrackerVeto = self.trackerVetoRes[0].passesVeto()
 
         # Need to update to get this from first layer of tracker
         recoilPx = self.ecalVetoRes[0].getRecoilMomentum()[0]

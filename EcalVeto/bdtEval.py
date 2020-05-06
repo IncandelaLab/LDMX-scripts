@@ -88,7 +88,6 @@ class sampleContainer:
             evt.append(event.outside68x3ContYstd)
             evt.append(event.outside68x4ContYstd)
             evt.append(event.outside68x5ContYstd)
-
             evt.append(event.ecalBackEnergy)
 
             evtarray = np.array([evt])
@@ -117,15 +116,15 @@ if __name__ == "__main__":
 
 
     parser.add_argument('--interactive', dest='interactive', action='store_true', help='Run in interactive mode [Default: False]')
-    parser.add_argument('-o','--outfile', dest='out_file',  default='bdt_9/bkg_bdteval.root', help='Output file name')
-    parser.add_argument('--outdir', dest='outdir', default='/nfs/slac/g/ldmx/users/vdutta/ldmx-sw/scripts/test', help='Name of output directory')
-    parser.add_argument('--swdir', dest='swdir',  default='../ldmx-sw-install', help='ldmx-sw build directory')
+    parser.add_argument('-o','--outfile', dest='out_file',  default='bdttest/bkg_bdteval.root', help='Output file name')
+    parser.add_argument('--outdir', dest='outdir', default='/nfs/slac/g/ldmx/users/vdutta/test', help='Name of output directory')
+    parser.add_argument('--swdir', dest='swdir',  default='/nfs/slac/g/ldmx/users/vdutta/ldmx-sw-1.7/ldmx-sw-install', help='ldmx-sw build directory')
     parser.add_argument('--signal', dest='issignal', action='store_true', help='Signal file [Default: False]')
     parser.add_argument('--eta', dest='eta',type=float,  default=0.023, help='Learning Rate')
     parser.add_argument('--tree_number', dest='tree_number',type=int,  default=1000, help='Tree Number')
     parser.add_argument('--depth', dest='depth',type=int,  default=10, help='Max Tree Depth')
-    parser.add_argument('-i','--in_files', dest='in_files', nargs='*', default=['bdttrain_kaon_fix_032519/bkg_bdttest_subtree.root'], help='list of input files')
-    parser.add_argument('-p','--pkl_file', dest='pkl_file', default='/nfs/slac/g/ldmx/users/vdutta/ldmx-sw/scripts/bdt_nodup_3x_plus_v2_0/bdt_nodup_3x_plus_v2_0_weights.pkl', help='name of BDT pkl file')
+    parser.add_argument('-i','--in_files', dest='in_files', nargs='*', default=['bdttrain/bkg_bdttest_subtree.root'], help='list of input files')
+    parser.add_argument('-p','--pkl_file', dest='pkl_file', default='/nfs/slac/g/ldmx/users/vdutta/ldmx-sw/test/bdt_gabrielle/bdt_gabrielle_0_weights.pkl', help='name of BDT pkl file')
     parser.add_argument('--filelist', dest='filelist', default = '', help='Text file with list of input files')
   
 

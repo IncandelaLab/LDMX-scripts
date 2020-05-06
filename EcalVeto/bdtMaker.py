@@ -59,8 +59,6 @@ class sampleContainer:
             evt.append(event.avgLayerHit)
             evt.append(event.deepestLayerHit)
             evt.append(event.stdLayerHit)
-            #new features ... uncomment the following lines to include them in the training, or add new features here
-            """
             evt.append(event.ele68ContEnergy)
             evt.append(event.ele68x2ContEnergy)
             evt.append(event.ele68x3ContEnergy)
@@ -71,12 +69,27 @@ class sampleContainer:
             evt.append(event.photon68x3ContEnergy)
             evt.append(event.photon68x4ContEnergy)
             evt.append(event.photon68x5ContEnergy)
+            evt.append(event.outside68ContEnergy)
+            evt.append(event.outside68x2ContEnergy)
+            evt.append(event.outside68x3ContEnergy)
+            evt.append(event.outside68x4ContEnergy)
             evt.append(event.outside68x5ContEnergy)
+            evt.append(event.outside68ContNHits)
+            evt.append(event.outside68x2ContNHits)
+            evt.append(event.outside68x3ContNHits)
+            evt.append(event.outside68x4ContNHits)
             evt.append(event.outside68x5ContNHits)
+            evt.append(event.outside68ContXstd)
+            evt.append(event.outside68x2ContXstd)
+            evt.append(event.outside68x3ContXstd)
+            evt.append(event.outside68x4ContXstd)
             evt.append(event.outside68x5ContXstd)
+            evt.append(event.outside68ContYstd)
+            evt.append(event.outside68x2ContYstd)
+            evt.append(event.outside68x3ContYstd)
+            evt.append(event.outside68x4ContYstd)
             evt.append(event.outside68x5ContYstd)
             evt.append(event.ecalBackEnergy)
-            """
 
 
 ######################################################################################
@@ -130,13 +143,13 @@ if __name__ == "__main__":
     parser.add_option('--seed', dest='seed',type="int",  default=2, help='Numpy random seed.')
     parser.add_option('--train_frac', dest='train_frac',  default=.8, help='Fraction of events to use for training')
     parser.add_option('--max_evt', dest='max_evt',type="int",  default=1250000, help='Max Events to load')
-    parser.add_option('--out_name', dest='out_name',  default='bdt_kf_newvars', help='Output Pickle Name')
-    parser.add_option('--swdir', dest='swdir',  default='../install', help='ldmx-sw build directory')
+    parser.add_option('--out_name', dest='out_name',  default='bdt_gabrielle', help='Output Pickle Name')
+    parser.add_option('--swdir', dest='swdir',  default='../ldmx-sw-install', help='ldmx-sw build directory')
     parser.add_option('--eta', dest='eta',type="float",  default=0.023, help='Learning Rate')
     parser.add_option('--tree_number', dest='tree_number',type="int",  default=1000, help='Tree Number')
     parser.add_option('--depth', dest='depth',type="int",  default=10, help='Max Tree Depth')
-    parser.add_option('--bkg_file', dest='bkg_file', default='bdttrain_kf_newvars_050519/bkg_bdttrain_tree.root', help='name of background file')
-    parser.add_option('--sig_file', dest='sig_file', default='bdttrain_kf_newvars_050519/signal_bdttrain_tree.root', help='name of signal file')
+    parser.add_option('--bkg_file', dest='bkg_file', default='bdttrain/bkg_bdttrain_tree.root', help='name of background file')
+    parser.add_option('--sig_file', dest='sig_file', default='bdttrain/signal_bdttrain_tree.root', help='name of signal file')
   
 
     (options, args) = parser.parse_args()

@@ -79,7 +79,7 @@ def mask(id):
 
 #calculate angle of electrons wrt normal of front ECal face
 def getTheta(p):
-    return p[2]/np.sqrt(p[0]**2+p[1]**2+p[2]**2)
+    return math.acos(p[2]/np.sqrt(p[0]**2+p[1]**2+p[2]**2))
 
 def getMagnitude(p):
     return np.sqrt(p[0]**2+p[1]**2+p[2]**2)
@@ -394,7 +394,7 @@ class bdtTreeMaker:
             simParticle = eleinfo[2]
             pvec = ecalSPHit.getMomentum()
             pos = ecalSPHit.getPosition()
-            recoilangle = getTheta(pvec) 
+            recoilangle = getTheta(pvec)*180./math.pi 
             recoil_p = getMagnitude(pvec)
             pvec0 = [0,0,0]
             pos0 = [0,0,0]
@@ -749,12 +749,12 @@ class bdtTreeMaker:
 # Process command line arguments and run the tree maker
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Make tree with BDT inputs and result')
-    parser.add_argument('--swdir', dest='swdir',  default='/nfs/slac/g/ldmx/users/vdutta/ldmx-sw/ldmx-sw-install', help='ldmx-sw build directory')
+    parser.add_argument('--swdir', dest='swdir',  default='/nfs/slac/g/ldmx/users/vdutta/ldmx-sw-1.7/ldmx-sw-install', help='ldmx-sw build directory')
     parser.add_argument('--signal', dest='issignal', action='store_true', help='Signal file [Default: False]')
     parser.add_argument('--interactive', dest='interactive', action='store_true', help='Run in interactive mode [Default: False]')
-    parser.add_argument('-o','--outdir', dest='outdir', default='/nfs/slac/g/ldmx/users/vdutta/ldmx-sw/scripts/test', help='Name of output directory')
+    parser.add_argument('-o','--outdir', dest='outdir', default='/nfs/slac/g/ldmx/users/vdutta/test', help='Name of output directory')
     parser.add_argument('-f','--outfile', dest='outfile', default='test.root', help='Name of output file')
-    parser.add_argument('-i','--inputfiles', dest='inputfiles', nargs='*', default=['/nfs/slac/g/ldmx/data/mc/v9-magnet/ucsb_test/4pt0_gev_1e_ecal_pn_v9_magnet_test_0824c660_108198_tskim_recon.root'], help='List of input files')
+    parser.add_argument('-i','--inputfiles', dest='inputfiles', nargs='*', default=['/nfs/slac/g/ldmx/data/mc/v9/4pt0_gev_e_ecal_pn_bdt_training/4pt0_gev_1e_ecal_pn_v5_20190507_00305a2c_tskim_recon.root'], help='List of input files')
     parser.add_argument('--filelist', dest='filelist', default = '', help='Text file with list of input files')
 
     args = parser.parse_args()

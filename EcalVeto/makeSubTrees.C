@@ -4,7 +4,7 @@ void makeSubTrees(){
 vector<TString> procs = {"1.0","0.1","0.01","0.001"};
 //vector<TString> procs = {"bkg"};
 
-TString location = "bdttrain_kf_newvars_040419";
+TString location = "bdttrain";
 
 for(auto proc : procs) {
   TFile* infile = new TFile(location + "/" + proc + "_tree.root");

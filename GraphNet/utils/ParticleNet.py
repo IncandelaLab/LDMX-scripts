@@ -153,15 +153,12 @@ class ParticleNet(nn.Module):
         self.return_softmax = return_softmax
 
     def forward(self, points, features, mask=None):
-#         print('points:\n', points)
-#         print('features:\n', features)
         if mask is None:
             mask = (features.abs().sum(dim=1, keepdim=True) != 0)  # (N, 1, P)
         coord_shift = (mask == 0) * 9999.
         counts = mask.float().sum(dim=-1)
         counts = torch.max(counts, torch.ones_like(counts))  # >=1
-
-        fts = self.bn_fts(features)
+        fts = self.bn_fts(features.float())
         outputs = []
         for idx, conv in enumerate(self.edge_convs):
             pts = (points if idx == 0 else fts) + coord_shift

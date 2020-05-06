@@ -156,7 +156,7 @@ if args.network == 'particle-net':
     fc_params = [(256, 0.1)]
 elif args.network == 'particle-net-lite':
     conv_params = [
-        (7, (32, 32, 32)),  #MODIFIED 7->5 FOR NEW PN
+        (7, (32, 32, 32)),
         (7, (64, 64, 64))
         ]
     fc_params = [(128, 0.1)]
@@ -203,6 +203,7 @@ else:
 input_dims = test_data.num_features
 
 # model
+print("Initializing model")
 model = SplitNet(input_dims=input_dims, num_classes=2,
                  conv_params=conv_params,
                  fc_params=fc_params,

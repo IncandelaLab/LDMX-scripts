@@ -11,7 +11,7 @@ import awkward
 import concurrent.futures
 executor = concurrent.futures.ThreadPoolExecutor(12)
 
-MAX_NUM_ECAL_HITS = 40 #50 NOTE:  MODIFIED
+MAX_NUM_ECAL_HITS = 50
 # NEW:  LayerZ data (may be outdated)
 
 layerZs = [223.8000030517578, 226.6999969482422, 233.0500030517578, 237.4499969482422, 245.3000030517578, 251.1999969482422, 260.29998779296875,
@@ -183,6 +183,13 @@ class ECalHitsDataset(Dataset):
             log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS))
             layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS))
 
+            """x_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            y_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            z_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            eid_o =         np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            log_energy_o =  np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            layer_id_o =    np.zeros((len(x), MAX_NUM_ECAL_HITS))"""
+
             for i in range(len(x)):  # For every event...
                 etraj_sp = table['etraj_ref'][i][0]  # e- location at scoring plane (approximate)
                 enorm_sp = table['etraj_ref'][i][1]  # normalized (dz=1) momentum = direction of trajectory
@@ -191,9 +198,9 @@ class ECalHitsDataset(Dataset):
                 for j in range(len(x[i])):  #range(MAX_NUM_ECAL_HITS):  # For every hit...
                     layer_index = int(layer_id[i][j])
                     # Calculate xy for projected trajectory in same layer
-                    delta_z = layerZs[layer_index] - etraj_sp[0]
-                    etraj_point = (etraj_sp[0] + enorm_sp[0]*delta_z, etraj_sp[1] + enorm_sp[0]*delta_z)
-                    ptraj_point = (ptraj_sp[0] + pnorm_sp[0]*delta_z, ptraj_sp[1] + pnorm_sp[0]*delta_z)
+                    delta_z = layerZs[layer_index] - etraj_sp[2]
+                    etraj_point = (etraj_sp[0] + enorm_sp[0]*delta_z, etraj_sp[1] + enorm_sp[1]*delta_z)
+                    ptraj_point = (ptraj_sp[0] + pnorm_sp[0]*delta_z, ptraj_sp[1] + pnorm_sp[1]*delta_z)
                     # Additionally, calculate recoil angle (angle of pnorm_sp):
                     recoilangle = enorm_sp[2] / np.sqrt(enorm_sp[0]**2 + enorm_sp[1]**2 + enorm_sp[2]**2)
                     recoil_p = np.sqrt(enorm_sp[0]**2 + enorm_sp[1]**2 + enorm_sp[2]**2)
@@ -207,7 +214,8 @@ class ECalHitsDataset(Dataset):
                         ir = 3
                     else:
                         ir = 4
-                    if np.sqrt((etraj_point[0] - x[i][j])**2 + (etraj_point[1] - y[i][j])**2) < 2.0 * radius_68[ir][layer_index]:  #If inside e- RoC:
+                    #if np.sqrt((etraj_point[0] - x[i][j])**2 + (etraj_point[1] - y[i][j])**2) < 2.0 * radius_68[ir][layer_index]:  #If inside e- RoC:
+                    if not np.sqrt((ptraj_point[0] - x[i][j])**2 + (ptraj_point[1] - y[i][j])**2) < 1.0 * radius_68[ir][layer_index]:
                         x_e[i][j] = x[i][j] - etraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
                         y_e[i][j] = y[i][j] - etraj_point[1]
                         z_e[i][j] = z[i][j] - layerZs[0]  # Defined relative to the ecal face
@@ -216,7 +224,8 @@ class ECalHitsDataset(Dataset):
                         layer_id_e[i][j] = layer_id[i][j]
                         #ehits += 1
 
-                    if np.sqrt((ptraj_point[0] - x[i][j])**2 + (ptraj_point[1] - y[i][j])**2) < 2.0 * radius_68[ir][layer_index]:  #If inside photon RoC:
+                    #if np.sqrt((ptraj_point[0] - x[i][j])**2 + (ptraj_point[1] - y[i][j])**2) < 2.0 * radius_68[ir][layer_index]:  #If inside photon RoC:
+                    else:
                         x_p[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
                         y_p[i][j] = y[i][j] - ptraj_point[1]
                         z_p[i][j] = z[i][j] - layerZs[0]  # Defined relative to the ecal face
@@ -224,12 +233,23 @@ class ECalHitsDataset(Dataset):
                         log_energy_p[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
                         layer_id_p[i][j] = layer_id[i][j]
 
+                    """else:
+                        x_o[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the first ecal hit
+                        y_o[i][j] = y[i][j] - ptraj_point[1]
+                        z_o[i][j] = z[i][j] - layerZs[0]  # Defined relative to the ecal face
+                        eid_o[i][j] = eid[i][j]
+                        log_energy_o[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
+                        layer_id_o[i][j] = layer_id[i][j]"""
+
             var_dict = {'id_e':eid_e, 'log_energy_e':log_energy_e,
                         'x_e':x_e, 'y_e':y_e, 'z_e':z_e, 'layer_id_e':layer_id_e,
                         'etraj_ref':np.array(table['etraj_ref']),
                         'id_p':eid_p, 'log_energy_p':log_energy_p,
                         'x_p':x_e, 'y_p':y_p, 'z_p':z_p, 'layer_id_p':layer_id_p,
-                        'ptraj_ref':np.array(table['ptraj_ref'])}
+                        'ptraj_ref':np.array(table['ptraj_ref']),
+                        #'id_o':eid_o, 'log_energy_o':log_energy_o,
+                        #'x_o':x_o, 'y_o':y_o, 'z_o':z_o, 'layer_id_o':layer_id_o,
+                       }
 
             obs_dict = {k: table[k] for k in obs_branches}
 
@@ -321,19 +341,46 @@ class ECalHitsDataset(Dataset):
         # training features
         # Redone for new e/p features
         # NOTE:  Used to be _pad(a), but the padding is already done implicitly.
-        xyz_e = [a for a in (self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'])]
+        """xyz_e = [a for a in (self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'])]
         layer_id_e = self.var_data['layer_id_e']
         log_e_e = self.var_data['log_energy_e']
         xyz_p = [a for a in (self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'])]
         layer_id_p = self.var_data['layer_id_p']
         log_e_p = self.var_data['log_energy_p']
+        #TEMP
+        xyz_o = [a for a in (self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'])]
+        layer_id_o = self.var_data['layer_id_o']
+        log_e_o = self.var_data['log_energy_o']
         # Merge into a singe features array:
         e_coords = np.stack(xyz_e, axis=1)
         p_coords = np.stack(xyz_p, axis=1)
-        self.coordinates = np.stack([e_coords, p_coords], axis=1).astype('float32')
+        o_coords = np.stack(xyz_o, axis=1)
+        self.coordinates = np.stack([e_coords, p_coords, o_coords], axis=1).astype('float32')
         e_features = np.stack(xyz_e + [layer_id_e, log_e_e], axis=1)
         p_features = np.stack(xyz_p + [layer_id_p, log_e_p], axis=1)
-        self.features = np.stack([e_features, p_features], axis=1).astype('float32')
+        o_features = np.stack(xyz_o + [layer_id_o, log_e_o], axis=1)
+        print("Creating feature list")
+        self.features = np.stack([e_features, p_features, o_features], axis=1).astype('float32')"""
+
+
+        # There may be a better way to do this syntactically, but it saves RAM
+        print("Creating cood array")
+        self.coordinates = np.zeros((len(self.var_data['x_e']), 2, 3, MAX_NUM_ECAL_HITS), dtype=np.float64)
+        print("Creating feature array")
+        self.features =    np.zeros((len(self.var_data['x_e']), 2, 5, MAX_NUM_ECAL_HITS), dtype=np.float64)
+        print("Created.  Loading...")
+        tmp_coord_arr = [[self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']],
+                         [self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']]]
+                         #[self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']]]
+
+        for i in range(len(self.var_data['x_e'])):
+            for j in range(2):  #3):
+                for k in range(5):
+                    for l in range(MAX_NUM_ECAL_HITS):
+                        self.features[i][j][k][l] = tmp_coord_arr[j][k][i][l]
+                        if k < 3:
+                            self.coordinates[i][j][k][l] = tmp_coord_arr[j][k][i][l]
+        print("Fully loaded.")
 
         assert(len(self.coordinates) == len(self.label))
         assert(len(self.features) == len(self.label))

@@ -2,10 +2,25 @@
 
 # Description of analysis workflow
 
-ECal veto analysis based on `ldmx-sw` v1.7 or earlier. Compatible with v9 LDMX samples.
+ECal veto analysis based on `ldmx-sw` `v1.7` or earlier. Compatible with `v9` LDMX samples.
 
-## Creating flat analysis ROOT trees from LDMX recon files
-Start by checking out this repository:
+## Getting started
+Log in to the `rhel6-64` machines at SLAC:
+
+```
+ssh -Y <username>@rhel6-64.slac.stanford.edu
+```
+
+Set up your environment (every time you log in):
+
+```
+scl enable devtoolset-6 bash
+source /nfs/slac/g/ldmx/software/setup_gcc6.3.1_rhel6.sh
+export ROOTDIR=$SOFTWARE_HOME/root-6.18.04/install_gcc6.3.1_rhel6
+source $ROOTDIR/bin/thisroot.sh
+```
+
+Then, start by checking out this repository:
 
 ```
 cd <your_work_dir>
@@ -13,6 +28,7 @@ git clone https://github.com/IncandelaLab/LDMX-scripts.git .
 cd EcalVeto
 ```
 
+## Creating flat analysis ROOT trees from LDMX recon files
 The script <code>bdtTreeMaker.py</code> (under EcalVeto) can be used to run over the LDMX files which contain both sim and recon information, and produce flat ROOT trees which contain branches corresponding to the variables of interest for our analysis. In order to run this script interactively over a single input file, run the following command: </br>
 <code>python bdtTreeMaker.py --interactive -i <path_to_input_file> -o <desired_path_to_output_directory> -f <desired_name_of_output_file> </code>
 A list of locations in which to find various versions of the LDMX recon files can usually be found here: https://confluence.slac.stanford.edu/display/MME/Monte+Carlo+Production.

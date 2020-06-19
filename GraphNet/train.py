@@ -15,7 +15,6 @@ import argparse
 from utils.ParticleNet import ParticleNet
 from dataset import ECalHitsDataset
 from dataset import collate_wrapper as collate_fn
-# NEW:
 from utils.SplitNet import SplitNet
 
 parser = argparse.ArgumentParser()
@@ -92,8 +91,8 @@ if args.demo:
 obs_branches = []
 if args.save_extra:
     obs_branches = [
-        'ecalDigis_recon.id_',
-        'ecalDigis_recon.energy_',
+        #'ecalDigis_recon.id_',
+        #'ecalDigis_recon.energy_',
 
         'EcalVetoGabriel_recon.nReadoutHits_',
         'EcalVetoGabriel_recon.deepestLayerHit_',

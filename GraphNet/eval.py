@@ -14,6 +14,7 @@ import datetime
 import argparse
 
 from utils.ParticleNet import ParticleNet
+from utils.SplitNet import SplitNet
 from dataset import ECalHitsDataset
 from dataset import collate_wrapper as collate_fn
 
@@ -34,8 +35,8 @@ obs_branches = []
 
 if args.save_extra:
     obs_branches = [
-        'ecalDigis_recon.id_',
-        'ecalDigis_recon.energy_',
+        #'ecalDigis_recon.id_',
+        #'ecalDigis_recon.energy_',
 
         'EcalVetoGabriel_recon.nReadoutHits_',
         'EcalVetoGabriel_recon.deepestLayerHit_',
@@ -104,10 +105,16 @@ dev = torch.device(args.device)
 input_dims = 5
 
 # model
-model = ParticleNet(input_dims=input_dims, num_classes=2,
-                    conv_params=conv_params,
-                    fc_params=fc_params,
-                    use_fusion=True)
+
+#model = ParticleNet(input_dims=input_dims, num_classes=2,
+#                    conv_params=conv_params,
+#                    fc_params=fc_params,
+#                    use_fusion=True)
+print("Initializing model")
+model = SplitNet(input_dims=input_dims, num_classes=2,
+                 conv_params=conv_params,
+                 fc_params=fc_params,
+                 use_fusion=True)
 model = model.to(dev)
 
 
@@ -200,10 +207,15 @@ with open(info_file, 'w') as f:
     for k in info_dict:
         f.write('%s: %s\n' % (k, info_dict[k]))
 
+print("bkg", args.test_bkg)
+print("sig", args.test_sig)
 bkg_filelist = sorted(glob.glob(args.test_bkg))
 for idx, f in enumerate(bkg_filelist):
     print('%d/%d' % (idx, len(bkg_filelist)))
+    print("Running file", f)
     run_one_file(f)
 
 for f in sorted(glob.glob(args.test_sig)):
     run_one_file(f)
+
+print("PROGRAM FINISHED")

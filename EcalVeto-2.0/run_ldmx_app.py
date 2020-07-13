@@ -102,16 +102,16 @@ def write_config( template_config, outPrefix, job_id, inputFile ):
 
 ###################################################################
 #   run_ldmx_app main
-#   Runs ldmx-app with inputs substituted into input template.
+#   Runs fire with inputs substituted into input template.
 #   Outputs are copied to input output directories.
 #   Inputs:
 #       config      (required) full path to template config file to run
-#       --test      (optional) should we actually run ldmx-app or just print out the command we would have run?
+#       --test      (optional) should we actually run fire or just print out the command we would have run?
 #       --prefix    (optional) prefix to attach to front of output files
 #       --inputFile (optional) full path to root file to process or lhe file to simulate over
 #       --eventOut  (optional) full path to directory to copy event output file to - must already exist
 #       --histOut   (optional) full path to directory to copy histogram/tree output file to - must already exist
-#       --envScript (optional) full path to environment script to run before ldmx-app (default is for Centos7+cvmfs)
+#       --envScript (optional) full path to environment script to run before fire (default is for Centos7+cvmfs)
 def main():
 
     # Parse command line arguments
@@ -119,7 +119,7 @@ def main():
     parser.add_argument('--test', 
             action='store_true',
             dest='test',
-            help='Don\'t run ldmx-app.')
+            help='Don\'t run fire.')
     parser.add_argument('--prefix', 
             default='',
             help='Output prefix to name output files.')
@@ -137,7 +137,7 @@ def main():
             help='Config template to use.')
     parser.add_argument('--envScript', 
             default='/nfs/slac/g/ldmx/users/$USER/local_setup_gcc8.3.1_cos7.sh', #TODO make default env script distribution dependent
-            help='Environment script to run before running ldmx-app.')
+            help='Environment script to run before running fire.')
     parser.add_argument('--detectorPath', 
             default='',
             help='Path to directory with detector files which will be symlinked to the working directory.')
@@ -210,14 +210,14 @@ def main():
 
     #write config steering file
     config_path, eventsf, histsf = write_config('config_template.py', args.prefix, jobid, args.inputFile)
-    #run ldmx-app and wait for it to finish
-    command = "ldmx-app %s" % config_path
+    #run fire and wait for it to finish
+    command = "fire %s" % config_path
     if args.test :
         logging.info( command )
     else :
         subprocess.Popen(command, shell=True).wait()
 
-    #copy outputs to output directory after ldmx-app is done
+    #copy outputs to output directory after fire is done
     if args.eventOut :
         if os.path.isfile( eventsf ) :
             eventOutputDir = args.eventOut.strip()

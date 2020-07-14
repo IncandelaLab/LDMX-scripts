@@ -36,7 +36,8 @@ cd EcalVeto-2.0
 
 The template configuration file, `ecal_ana_tpl.py`, is used to specify the necessary parameters to run the analyzer (through `ldmx-app`). Make sure to update the following line:
 
-```p.libraries.append("/nfs/slac/g/ldmx/users/vdutta/ldmx-analysis/install/lib/libAnalysis.so")
+```
+p.libraries.append("/nfs/slac/g/ldmx/users/vdutta/ldmx-analysis/install/lib/libAnalysis.so")
 ```
 
 to point to the location of your own `ldmx-analysis` install. The input and output files are substitutable and are filled in by the `run_ldmx_app.py` script.

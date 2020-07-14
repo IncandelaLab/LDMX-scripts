@@ -129,16 +129,16 @@ def main():
         batch_command = parameters['BatchCommand'].strip()
 
     # Turn off emailing about jobs
-    email_command = ['bash', '-c', 'export LSB_JOB_REPORT_MAIL=N && env']
-    proc = subprocess.Popen(email_command, stdout=subprocess.PIPE)
+    #email_command = ['bash', '-c', 'export LSB_JOB_REPORT_MAIL=N && env']
+    #proc = subprocess.Popen(email_command, stdout=subprocess.PIPE)
 
-    for line in proc.stdout: 
-        (key, _, value) = line.partition('=')
-        os.environ[key] = value.strip()
+    #for line in proc.stdout: 
+    #    (key, _, value) = line.partition('=')
+    #    os.environ[key] = value.strip()
 
-    proc.communicate()
+    #proc.communicate()
 
-    for job in xrange(0, jobs):
+    for job in range(0, jobs):
 
         # wait until the number of jobs pending is <= 5
         if not args.test:

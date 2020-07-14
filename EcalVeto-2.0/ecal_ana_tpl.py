@@ -7,7 +7,7 @@ p=ldmxcfg.Process('vetoana')
 # Append the library that contains the analyzer below to the list of libraries 
 # that the framework will load.
 # change the next line to point to your own ldmx-sw install directory!
-p.libraries.append("/home/vdutta/test/ldmx-sw/install/lib/libAnalysis.so")
+p.libraries.append("/nfs/slac/g/ldmx/users/vdutta/ldmx-analysis/install/lib/libAnalysis.so")
 
 # Create an instance of the ECal veto analyzer.  This analyzer is used to create
 # an ntuple out of ECal BDT variables. The analyzer requires that the

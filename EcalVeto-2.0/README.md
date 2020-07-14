@@ -1,9 +1,9 @@
 # EcalVeto-2.0
 
-ECal veto analysis using `ldmx-sw` `v2.0` or later. Compatible with `v12` LDMX samples.
+ECal veto analysis using `ldmx-sw` `v2.0` or later. Compatible with `v12` LDMX samples. Note that the instructions below rely on building `ldmx-sw` from scratch, not using the container workflow.
 
 ## Getting started
-Start by setting up your environment and `ldmx-sw` following the instructions [here](https://docs.google.com/presentation/d/1J58bSqR5rQvenrmgmnGBAYgQ4WQo8Wftb8GhfYRwB_w/edit#slide=id.g659a216f71_0_77u). If you have already set up `ldmx-sw`, you just need to source the environment script you created following those instructions.
+Start by setting up your environment and `ldmx-sw` following the instructions [here](https://tinyurl.com/uvq8l28). If you have already set up `ldmx-sw`, you just need to source the environment script you created following those instructions.
 
 ## Setting up the analyzer
 Check out the `ldmx-analysis` directory from github in your work area:
@@ -14,7 +14,16 @@ git clone https://github.com/LDMX-Software/ldmx-analysis.git
 cd ldmx-analysis
 ```
 
-Then, build and install the package following the instructions in the README [here](https://github.com/LDMX-Software/ldmx-analysis). You can start your analysis from the `ECalVetoAnalyzer`. This processor analyzes LDMX event files and produces ntuples with the variables we typically look at for an ECal veto analysis. The header can be found under the `include` directory and the implementation under the `src` directory. As you develop your own analysis looking at different variables and information, you can set up your own analyzer in a similar way. Any time you make a change to the processor, remember to re-build.
+Then, build and install the package as follows:
+
+```
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=../install/ -DLDMX_INSTALL_PREFIX=$LDMXSW_DIR -DROOT_DIR=/nfs/slac/g/ldmx/software/root-6.18.04/install_gcc8.3.1_cos7 ../
+make install -j2
+```
+
+You can start your analysis from the `ECalVetoAnalyzer`. This processor analyzes LDMX event files and produces ntuples with the variables we typically look at for an ECal veto analysis. The header can be found under the `include` directory and the implementation under the `src` directory. As you develop your own analysis looking at different variables and information, you can set up your own analyzer in a similar way. Any time you make a change to the processor, remember to re-build.
 
 ## Creating flat analysis ROOT trees from LDMX recon files
 To run an analysis, check out this repository, which contains the scripts you will need to run:
@@ -25,7 +34,12 @@ git clone https://github.com/IncandelaLab/LDMX-scripts.git .
 cd EcalVeto-2.0
 ```
 
-The template configuration file, `ecal_ana_tpl.py`, is used to specify the necessary parameters to run the analyzer (through `ldmx-app`). The input and output files are substitutable and are filled in by the `run_ldmx_app.py` script.
+The template configuration file, `ecal_ana_tpl.py`, is used to specify the necessary parameters to run the analyzer (through `ldmx-app`). Make sure to update the following line:
+
+```p.libraries.append("/nfs/slac/g/ldmx/users/vdutta/ldmx-analysis/install/lib/libAnalysis.so")
+```
+
+to point to the location of your own `ldmx-analysis` install. The input and output files are substitutable and are filled in by the `run_ldmx_app.py` script.
 
 To test the configuration and analyzer on a single LDMX recon file, run the following command:
 

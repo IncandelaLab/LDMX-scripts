@@ -1,0 +1,22 @@
+## Modify parameters as appropriate, to point to the paths you want to use
+
+# Number of jobs to submit
+jobs: 100
+
+# Number of jobs to be submitted in one go (parameter not currently used)
+job_array: 80
+
+# Directory in which you want to save the slurm job submission scripts
+job_dir: /home/vdutta/ldmx-prod/production/v12/jobs/ecal_pn_validation
+
+# Batch submission command
+batch_command: "sbatch"
+
+# Script that will actually run the production, along with arguments for that script specifying the template configuration file, detector version, output file prefix, and location in which to save output files
+command: 
+    script: run_prod.py
+    arguments: 
+        config: "/home/vdutta/ldmx-prod/production/v12/ecal_pn.py.tpl"
+        detector: "ldmx-det-v12"
+        prefix: "4gev_1e_ecal_pn_v12"
+        output_path: "/home/vdutta/mc/validation/det-v12_sw-v211"

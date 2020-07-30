@@ -1,0 +1,12 @@
+# Configuration file for analysis job submission
+# Update parameters as needed to point to the paths you want to use
+#
+#jobs: 1 #number of jobs (required if no input files)
+config: /home/vdutta/ldmx-analysis/ecal_ana.py.tpl #full path to python config to be run (required)
+prefix: ucsb #string to attach to front of output root file (optional)
+#event_output: #directory to cp event root files to after run (event and/or histogram output required)
+histogram_output: /home/vdutta/ldmx-analysis/ecal_pn_validation #directory to cp histogram root files to after run (event and/or histogram output required)
+input_dir: /home/vdutta/mc/validation/det-v12_sw-v211 #directory of root files to process or lhe files to simulate over (optional) (default None)
+job_dir: /home/vdutta/ldmx-analysis/jobs/ecal_pn_validation #directory to save job submission scripts to
+#run_script: #full path to run script you want to use (default: $(pwd)/run_ana.py)
+#batch_command: #command to submit a single job to the batch system (default: sbatch')

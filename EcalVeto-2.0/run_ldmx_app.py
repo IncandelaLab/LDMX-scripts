@@ -72,7 +72,7 @@ def write_config( template_config, outPrefix, job_id, inputFile ):
         exit()
     #end if production or analysis job
 
-    config_path   = '%s_config.py'   % totalPrefix
+    config_path   = '%s_config.py'   % totalPrefix.replace('.','-')
     output_events = '%s_events.root' % totalPrefix
     output_hists  = '%s_hists.root'  % totalPrefix
 

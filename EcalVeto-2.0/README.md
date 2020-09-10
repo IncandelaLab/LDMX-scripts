@@ -5,6 +5,9 @@ ECal veto analysis using `ldmx-sw` `v2.0` or later. Compatible with `v12` LDMX s
 ## Getting started
 Start by setting up your environment and `ldmx-sw` following the instructions [here](https://tinyurl.com/uvq8l28). If you have already set up `ldmx-sw`, you just need to source the environment script you created following those instructions.
 
+### Note if running on v2.2.x
+You can copy the environment script from here: `/nfs/slac/g/ldmx/users/vdutta/local_setup_gcc8.3.1_py3.8_cos7_2.2.sh`
+
 ## Setting up the analyzer
 Check out the `ldmx-analysis` directory from github in your work area:
 
@@ -14,12 +17,19 @@ git clone https://github.com/LDMX-Software/ldmx-analysis.git
 cd ldmx-analysis
 ```
 
+### Note if running on v2.2.x
+Checkout the `ldmx-analysis` branch compatible with v2.2:
+
+```
+git checkout ecalana-v2.2-dev
+```
+
 Then, build and install the package as follows:
 
 ```
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=../install/ -DLDMX_INSTALL_PREFIX=$LDMXSW_DIR -DROOT_DIR=/nfs/slac/g/ldmx/software/root-6.18.04/install_gcc8.3.1_cos7 ../
+cmake -DCMAKE_INSTALL_PREFIX=$LDMXSW_DIR -DLDMX_INSTALL_PREFIX=$LDMXSW_DIR -DROOT_DIR=$ROOTDIR ../
 make install -j2
 ```
 
@@ -34,13 +44,7 @@ git clone https://github.com/IncandelaLab/LDMX-scripts.git .
 cd EcalVeto-2.0
 ```
 
-The template configuration file, `ecal_ana_tpl.py`, is used to specify the necessary parameters to run the analyzer (through `ldmx-app`). Make sure to update the following line:
-
-```
-p.libraries.append("/nfs/slac/g/ldmx/users/vdutta/ldmx-analysis/install/lib/libAnalysis.so")
-```
-
-to point to the location of your own `ldmx-analysis` install. The input and output files are substitutable and are filled in by the `run_ldmx_app.py` script.
+The template configuration file, `ecal_ana_tpl.py`, is used to specify the necessary parameters to run the analyzer (through `ldmx-app`). The input and output files are substitutable and are filled in by the `run_ldmx_app.py` script.
 
 To test the configuration and analyzer on a single LDMX recon file, run the following command:
 

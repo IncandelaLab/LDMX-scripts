@@ -146,11 +146,11 @@ def main():
             while pendingCount > 5 : 
                 sys.stdout.write( 'Total jobs pending: %s\r' % pendingCount )
                 sys.stdout.flush()
-                time.sleep(1)
+                #time.sleep(1)
                 pendingCount = int(subprocess.check_output('bjobs -p 2> /dev/null | wc -l',shell=True))
     
             if pendingCount > 0 :
-                time.sleep(10)
+                time.sleep(1)
         #end if not test
 
         ofile = "%s_%s" % (oprefix, str(uuid.uuid4())[:8])

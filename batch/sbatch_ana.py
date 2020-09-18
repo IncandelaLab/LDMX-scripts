@@ -130,6 +130,7 @@ def main():
 
     for job in range(0, jobs):
         # Add arguments to python command
+        specific_command = command
         if 'input_dir' in config:
             specific_command += '--inputFile %s/%s ' % ( input_dir, input_files[job] )
 

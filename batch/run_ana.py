@@ -39,7 +39,7 @@ def write_config(template_config, run, seed1, seed2, prefix, job_id, input_file 
     total_prefix = prefix + '_'
     if ( input_file == "" ) :
         # no input file or input file is lhe file ==> production/simulation run
-        total_prefix += run
+        total_prefix += str(run)
     elif input_file.endswith('.lhe') :
         # input lhe file ==> lhe sim run
         filename = input_file[input_file.rfind('/') + 1: ]
@@ -168,6 +168,8 @@ def main():
             logging.info('Removing %s' % f)
             if os.path.isfile(f):
                 os.remove(f)
+            elif os.path.islink(f):
+                os.unlink(f)
             elif os.path.isdir(f):
                 shutil.rmtree(f)
             else:

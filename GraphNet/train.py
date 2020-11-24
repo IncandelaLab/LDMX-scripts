@@ -1,7 +1,8 @@
 from __future__ import print_function
 
 import resource
-resource.setrlimit(resource.RLIMIT_NOFILE, (1048576, 1048576))
+# Don't have permissions for this on pod...
+#resource.setrlimit(resource.RLIMIT_NOFILE, (1048576, 1048576))
 
 import numpy as np
 import torch
@@ -61,63 +62,74 @@ args = parser.parse_args()
 ###### location of the signal and background files ######
 bkglist = {
     # (filepath, num_events_for_training)
-    0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', -1)
+    #0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', -1)
+    0: ('/home/pmasterson/GraphNet_input/v12/*ecal_pn*.root', -1)
     }
 
 siglist = {
     # (filepath, num_events_for_training)
-    1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 200000),
-    10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 200000),
-    100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 200000),
-    1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 200000),
+    #1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 200000),
+    #10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 200000),
+    #100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 200000),
+    #1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 200000),
+    1:    ('/home/pmasterson/GraphNet_input/v12/*0.001*.root', 200000),
+    10:   ('/home/pmasterson/GraphNet_input/v12/*0.01*.root',  200000),
+    100:  ('/home/pmasterson/GraphNet_input/v12/*0.1*.root',   200000),
+    1000: ('/home/pmasterson/GraphNet_input/v12/*1.0*.root',   200000),
     }
 
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', 4000)
+        #0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', 4000)
+        0: ('/home/pmasterson/GraphNet_input/v12/*ecal_pn*.root', 4000)
         }
 
     siglist = {
         # (filepath, num_events_for_training)
-        1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 1000),
-        10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 1000),
-        100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 1000),
-        1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 1000),
+        #1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 1000),
+        #10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 1000),
+        #100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 1000),
+        #1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 1000),
+        1:    ('/home/pmasterson/GraphNet_input/v12/*0.001*.root', 1000),
+        10:   ('/home/pmasterson/GraphNet_input/v12/*0.01*.root',  1000),
+        100:  ('/home/pmasterson/GraphNet_input/v12/*0.1*.root',   1000),
+        1000: ('/home/pmasterson/GraphNet_input/v12/*1.0*.root',   1000),
         }
 #########################################################
 
 ###### `observer` variables to be saved in the prediction output ######
 obs_branches = []
 if args.save_extra:
+    # NOW using v12:
     obs_branches = [
         #'ecalDigis_recon.id_',
         #'ecalDigis_recon.energy_',
 
-        'EcalVetoGabriel_recon.nReadoutHits_',
-        'EcalVetoGabriel_recon.deepestLayerHit_',
-        'EcalVetoGabriel_recon.summedDet_',
-        'EcalVetoGabriel_recon.summedTightIso_',
-        'EcalVetoGabriel_recon.maxCellDep_',
-        'EcalVetoGabriel_recon.showerRMS_',
-        'EcalVetoGabriel_recon.xStd_',
-        'EcalVetoGabriel_recon.yStd_',
-        'EcalVetoGabriel_recon.avgLayerHit_',
-        'EcalVetoGabriel_recon.stdLayerHit_',
-        'EcalVetoGabriel_recon.ecalBackEnergy_',
-        'EcalVetoGabriel_recon.electronContainmentEnergy_',
-        'EcalVetoGabriel_recon.photonContainmentEnergy_',
-        'EcalVetoGabriel_recon.outsideContainmentEnergy_',
-        'EcalVetoGabriel_recon.outsideContainmentNHits_',
-        'EcalVetoGabriel_recon.outsideContainmentXStd_',
-        'EcalVetoGabriel_recon.outsideContainmentYStd_',
-        'EcalVetoGabriel_recon.discValue_',
-        'EcalVetoGabriel_recon.recoilPx_',
-        'EcalVetoGabriel_recon.recoilPy_',
-        'EcalVetoGabriel_recon.recoilPz_',
-        'EcalVetoGabriel_recon.recoilX_',
-        'EcalVetoGabriel_recon.recoilY_',
-        'EcalVetoGabriel_recon.ecalLayerEdepReadout_',
+        'EcalVeto_v12.nReadoutHits_',
+        'EcalVeto_v12.deepestLayerHit_',
+        'EcalVeto_v12.summedDet_',
+        'EcalVeto_v12.summedTightIso_',
+        'EcalVeto_v12.maxCellDep_',
+        'EcalVeto_v12.showerRMS_',
+        'EcalVeto_v12.xStd_',
+        'EcalVeto_v12.yStd_',
+        'EcalVeto_v12.avgLayerHit_',
+        'EcalVeto_v12.stdLayerHit_',
+        'EcalVeto_v12.ecalBackEnergy_',
+        'EcalVeto_v12.electronContainmentEnergy_',
+        'EcalVeto_v12.photonContainmentEnergy_',
+        'EcalVeto_v12.outsideContainmentEnergy_',
+        'EcalVeto_v12.outsideContainmentNHits_',
+        'EcalVeto_v12.outsideContainmentXStd_',
+        'EcalVeto_v12.outsideContainmentYStd_',
+        'EcalVeto_v12.discValue_',
+        'EcalVeto_v12.recoilPx_',
+        'EcalVeto_v12.recoilPy_',
+        'EcalVeto_v12.recoilPz_',
+        'EcalVeto_v12.recoilX_',
+        'EcalVeto_v12.recoilY_',
+        'EcalVeto_v12.ecalLayerEdepReadout_',
 
         'TargetSPRecoilE_pt',
         ]

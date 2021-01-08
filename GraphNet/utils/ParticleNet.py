@@ -170,9 +170,9 @@ class ParticleNet(nn.Module):
         x = fts.sum(axis=-1) / counts  # divide by the real counts
         return x
         # TEMPORARILY COMMENTED--moving FC layer to SplitNet.
-        """output = self.fc(x)
+        #output = self.fc(x)
 
-        if self.return_softmax:
-            output = torch.softmax(output, dim=1)
-#         print('output:\n', output)
-        return output"""
+        #if self.return_softmax:
+        #    output = torch.softmax(output, dim=1)
+        #  print('output:\n', output)
+        #return output

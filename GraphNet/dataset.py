@@ -13,7 +13,7 @@ executor = concurrent.futures.ThreadPoolExecutor(12)
 
 MAX_NUM_ECAL_HITS = 50
 # NEW:  LayerZ data (may be outdated)
-
+# Assumed outdated; not currently used
 layerZs = [223.8000030517578, 226.6999969482422, 233.0500030517578, 237.4499969482422, 245.3000030517578, 251.1999969482422, 260.29998779296875,
         266.70001220703125, 275.79998779296875, 282.20001220703125, 291.29998779296875, 297.70001220703125, 306.79998779296875, 313.20001220703125,
         322.29998779296875, 328.70001220703125, 337.79998779296875, 344.20001220703125, 353.29998779296875, 359.70001220703125, 368.79998779296875,
@@ -67,8 +67,9 @@ class ECalHitsDataset(Dataset):
         self._x_branch = 'EcalRecHits_v12.xpos_'
         self._y_branch = 'EcalRecHits_v12.ypos_'
         self._z_branch = 'EcalRecHits_v12.zpos_'
-        if detector_version == 'v9':
-            print("WARNING:  Using v9 detector!  Case is not currently handled; will produce an error.")
+        assert(detector_version == 'v12')
+        #if detector_version == 'v9':
+        #    print("WARNING:  Using v9 detector!  Case is not currently handled; will produce an error.")
         #    self._id_branch = 'ecalDigis_recon.id_'
         #    self._energy_branch = 'ecalDigis_recon.energy_'
         #if detector_version == 'v12':
@@ -173,7 +174,9 @@ class ECalHitsDataset(Dataset):
             x = table[self._x_branch]  # NEW
             y = table[self._y_branch]
             z = table[self._z_branch]
+            print("energy type:", type(energy))
             pos = (energy > 0)
+            print("Pos type:", type(pos))
             #eid = eid[pos]
             energy = energy[pos]
             x = x[pos]
@@ -195,22 +198,22 @@ class ECalHitsDataset(Dataset):
             x_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')  # In theory, can lower size of 2nd dimension...
             y_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             z_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #eid_e =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            # eid_e =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             log_energy_e =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             layer_id_e =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #eid_p =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            #x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            #y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            #z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            # eid_p =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            #log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            #layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             # Optional 3rd region:
-            x_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            y_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            z_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            #eid_o =         np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            log_energy_o =  np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            layer_id_o =    np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            #x_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            #y_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            #z_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            # eid_o =         np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            #log_energy_o =  np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            #layer_id_o =    np.zeros((len(x), MAX_NUM_ECAL_HITS))
             
             for i in range(len(x)):  # For every event...
                 etraj_sp = table['etraj_ref'][i][0]  # e- location at scoring plane (approximate)
@@ -258,6 +261,8 @@ class ECalHitsDataset(Dataset):
                         #if insidePhotonRadius:
                         #    print("Inside p radius")
 
+                    # ***TEMP:** Revert to 1-region net!
+                    insideElectronRadius = True
                     if insideElectronRadius:
                         x_e[i][j] = x[i][j] - etraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
                         y_e[i][j] = y[i][j] - etraj_point[1]
@@ -265,7 +270,7 @@ class ECalHitsDataset(Dataset):
                         #eid_e[i][j] = eid[i][j]
                         log_energy_e[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
                         layer_id_e[i][j] = layer_id[i][j]
-                    
+                    """
                     if insidePhotonRadius:
                         x_p[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
                         y_p[i][j] = y[i][j] - ptraj_point[1]
@@ -281,16 +286,16 @@ class ECalHitsDataset(Dataset):
                         #eid_o[i][j] = eid[i][j]
                         log_energy_o[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
                         layer_id_o[i][j] = layer_id[i][j]
-                    
+                    """
 
             var_dict = {'log_energy_e':log_energy_e,   # 'id_e':eid_e,
                         'x_e':x_e, 'y_e':y_e, 'z_e':z_e, 'layer_id_e':layer_id_e,
                         'etraj_ref':np.array(table['etraj_ref']),
-                        'log_energy_p':log_energy_p,  # 'id_p':eid_p,
-                        'x_p':x_e, 'y_p':y_p, 'z_p':z_p, 'layer_id_p':layer_id_p,
+                        #'log_energy_p':log_energy_p,  # 'id_p':eid_p,
+                        #'x_p':x_e, 'y_p':y_p, 'z_p':z_p, 'layer_id_p':layer_id_p,
                         'ptraj_ref':np.array(table['ptraj_ref']),
-                        'log_energy_o':log_energy_o,  # 'id_o':eid_o,
-                        'x_o':x_o, 'y_o':y_o, 'z_o':z_o, 'layer_id_o':layer_id_o,
+                        #'log_energy_o':log_energy_o,  # 'id_o':eid_o,
+                        #'x_o':x_o, 'y_o':y_o, 'z_o':z_o, 'layer_id_o':layer_id_o,
                        }
 
             obs_dict = {k: table[k] for k in obs_branches}
@@ -382,15 +387,16 @@ class ECalHitsDataset(Dataset):
 
         # training features
         # There may be a better way to do this syntactically, but it saves RAM
-        self.coordinates = np.zeros((len(self.var_data['x_e']), 3, 3, MAX_NUM_ECAL_HITS), dtype='float32')
-        self.features =    np.zeros((len(self.var_data['x_e']), 3, 5, MAX_NUM_ECAL_HITS), dtype='float32')
-        tmp_coord_arr = [[self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']],
-                         [self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']],
-                         [self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']]
+        # **WAS PREVIOUSLY** 3, 3; 3, 5
+        self.coordinates = np.zeros((len(self.var_data['x_e']), 1, 3, MAX_NUM_ECAL_HITS), dtype='float32')
+        self.features =    np.zeros((len(self.var_data['x_e']), 1, 5, MAX_NUM_ECAL_HITS), dtype='float32')
+        tmp_coord_arr = [[self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']]
+                         #[self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']],
+                         #[self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']]
                         ]
 
         for i in range(len(self.var_data['x_e'])):
-            for j in range(3):  #2):
+            for j in range(1):  #3):
                 for k in range(5):
                     for l in range(MAX_NUM_ECAL_HITS):
                         self.features[i][j][k][l] = tmp_coord_arr[j][k][i][l]
@@ -399,6 +405,13 @@ class ECalHitsDataset(Dataset):
 
         assert(len(self.coordinates) == len(self.label))
         assert(len(self.features) == len(self.label))
+
+        # NEW:  Free up old variables after the coords and features have been assigned
+        for key, item in self.var_data.items():
+            del item
+        for key, item in self.obs_data.items():
+            del item
+
 
     def _load_cellMap(self, version='v9'):
         self._cellMap = {}

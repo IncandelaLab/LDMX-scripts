@@ -16,15 +16,18 @@ class SplitNet(nn.Module):
                  return_softmax=False,
                  **kwargs):
         super(SplitNet, self).__init__(**kwargs)
+        print("INITIALIZING SPLITNET")
+
         # Particle nets:
         self.eNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
                                 fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
-        self.pNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
-                                fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
+        print("INITIALIZED PARTICLENET")
+        #self.pNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
+        #                        fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
         # NEW
-        self.oNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
-                                fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
-        nRegions = 3 #2
+        #self.oNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
+        #                        fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
+        nRegions = 1 #2
 
         self.use_fusion = use_fusion
         if self.use_fusion:
@@ -46,14 +49,17 @@ class SplitNet(nn.Module):
 
         self.return_softmax = return_softmax
 
+        print("FINISHED INIT")
+
     def forward(self, points, features):
         # Divide up provided points+features, then hand them to the PNs
         # Points are 128 x 2 x 3 x 50
         # Note:  points[:,0].shape = (128, 3, 50)
         x_e = self.eNet(points[:,0], features[:,0])
-        x_p = self.pNet(points[:,1], features[:,1])
-        x_o = self.oNet(points[:,2], features[:,2])
-        output = self.fc(torch.cat((x_e, x_p, x_o), dim=1))  #, x_o), dim=1))
+        #x_p = self.pNet(points[:,1], features[:,1])
+        #x_o = self.oNet(points[:,2], features[:,2])
+        output = self.fc(x_e)
+        #output = self.fc(torch.cat((x_e, x_p, x_o), dim=1))  #, x_o), dim=1))
         if self.return_softmax:
             output = torch.softmax(output, dim=1)
         return output

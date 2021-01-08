@@ -1,5 +1,9 @@
 from __future__ import print_function
 
+# TEMP
+import psutil
+
+
 import resource
 # Don't have permissions for this on pod...
 #resource.setrlimit(resource.RLIMIT_NOFILE, (1048576, 1048576))
@@ -63,7 +67,7 @@ args = parser.parse_args()
 bkglist = {
     # (filepath, num_events_for_training)
     #0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', -1)
-    0: ('/home/pmasterson/GraphNet_input/v12/*ecal_pn*.root', -1)
+    0: ('/home/pmasterson/GraphNet_input/v12/*pn*.root', -1)
     }
 
 siglist = {
@@ -82,7 +86,7 @@ if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
         #0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', 4000)
-        0: ('/home/pmasterson/GraphNet_input/v12/*ecal_pn*.root', 4000)
+        0: ('/home/pmasterson/GraphNet_input/v12/*pn*.root', 4000)
         }
 
     siglist = {
@@ -195,12 +199,17 @@ dev = torch.device(args.device)
 # load data
 if training_mode:
     # for training: we use the first 0-20% for testing, and 20-80% for training
+    print("Usage: {}".format(psutil.virtual_memory().percent))
     train_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), coord_ref=args.coord_ref)
+    print("Usage: {}".format(psutil.virtual_memory().percent))
     val_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), coord_ref=args.coord_ref)
+    print("Usage: {}".format(psutil.virtual_memory().percent))
     train_loader = DataLoader(train_data, num_workers=args.num_workers, batch_size=args.batch_size,
                               collate_fn=collate_fn, shuffle=True, drop_last=True, pin_memory=True)
+    print("Usage: {}".format(psutil.virtual_memory().percent))
     val_loader = DataLoader(val_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
+    print("Usage: {}".format(psutil.virtual_memory().percent))
     print('Train: %d events, Val: %d events' % (len(train_data), len(val_data)))
     print('Using val sample for testing!')
     test_data = val_data
@@ -215,10 +224,12 @@ input_dims = test_data.num_features
 
 # model
 print("Initializing model")
+print("Usage: {}".format(psutil.virtual_memory().percent))
 model = SplitNet(input_dims=input_dims, num_classes=2,
                  conv_params=conv_params,
                  fc_params=fc_params,
                  use_fusion=True)
+
 model = model.to(dev)
 
 
@@ -391,6 +402,9 @@ out_data['ParticleNet_disc'] = test_preds[:, 1]
 awkward.save(pred_file, out_data, mode='w')
 
 # export to onnx
+# NOTE:  This isn't currently being used for anything, but eats up RAM
+
+"""
 onnx_output = os.path.join(os.path.dirname(args.test_output_path), os.path.basename(model_path).replace('.pt', '.onnx'))
 print('Exporting ONNX model to %s' % onnx_output)
 import torch.onnx
@@ -399,6 +413,7 @@ model_softmax = SplitNet(input_dims=input_dims, num_classes=2,
                          fc_params=fc_params,
                          use_fusion=True,
                          return_softmax=True)  # add softmax to convert output to [0, 1]
+
 model_softmax.load_state_dict(torch.load(model_path))
 model_softmax.to(dev)
 for batch in test_loader:
@@ -410,3 +425,5 @@ for batch in test_loader:
                       dynamic_axes={'coordinates':[0], 'features':[0]},
                       opset_version=11)
     break
+"""
+

@@ -14,11 +14,13 @@ executor = concurrent.futures.ThreadPoolExecutor(12)
 MAX_NUM_ECAL_HITS = 50
 # NEW:  LayerZ data (may be outdated)
 # Assumed outdated; not currently used
+"""
 layerZs = [223.8000030517578, 226.6999969482422, 233.0500030517578, 237.4499969482422, 245.3000030517578, 251.1999969482422, 260.29998779296875,
         266.70001220703125, 275.79998779296875, 282.20001220703125, 291.29998779296875, 297.70001220703125, 306.79998779296875, 313.20001220703125,
         322.29998779296875, 328.70001220703125, 337.79998779296875, 344.20001220703125, 353.29998779296875, 359.70001220703125, 368.79998779296875,
         375.20001220703125, 384.29998779296875, 390.70001220703125, 403.29998779296875, 413.20001220703125, 425.79998779296875, 435.70001220703125,
         448.29998779296875, 458.20001220703125, 470.79998779296875, 480.70001220703125, 493.29998779296875, 503.20001220703125]
+"""
 
 # NEW: Radius of containment data
 #from 2e (currently not used)
@@ -64,9 +66,9 @@ class ECalHitsDataset(Dataset):
         self._load_cellMap(version=detector_version)
         self._id_branch = 'EcalRecHits_v12.id_'  # Technically not necessary anymore
         self._energy_branch = 'EcalRecHits_v12.energy_'
-        self._x_branch = 'EcalRecHits_v12.xpos_'
-        self._y_branch = 'EcalRecHits_v12.ypos_'
-        self._z_branch = 'EcalRecHits_v12.zpos_'
+        #self._x_branch = 'EcalRecHits_v12.xpos_'
+        #self._y_branch = 'EcalRecHits_v12.ypos_'
+        #self._z_branch = 'EcalRecHits_v12.zpos_'
         assert(detector_version == 'v12')
         #if detector_version == 'v9':
         #    print("WARNING:  Using v9 detector!  Case is not currently handled; will produce an error.")
@@ -75,8 +77,9 @@ class ECalHitsDataset(Dataset):
         #if detector_version == 'v12':
         #    self._id_branch = 'EcalRecHits_v12.id_'
         #    self._energy_branch = 'EcalRecHits_v12.energy_'
-        self._branches = [self._energy_branch, self._x_branch, self._y_branch, self._z_branch]
-        #                [self._id_branch, self._energy_branch]
+
+        #self._branches = [self._id_branch, self._energy_branch, self._x_branch, self._y_branch, self._z_branch]
+        self._branches = [self._id_branch, self._energy_branch]
 
         self.extra_labels = []
         self.presel_eff = {}
@@ -88,6 +91,7 @@ class ECalHitsDataset(Dataset):
             # Find recoil electron (approx)
             # NOTE:  Requires precise knowledge of detector scoring plane!  Currently seems to be 240.5mm...(was plane 1)
             #        https://github.com/LDMX-Software/ldmx-sw/blob/master/Detectors/data/ldmx-det-v12/scoring_planes.gdml#L87-L88
+            print("TEMP:  type={}".format(type(t['EcalScoringPlaneHits_v12.pdgID_'])))
             el = (t['EcalScoringPlaneHits_v12.pdgID_'].array() == 11) * \
                  (t['EcalScoringPlaneHits_v12.z_'].array() > 240) * \
                  (t['EcalScoringPlaneHits_v12.z_'].array() < 241) * \
@@ -169,24 +173,21 @@ class ECalHitsDataset(Dataset):
                 if isinstance(table[k], awkward.array.objects.ObjectArray):
                     table[k] = awkward.JaggedArray.fromiter(table[k]).flatten()
 
-            #eid = table[self._id_branch]
+            eid = table[self._id_branch]
             energy = table[self._energy_branch]
-            x = table[self._x_branch]  # NEW
-            y = table[self._y_branch]
-            z = table[self._z_branch]
-            print("energy type:", type(energy))
+            #x = table[self._x_branch]  # NEW
+            #y = table[self._y_branch]
+            #z = table[self._z_branch]
+            #print("energy type:", type(energy))
             pos = (energy > 0)
-            print("Pos type:", type(pos))
-            #eid = eid[pos]
+            #print("Pos type:", type(pos))
+            eid = eid[pos]
             energy = energy[pos]
-            x = x[pos]
-            y = y[pos]
-            z = z[pos]
-            #layer_id = self._create_layer_branch(z)
-            #(x, y, z), layer_id = self._parse_cid(eid)  # layer_id > 0, so can use layer_id-1 to index e/ptraj_ref
+            #x = x[pos]
+            #y = y[pos]
+            #z = z[pos]
+            (x, y, z), layer_id = self._parse_cid(eid)  # layer_id > 0, so can use layer_id-1 to index e/ptraj_ref
             # POSSIBLY OUTDATED; detector geometry has changed.
-            # Why not just make this general and use EcalRecHits_[].xpos_, etc?
-            # Will need to treat z pos info differently to get layers...
             layer_id = self._create_layer_branch(z)
 
 
@@ -223,7 +224,7 @@ class ECalHitsDataset(Dataset):
                 for j in range(len(x[i])):  #range(MAX_NUM_ECAL_HITS):  # For every hit...
                     layer_index = int(layer_id[i][j])
                     # Calculate xy for projected trajectory in same layer
-                    delta_z = layerZs[layer_index] - etraj_sp[2]
+                    delta_z = self._layerZs[layer_index] - etraj_sp[2]
                     etraj_point = (etraj_sp[0] + enorm_sp[0]*delta_z, etraj_sp[1] + enorm_sp[1]*delta_z)
                     ptraj_point = (ptraj_sp[0] + pnorm_sp[0]*delta_z, ptraj_sp[1] + pnorm_sp[1]*delta_z)
                     # Additionally, calculate recoil angle (angle of pnorm_sp):
@@ -266,7 +267,7 @@ class ECalHitsDataset(Dataset):
                     if insideElectronRadius:
                         x_e[i][j] = x[i][j] - etraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
                         y_e[i][j] = y[i][j] - etraj_point[1]
-                        z_e[i][j] = z[i][j] - layerZs[0]  # Defined relative to the ecal face
+                        z_e[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
                         #eid_e[i][j] = eid[i][j]
                         log_energy_e[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
                         layer_id_e[i][j] = layer_id[i][j]
@@ -274,7 +275,7 @@ class ECalHitsDataset(Dataset):
                     if insidePhotonRadius:
                         x_p[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
                         y_p[i][j] = y[i][j] - ptraj_point[1]
-                        z_p[i][j] = z[i][j] - layerZs[0]  # Defined relative to the ecal face
+                        z_p[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
                         #eid_p[i][j] = eid[i][j]
                         log_energy_p[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
                         layer_id_p[i][j] = layer_id[i][j]
@@ -282,7 +283,7 @@ class ECalHitsDataset(Dataset):
                     else:
                         x_o[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the first ecal hit
                         y_o[i][j] = y[i][j] - ptraj_point[1]
-                        z_o[i][j] = z[i][j] - layerZs[0]  # Defined relative to the ecal face
+                        z_o[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
                         #eid_o[i][j] = eid[i][j]
                         log_energy_o[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
                         layer_id_o[i][j] = layer_id[i][j]
@@ -413,17 +414,21 @@ class ECalHitsDataset(Dataset):
             del item
 
 
-    def _load_cellMap(self, version='v9'):
+    def _load_cellMap(self, version='v12'):
         self._cellMap = {}
         for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
             self._cellMap[i] = (x, y)
         self._layerZs = np.loadtxt('data/%s/layer.txt' % version)
+        print("Loaded detector info")
 
-    def _parse_cid(self, cid):  # Replacing w/ _create_layer_branch()
-        # cid type is jaggedarray
-        cell = (cid.content & 0xFFFF8000) >> 15
-        module = (cid.content & 0x7000) >> 12
-        layer = (cid.content & 0xFF0) >> 4
+    def _parse_cid(self, cid):  # May not work for v12!  Check this.
+        # For id details, see (?):  DetDescr/src/EcalID.cxx
+        #cell = (cid.content & 0xFFFF8000) >> 15
+        #module = (cid.content & 0x7000) >> 12
+        #layer = (cid.content & 0xFF0) >> 4
+        cell   = (cid.content >> 0)  & 0xFFF
+        module = (cid.content >> 12) & 0x1F
+        layer  = (cid.content >> 17) & 0x3F
         # layer type is np array
         mcid = 10 * cell + module
         x, y = zip(*map(self._cellMap.__getitem__, mcid))

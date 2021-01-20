@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import resource
-resource.setrlimit(resource.RLIMIT_NOFILE, (1048576, 1048576))
+#resource.setrlimit(resource.RLIMIT_NOFILE, (1048576, 1048576))
 
 import numpy as np
 import torch

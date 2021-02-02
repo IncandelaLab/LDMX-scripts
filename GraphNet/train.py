@@ -57,7 +57,7 @@ parser.add_argument('--test-sig', type=str, default='',
 parser.add_argument('--test-bkg', type=str, default='',
                     help='background sample to be used for testing')
 parser.add_argument('--save-extra', action='store_true', default=False,
-                    help='save extra information defined in `obs_branches` to the prediction output')
+                    help='save extra information defined in `obs_branches` and `ecal_branches` to the prediction output')
 parser.add_argument('--test-output-path', type=str, default='test-outputs/particle_net_output',
                     help='path to save the prediction output')
 
@@ -104,39 +104,24 @@ if args.demo:
 
 ###### `observer` variables to be saved in the prediction output ######
 obs_branches = []
+ecal_branches = []
 if args.save_extra:
+    print("***SAVING EXTRA")
     # NOW using v12:
+    # Commented 
     obs_branches = [
         #'ecalDigis_recon.id_',
         #'ecalDigis_recon.energy_',
-
-        'EcalVeto_v12.nReadoutHits_',
-        'EcalVeto_v12.deepestLayerHit_',
-        'EcalVeto_v12.summedDet_',
-        'EcalVeto_v12.summedTightIso_',
-        'EcalVeto_v12.maxCellDep_',
-        'EcalVeto_v12.showerRMS_',
-        'EcalVeto_v12.xStd_',
-        'EcalVeto_v12.yStd_',
-        'EcalVeto_v12.avgLayerHit_',
-        'EcalVeto_v12.stdLayerHit_',
-        'EcalVeto_v12.ecalBackEnergy_',
-        'EcalVeto_v12.electronContainmentEnergy_',
-        'EcalVeto_v12.photonContainmentEnergy_',
-        'EcalVeto_v12.outsideContainmentEnergy_',
-        'EcalVeto_v12.outsideContainmentNHits_',
-        'EcalVeto_v12.outsideContainmentXStd_',
-        'EcalVeto_v12.outsideContainmentYStd_',
-        'EcalVeto_v12.discValue_',
-        'EcalVeto_v12.recoilPx_',
-        'EcalVeto_v12.recoilPy_',
-        'EcalVeto_v12.recoilPz_',
-        'EcalVeto_v12.recoilX_',
-        'EcalVeto_v12.recoilY_',
-        'EcalVeto_v12.ecalLayerEdepReadout_',
-
         'TargetSPRecoilE_pt',
         ]
+    
+    # NEW:  EcalVeto branches must be handled separately in v2.2.1+.
+    veto_branches = [
+        'discValue_',
+        'recoilX_',
+        'recoilY_',
+    ]
+
 #########################################################
 #########################################################
 
@@ -215,10 +200,15 @@ if training_mode:
     test_data = val_data
     test_loader = val_loader
 else:
+    print("Siglist adn bkglist:")
+    print(siglist)
+    print(bkglist)
+
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
-    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, ignore_evt_limits=(not args.demo), obs_branches=obs_branches, coord_ref=args.coord_ref)
+    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, ignore_evt_limits=(not args.demo),
+                                obs_branches=obs_branches, veto_branches=veto_branches, coord_ref=args.coord_ref)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
-                            collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
+                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
 
 input_dims = test_data.num_features
 
@@ -404,7 +394,7 @@ awkward.save(pred_file, out_data, mode='w')
 # export to onnx
 # NOTE:  This isn't currently being used for anything, but eats up RAM
 
-"""
+
 onnx_output = os.path.join(os.path.dirname(args.test_output_path), os.path.basename(model_path).replace('.pt', '.onnx'))
 print('Exporting ONNX model to %s' % onnx_output)
 import torch.onnx
@@ -425,5 +415,5 @@ for batch in test_loader:
                       dynamic_axes={'coordinates':[0], 'features':[0]},
                       opset_version=11)
     break
-"""
+
 

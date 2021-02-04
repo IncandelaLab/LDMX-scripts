@@ -389,7 +389,13 @@ pred_file = os.path.splitext(args.test_output_path)[0] + '_OUTPUT'
 out_data = test_data.obs_data
 out_data['ParticleNet_extra_label'] = test_extra_labels
 out_data['ParticleNet_disc'] = test_preds[:, 1]
-awkward.save(pred_file, out_data, mode='w')
+# OUTDATED:
+# awkward.save(pred_file, out_data, mode='w')
+#import pyarrow.parquet as pq
+print("SAVING DATA TO", pred_file+'.parquet')
+out_data = awkward.copy(awkward.Array(out_data))  # NOW trying a direct conversion from dict...
+# The copy may make the memory continguous...
+awkward.to_parquet(out_data, pred_file+'.parquet')
 
 # export to onnx
 # NOTE:  This isn't currently being used for anything, but eats up RAM

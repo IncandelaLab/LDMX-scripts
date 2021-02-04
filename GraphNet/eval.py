@@ -34,37 +34,21 @@ args = parser.parse_args()
 obs_branches = []
 
 if args.save_extra:
+    print("***SAVING EXTRA")
+    # NOW using v12:
+    # Commented 
     obs_branches = [
         #'ecalDigis_recon.id_',
         #'ecalDigis_recon.energy_',
-
-        'EcalVeto_v12.nReadoutHits_',
-        'EcalVeto_v12.deepestLayerHit_',
-        'EcalVeto_v12.summedDet_',
-        'EcalVeto_v12.summedTightIso_',
-        'EcalVeto_v12.maxCellDep_',
-        'EcalVeto_v12.showerRMS_',
-        'EcalVeto_v12.xStd_',
-        'EcalVeto_v12.yStd_',
-        'EcalVeto_v12.avgLayerHit_',
-        'EcalVeto_v12.stdLayerHit_',
-        'EcalVeto_v12.ecalBackEnergy_',
-        'EcalVeto_v12.electronContainmentEnergy_',
-        'EcalVeto_v12.photonContainmentEnergy_',
-        'EcalVeto_v12.outsideContainmentEnergy_',
-        'EcalVeto_v12.outsideContainmentNHits_',
-        'EcalVeto_v12.outsideContainmentXStd_',
-        'EcalVeto_v12.outsideContainmentYStd_',
-        'EcalVeto_v12.discValue_',
-        'EcalVeto_v12.recoilPx_',
-        'EcalVeto_v12.recoilPy_',
-        'EcalVeto_v12.recoilPz_',
-        'EcalVeto_v12.recoilX_',
-        'EcalVeto_v12.recoilY_',
-        'EcalVeto_v12.ecalLayerEdepReadout_',
-
         'TargetSPRecoilE_pt',
         ]
+
+    # NEW:  EcalVeto branches must be handled separately in v2.2.1+.
+    veto_branches = [
+        'discValue_',
+        'recoilX_',
+        'recoilY_',
+    ]
 
 # model parameter
 if args.network == 'particle-net':
@@ -178,7 +162,7 @@ def run_one_file(filepath, extra_label=0):
         siglist = {extra_label:(filepath, -1)}
 
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
-    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, ignore_evt_limits=True, obs_branches=obs_branches, coord_ref=args.coord_ref)
+    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, ignore_evt_limits=True, obs_branches=obs_branches, veto_branches=veto_branches, coord_ref=args.coord_ref)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
 
@@ -188,10 +172,13 @@ def run_one_file(filepath, extra_label=0):
 
     import awkward
     out_data = test_data.obs_data
-#     out_data['ParticleNet_extra_label'] = test_extra_labels
+#    out_data['ParticleNet_extra_label'] = test_extra_labels
     out_data['ParticleNet_disc'] = test_preds[:, 1]
-    awkward.save(pred_file, out_data, mode='w')
-    print('Written pred to %s' % pred_file)
+    # OLD:
+    #awkward.save(pred_file, out_data, mode='w')
+    #print('Written pred to %s' % pred_file)
+    out_data = awkward.copy(awkward.Array(out_data))
+    awkward.to_parquet(out_data, pred_file+'.parquet')
 
 
 info_dict = {'model_name':args.network,

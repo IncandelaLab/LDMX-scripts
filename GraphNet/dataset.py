@@ -62,12 +62,11 @@ class ECalHitsDataset(Dataset):
     def __init__(self, siglist, bkglist, load_range=(0, 1), apply_preselection=True, ignore_evt_limits=False, obs_branches=[], veto_branches=[], coord_ref=None, detector_version='v12'):
         super(ECalHitsDataset, self).__init__()
 
-        print("VETO BRANCHES (start):  ", veto_branches)
-
         # first load cell map
         self._load_cellMap(version=detector_version)
         self._id_branch = 'EcalRecHits_v12.id_'  # Technically not necessary anymore
         self._energy_branch = 'EcalRecHits_v12.energy_'
+        ecal_veto_branches = ['EcalVeto_v12.'+b for b in veto_branches]
         #self._test_branch = 'EcalVeto_v12'
         #self._x_branch = 'EcalRecHits_v12.xpos_'
         #self._y_branch = 'EcalRecHits_v12.ypos_'
@@ -87,7 +86,7 @@ class ECalHitsDataset(Dataset):
         self.extra_labels = []
         self.presel_eff = {}
         self.var_data = {}
-        self.obs_data = {k:[] for k in obs_branches}
+        self.obs_data = {k:[] for k in obs_branches + ecal_veto_branches}
 
         print('Using coord_ref=%s' % coord_ref)
         def _load_coord_ref(t, table):
@@ -98,7 +97,6 @@ class ECalHitsDataset(Dataset):
                  (t['EcalScoringPlaneHits_v12.z_'].array() > 240) * \
                  (t['EcalScoringPlaneHits_v12.z_'].array() < 241) * \
                  (t['EcalScoringPlaneHits_v12.pz_'].array() > 0)
-            print("load_coord_ref:  el shape =", awkward.type(el))
 
             # Note:  pad() below ensures that only one SP electron is used if there's multiple (I believe)
             # pad() for awkward arrays is outdated; have to replace it...
@@ -116,8 +114,6 @@ class ECalHitsDataset(Dataset):
             etraj_px_sp = _pad_array(t['EcalScoringPlaneHits_v12.px_'].array()[el])
             etraj_py_sp = _pad_array(t['EcalScoringPlaneHits_v12.py_'].array()[el])
             etraj_pz_sp = _pad_array(t['EcalScoringPlaneHits_v12.pz_'].array()[el])
-
-            print("Post-coord ref shape: ", awkward.type(etraj_x_sp))
 
             # Create vectors holding the electron/photon momenta so the trajectory projections can be found later
             # Set xtraj_p_norm relative to z=1 to make projecting easier:
@@ -193,18 +189,18 @@ class ECalHitsDataset(Dataset):
                 #pos_pass_presel = (table[self._energy_branch] > 0).sum() < MAX_NUM_ECAL_HITS
                 pos_pass_presel = awkward.sum(table[self._energy_branch] > 0, axis=1) < MAX_NUM_ECAL_HITS
                 #print(awkward.type(table[self._energy_branch] > 0))
-                #print("Sum: ", awkward.type(awkward.sum(table[self._energy_branch] > 0, axis=1)))
+                print("First few hit sums: ", awkward.sum(table[self._energy_branch] > 0, axis=1)[:10])
                 #print(pos_pass_presel)
                 for k in table:
                     table[k] = table[k][pos_pass_presel]
             n_selected = len(table[self._branches[0]])  # after preselection
-            #print("SELECTED ", n_selected)
+            print("FIRST HIT SELECTION (in _read_file): ", n_selected)
 
             #print("**CHECK TABLE DIMS, post presel: ", awkward.type(table["EcalRecHits_v12.id_"]))
             #print(awkward.type(table["EcalRecHits_v12.id_"][0]))
 
 
-            #print("TABLE type is ", type(table))
+            #print("TABLE type is ", type(table) + veto_branches)
             """
             print("CALLING READ FILE")
             for k in table:
@@ -332,7 +328,7 @@ class ECalHitsDataset(Dataset):
                         #'x_o':x_o, 'y_o':y_o, 'z_o':z_o, 'layer_id_o':layer_id_o,
                        }
 
-            obs_dict = {k: table[k] for k in obs_branches}
+            obs_dict = {k: table[k] for k in obs_branches + ecal_veto_branches}
 
             return (n_inclusive, n_selected), var_dict, obs_dict
 
@@ -349,7 +345,7 @@ class ECalHitsDataset(Dataset):
                 n_total_inclusive = 0
                 n_total_selected = 0
                 var_dict = {}
-                obs_dict = {k:[] for k in obs_branches}
+                obs_dict = {k:[] for k in obs_branches + ecal_veto_branches}
                 # NEW:  Dictionary storing particle data for e/p trajectory
                 # Want position, momentum of e- hit; calc photon info from it
                 spHit_dict = {}
@@ -386,6 +382,9 @@ class ECalHitsDataset(Dataset):
 
                         n_total_inclusive += n_inc
                         n_total_selected += n_sel
+                        print("N_SELECTED:  ", n_sel)
+                        print("TOTAL SELECTED:  ", n_total_selected)
+
                         for k in v_d:
                             if k in var_dict:
                                 var_dict[k].append(v_d[k])
@@ -420,7 +419,7 @@ class ECalHitsDataset(Dataset):
                         self.var_data[k].append(var_dict[k])
                     else:
                         self.var_data[k] = [var_dict[k]]
-                for k in obs_branches:
+                for k in obs_branches + ecal_veto_branches:
                     self.obs_data[k].append(obs_dict[k])
                 n_sum += n_total_loaded
             return n_sum
@@ -434,7 +433,7 @@ class ECalHitsDataset(Dataset):
         self.extra_labels = np.concatenate(self.extra_labels)
         for k in self.var_data:
             self.var_data[k] = _concat(self.var_data[k])
-        for k in obs_branches:
+        for k in obs_branches + ecal_veto_branches:
             self.obs_data[k] = _concat(self.obs_data[k])
 
         # training features
@@ -459,10 +458,10 @@ class ECalHitsDataset(Dataset):
         assert(len(self.features) == len(self.label))
 
         # NEW:  Free up old variables after the coords and features have been assigned
-        for key, item in self.var_data.items():
-            del item
-        for key, item in self.obs_data.items():
-            del item
+        #for key, item in self.var_data.items():
+        #    del item
+        #for key, item in self.obs_data.items():
+        #    del item
 
 
     def _load_cellMap(self, version='v12'):

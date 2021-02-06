@@ -178,7 +178,29 @@ def run_one_file(filepath, extra_label=0):
     #awkward.save(pred_file, out_data, mode='w')
     #print('Written pred to %s' % pred_file)
     out_data = awkward.copy(awkward.Array(out_data))
+    #awkward.to_parquet(out_data, pred_file+'.parquet')
+
+    # Confirm that recoilX is nonzero...
+    print("New out_data->PN_disc:")
+    print(awkward.type(out_data['ParticleNet_disc']))
+    print(out_data['ParticleNet_disc'][0])
+    print("RecoilX:")
+    print(awkward.type(out_data['EcalVeto_v12.recoilX_']))
+    print(out_data['EcalVeto_v12.recoilX_'][0])
+
     awkward.to_parquet(out_data, pred_file+'.parquet')
+
+    out_data_reloaded = awkward.from_parquet(pred_file+'.parquet')
+    print("*AFTER RELOADING:*")
+    print("out_data->PN_disc:")
+    print(awkward.type(out_data['ParticleNet_disc']))
+    print(out_data['ParticleNet_disc'][0])
+    print("RecoilX:")
+    print(awkward.type(out_data['EcalVeto_v12.recoilX_']))
+    print(out_data['EcalVeto_v12.recoilX_'][0])
+
+    print("\n\n")
+
 
 
 info_dict = {'model_name':args.network,

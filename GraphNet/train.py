@@ -387,6 +387,8 @@ with open(info_file, 'w') as f:
 import awkward
 pred_file = os.path.splitext(args.test_output_path)[0] + '_OUTPUT'
 out_data = test_data.obs_data
+print("out_data is: (should contain all branches")
+print(type(out_data))
 out_data['ParticleNet_extra_label'] = test_extra_labels
 out_data['ParticleNet_disc'] = test_preds[:, 1]
 # OUTDATED:
@@ -395,7 +397,27 @@ out_data['ParticleNet_disc'] = test_preds[:, 1]
 print("SAVING DATA TO", pred_file+'.parquet')
 out_data = awkward.copy(awkward.Array(out_data))  # NOW trying a direct conversion from dict...
 # The copy may make the memory continguous...
+# Confirm that recoilX is nonzero...
+print("New out_data->PN_disc:")
+print(awkward.type(out_data['ParticleNet_disc']))
+print(out_data['ParticleNet_disc'][0])
+print("RecoilX:")
+print(awkward.type(out_data['EcalVeto_v12.recoilX_']))
+print(out_data['EcalVeto_v12.recoilX_'][0])
+
 awkward.to_parquet(out_data, pred_file+'.parquet')
+
+out_data_reloaded = awkward.from_parquet(pred_file+'.parquet')
+print("*AFTER RELOADING:*")
+print("out_data->PN_disc:")
+print(awkward.type(out_data['ParticleNet_disc']))
+print(out_data['ParticleNet_disc'][0])
+print("RecoilX:")
+print(awkward.type(out_data['EcalVeto_v12.recoilX_']))
+print(out_data['EcalVeto_v12.recoilX_'][0])
+
+print("\n\n")
+
 
 # export to onnx
 # NOTE:  This isn't currently being used for anything, but eats up RAM

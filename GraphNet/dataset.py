@@ -17,7 +17,10 @@ executor = concurrent.futures.ThreadPoolExecutor(12)
 #    'recoilY_',
 #    ]
 
-MAX_NUM_ECAL_HITS = 50
+#MAX_NUM_ECAL_HITS = 50
+# NEW:
+MAX_NUM_ECAL_HITS = 80
+
 # NEW:  LayerZ data (may be outdated)
 # Assumed outdated; not currently used
 
@@ -194,24 +197,12 @@ class ECalHitsDataset(Dataset):
                 for k in table:
                     table[k] = table[k][pos_pass_presel]
             n_selected = len(table[self._branches[0]])  # after preselection
-            print("FIRST HIT SELECTION (in _read_file): ", n_selected)
+            print("EVENTS BEFORE PRESELECTION (in _read_file):  {}".format(n_inclusive))
+            print("EVENTS AFTER PRESELECTION: ", n_selected)
 
-            #print("**CHECK TABLE DIMS, post presel: ", awkward.type(table["EcalRecHits_v12.id_"]))
-            #print(awkward.type(table["EcalRecHits_v12.id_"][0]))
+            if n_selected == 0:   #Ignore this file
+                print("ERROR:  ParticleNet can't handle files with no events passing selection!")
 
-
-            #print("TABLE type is ", type(table) + veto_branches)
-            """
-            print("CALLING READ FILE")
-            for k in table:
-                #if isinstance(table[k], awkward.array.objects.ObjectArray):
-                
-                if isinstance(table[k], awkward.highlevel.Array):
-                    #table[k] = awkward.JaggedArray.fromiter(table[k]).flatten()
-                    # flatten() fails if handed table[k] directly...
-                    # DO NOT process "flat" branches, e.g. discValue_.
-                    table[k] = awkward.flatten(table[k])
-            """
             eid = table[self._id_branch]
             energy = table[self._energy_branch]
             pos = (energy > 0)
@@ -384,6 +375,7 @@ class ECalHitsDataset(Dataset):
                         n_total_selected += n_sel
                         print("N_SELECTED:  ", n_sel)
                         print("TOTAL SELECTED:  ", n_total_selected)
+                        
 
                         for k in v_d:
                             if k in var_dict:

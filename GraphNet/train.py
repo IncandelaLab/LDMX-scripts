@@ -66,16 +66,11 @@ args = parser.parse_args()
 ###### location of the signal and background files ######
 bkglist = {
     # (filepath, num_events_for_training)
-    #0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', -1)
     0: ('/home/pmasterson/GraphNet_input/v12/*pn*.root', -1)
     }
 
 siglist = {
     # (filepath, num_events_for_training)
-    #1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 200000),
-    #10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 200000),
-    #100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 200000),
-    #1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 200000),
     1:    ('/home/pmasterson/GraphNet_input/v12/*0.001*.root', 200000),
     10:   ('/home/pmasterson/GraphNet_input/v12/*0.01*.root',  200000),
     100:  ('/home/pmasterson/GraphNet_input/v12/*0.1*.root',   200000),
@@ -85,16 +80,11 @@ siglist = {
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        #0: ('/data/hqu/ldmx/mc/v9/4gev_1e_ecal_pn_02_1.48e13_gab/*.root', 4000)
         0: ('/home/pmasterson/GraphNet_input/v12/*pn*.root', 4000)
         }
 
     siglist = {
         # (filepath, num_events_for_training)
-        #1: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.001*.root', 1000),
-        #10: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.01*.root', 1000),
-        #100: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.0.1*.root', 1000),
-        #1000: ('/data/hqu/ldmx/mc/v9/signal_hs/*mA.1.0*.root', 1000),
         1:    ('/home/pmasterson/GraphNet_input/v12/*0.001*.root', 1000),
         10:   ('/home/pmasterson/GraphNet_input/v12/*0.01*.root',  1000),
         100:  ('/home/pmasterson/GraphNet_input/v12/*0.1*.root',   1000),
@@ -237,9 +227,6 @@ def train(model, opt, scheduler, train_loader, dev):
             label = label.to(dev).squeeze().long()
             opt.zero_grad()
             logits = model(batch.coordinates.to(dev), batch.features.to(dev))
-            #print("label.shape=", label.shape)
-            #print("logits.shape=", logits.shape)
-            #print("label =", label)
             loss = loss_func(logits, label)
             loss.backward()
             opt.step()
@@ -387,36 +374,15 @@ with open(info_file, 'w') as f:
 import awkward
 pred_file = os.path.splitext(args.test_output_path)[0] + '_OUTPUT'
 out_data = test_data.obs_data
-print("out_data is: (should contain all branches")
-print(type(out_data))
 out_data['ParticleNet_extra_label'] = test_extra_labels
 out_data['ParticleNet_disc'] = test_preds[:, 1]
 # OUTDATED:
 # awkward.save(pred_file, out_data, mode='w')
 #import pyarrow.parquet as pq
-print("SAVING DATA TO", pred_file+'.parquet')
 out_data = awkward.copy(awkward.Array(out_data))  # NOW trying a direct conversion from dict...
 # The copy may make the memory continguous...
 # Confirm that recoilX is nonzero...
-print("New out_data->PN_disc:")
-print(awkward.type(out_data['ParticleNet_disc']))
-print(out_data['ParticleNet_disc'][0])
-print("RecoilX:")
-print(awkward.type(out_data['EcalVeto_v12.recoilX_']))
-print(out_data['EcalVeto_v12.recoilX_'][0])
-
 awkward.to_parquet(out_data, pred_file+'.parquet')
-
-out_data_reloaded = awkward.from_parquet(pred_file+'.parquet')
-print("*AFTER RELOADING:*")
-print("out_data->PN_disc:")
-print(awkward.type(out_data['ParticleNet_disc']))
-print(out_data['ParticleNet_disc'][0])
-print("RecoilX:")
-print(awkward.type(out_data['EcalVeto_v12.recoilX_']))
-print(out_data['EcalVeto_v12.recoilX_'][0])
-
-print("\n\n")
 
 
 # export to onnx

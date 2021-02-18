@@ -4,6 +4,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+# NEW:  32-bit float resolution (23 for decimal) isn't enough for PN scores ~ 1 - 1e-6.
+torch.set_default_dtype(torch.float64)
+
 '''Based on https://github.com/WangYueFt/dgcnn/blob/master/pytorch/model.py.'''
 
 
@@ -156,9 +159,9 @@ class ParticleNet(nn.Module):
         if mask is None:
             mask = (features.abs().sum(dim=1, keepdim=True) != 0)  # (N, 1, P)
         coord_shift = (mask == 0) * 9999.
-        counts = mask.float().sum(dim=-1)
+        counts = mask.double().sum(dim=-1)
         counts = torch.max(counts, torch.ones_like(counts))  # >=1
-        fts = self.bn_fts(features.float())
+        fts = self.bn_fts(features.double())
         outputs = []
         for idx, conv in enumerate(self.edge_convs):
             pts = (points if idx == 0 else fts) + coord_shift

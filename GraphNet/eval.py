@@ -7,6 +7,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+torch.set_default_dtype(torch.float64)
+
 import tqdm
 import glob
 import os
@@ -149,7 +151,7 @@ if not os.path.exists(path):
 
 
 def run_one_file(filepath, extra_label=0):
-    pred_file = os.path.join(path, os.path.basename(filepath).replace('.root', '.awkd'))
+    pred_file = os.path.join(path, os.path.basename(filepath).replace('.root', '.parquet')) #'.awkd'))
     if os.path.exists(pred_file):
         print('skip %s' % filepath)
         return
@@ -179,7 +181,7 @@ def run_one_file(filepath, extra_label=0):
     #print('Written pred to %s' % pred_file)
     out_data = awkward.copy(awkward.Array(out_data))
 
-    awkward.to_parquet(out_data, pred_file+'.parquet')
+    awkward.to_parquet(out_data, pred_file)
 
 
 
@@ -203,9 +205,9 @@ bkg_filelist = sorted(glob.glob(args.test_bkg))
 for idx, f in enumerate(bkg_filelist):
     print('%d/%d' % (idx, len(bkg_filelist)))
     print("Running file", f)
-    run_one_file(f)
+    run_one_file(f, 0)
 
 for f in sorted(glob.glob(args.test_sig)):
-    run_one_file(f)
+    run_one_file(f, -1)
 
 print("PROGRAM FINISHED")

@@ -11,6 +11,8 @@ import awkward
 import concurrent.futures
 executor = concurrent.futures.ThreadPoolExecutor(12)
 
+torch.set_default_dtype(torch.float64)
+
 #ecalBranches = [  # EcalVeto data to save.  Could add more, but probably unnecessary.
 #    'discValue_',
 #    'recoilX_',
@@ -139,8 +141,8 @@ class ECalHitsDataset(Dataset):
 
             # Calc z relative to ecal face
 
-            etraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float32')  # Note the 2:  Only storing start and pvec_norm
-            ptraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float32')
+            etraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float64')  # Note the 2:  Only storing start and pvec_norm
+            ptraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float64')
             # Format is [event#] x [start of traj/p_norm] x [etraj_xyz]
             for i in range(len(etraj_p_norm)):
                 etraj_ref[i][0][0] = etraj_x_sp[i]
@@ -192,13 +194,13 @@ class ECalHitsDataset(Dataset):
                 #pos_pass_presel = (table[self._energy_branch] > 0).sum() < MAX_NUM_ECAL_HITS
                 pos_pass_presel = awkward.sum(table[self._energy_branch] > 0, axis=1) < MAX_NUM_ECAL_HITS
                 #print(awkward.type(table[self._energy_branch] > 0))
-                print("First few hit sums: ", awkward.sum(table[self._energy_branch] > 0, axis=1)[:10])
+                #print("First few hit sums: ", awkward.sum(table[self._energy_branch] > 0, axis=1)[:10])
                 #print(pos_pass_presel)
                 for k in table:
                     table[k] = table[k][pos_pass_presel]
             n_selected = len(table[self._branches[0]])  # after preselection
-            print("EVENTS BEFORE PRESELECTION (in _read_file):  {}".format(n_inclusive))
-            print("EVENTS AFTER PRESELECTION: ", n_selected)
+            #print("EVENTS BEFORE PRESELECTION (in _read_file):  {}".format(n_inclusive))
+            #print("EVENTS AFTER PRESELECTION: ", n_selected)
 
             if n_selected == 0:   #Ignore this file
                 print("ERROR:  ParticleNet can't handle files with no events passing selection!")
@@ -216,18 +218,18 @@ class ECalHitsDataset(Dataset):
             # For each event, look through all hits.
             # - Determine whether hit falls inside either the e or p RoCs
             # - If so, fill corresp xyzlayer, energy, eid lists...
-            x_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')  # In theory, can lower size of 2nd dimension...
-            y_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            z_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            # eid_e =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            log_energy_e =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            layer_id_e =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            # eid_p =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            x_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')  # In theory, can lower size of 2nd dimension...
+            y_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            z_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            # eid_e =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            log_energy_e =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            layer_id_e =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            #x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            #y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            #z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            # eid_p =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            #log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            #layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
             # Optional 3rd region:
             #x_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
             #y_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
@@ -373,8 +375,8 @@ class ECalHitsDataset(Dataset):
 
                         n_total_inclusive += n_inc
                         n_total_selected += n_sel
-                        print("N_SELECTED:  ", n_sel)
-                        print("TOTAL SELECTED:  ", n_total_selected)
+                        #print("N_SELECTED:  ", n_sel)
+                        #print("TOTAL SELECTED:  ", n_total_selected)
                         
 
                         for k in v_d:
@@ -418,8 +420,10 @@ class ECalHitsDataset(Dataset):
 
         nsig = _load_dataset(siglist, 'sig')
         nbkg = _load_dataset(bkglist, 'bkg')
-        # label for training
-        self.label = np.zeros(nsig + nbkg, dtype='float32')
+        print("Preparing to train on {} background events, {} (total) signal events".format(nbkg, nsig)) 
+
+       # label for training
+        self.label = np.zeros(nsig + nbkg, dtype='float64')
         self.label[:nsig] = 1
 
         self.extra_labels = np.concatenate(self.extra_labels)
@@ -431,8 +435,8 @@ class ECalHitsDataset(Dataset):
         # training features
         # There may be a better way to do this syntactically, but it saves RAM
         # **WAS PREVIOUSLY** 3, 3; 3, 5
-        self.coordinates = np.zeros((len(self.var_data['x_e']), 1, 3, MAX_NUM_ECAL_HITS), dtype='float32')
-        self.features =    np.zeros((len(self.var_data['x_e']), 1, 5, MAX_NUM_ECAL_HITS), dtype='float32')
+        self.coordinates = np.zeros((len(self.var_data['x_e']), 1, 3, MAX_NUM_ECAL_HITS), dtype='float64')
+        self.features =    np.zeros((len(self.var_data['x_e']), 1, 5, MAX_NUM_ECAL_HITS), dtype='float64')
         tmp_coord_arr = [[self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']]
                          #[self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']],
                          #[self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']]
@@ -478,7 +482,7 @@ class ECalHitsDataset(Dataset):
             # x = 1D flattened np array, base_array has the desired shape
             return awkward.Array(awkward.layout.ListOffsetArray64(
                                     base_array.layout.offsets,
-                                    awkward.layout.NumpyArray(np.array(x, dtype='float32'))
+                                    awkward.layout.NumpyArray(np.array(x, dtype='float64'))
                                     )
                                 )
         x        = unflatten_array(x, cid)

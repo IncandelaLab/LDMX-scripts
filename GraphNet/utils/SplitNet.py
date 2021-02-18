@@ -6,6 +6,8 @@ import torch.nn as nn
 
 from utils.ParticleNet import *
 
+torch.set_default_dtype(torch.float64)
+
 class SplitNet(nn.Module):
     def __init__(self,
                  input_dims,

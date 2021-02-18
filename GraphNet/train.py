@@ -12,6 +12,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+torch.set_default_dtype(torch.float64)
+
 import tqdm
 import os
 import datetime
@@ -63,24 +65,26 @@ parser.add_argument('--test-output-path', type=str, default='test-outputs/partic
 
 args = parser.parse_args()
 
-###### location of the signal and background files ######
+#####i# location of the signal and background files ######
 bkglist = {
     # (filepath, num_events_for_training)
-    0: ('/home/pmasterson/GraphNet_input/v12/*pn*.root', -1)
+    # In 
+    0: ('/home/pmasterson/GraphNet_input/v12/large_bkg/*.root', -1)
+    #0: ('/home/pmasterson/GraphNet_input/v12/kaon_training/*.root', -1)
     }
 
 siglist = {
     # (filepath, num_events_for_training)
-    1:    ('/home/pmasterson/GraphNet_input/v12/*0.001*.root', 200000),
-    10:   ('/home/pmasterson/GraphNet_input/v12/*0.01*.root',  200000),
-    100:  ('/home/pmasterson/GraphNet_input/v12/*0.1*.root',   200000),
-    1000: ('/home/pmasterson/GraphNet_input/v12/*1.0*.root',   200000),
+    1:    ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.001*.root', 200000),
+    10:   ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.01*.root',  200000),
+    100:  ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.1*.root',   200000),
+    1000: ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*1.0*.root',   200000),
     }
 
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        0: ('/home/pmasterson/GraphNet_input/v12/*pn*.root', 4000)
+        0: ('/home/pmasterson/GraphNet_input/v12/large_bkg/*.root', 4000)
         }
 
     siglist = {

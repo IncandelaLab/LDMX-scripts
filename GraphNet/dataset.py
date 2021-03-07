@@ -9,6 +9,10 @@ import tqdm
 import uproot
 import awkward
 import concurrent.futures
+
+import psutil
+import gc  # May reduce RAM usage
+
 executor = concurrent.futures.ThreadPoolExecutor(12)
 
 torch.set_default_dtype(torch.float64)
@@ -19,9 +23,8 @@ torch.set_default_dtype(torch.float64)
 #    'recoilY_',
 #    ]
 
-#MAX_NUM_ECAL_HITS = 50
-# NEW:
-MAX_NUM_ECAL_HITS = 80
+MAX_NUM_ECAL_HITS = 110  # Still need this to determine array sizes...110 gives >98% efficiency, so using that.
+MAX_ISO_ENERGY = 650  # 600 gives slightly under 95% sig eff; shoot for a bit over
 
 # NEW:  LayerZ data (may be outdated)
 # Assumed outdated; not currently used
@@ -71,7 +74,7 @@ class ECalHitsDataset(Dataset):
         self._load_cellMap(version=detector_version)
         self._id_branch = 'EcalRecHits_v12.id_'  # Technically not necessary anymore
         self._energy_branch = 'EcalRecHits_v12.energy_'
-        ecal_veto_branches = ['EcalVeto_v12.'+b for b in veto_branches]
+        ecal_veto_branches = ['EcalVeto_v12.'+b for b in veto_branches + ['summedTightIso_']]
         #self._test_branch = 'EcalVeto_v12'
         #self._x_branch = 'EcalRecHits_v12.xpos_'
         #self._y_branch = 'EcalRecHits_v12.ypos_'
@@ -186,16 +189,12 @@ class ECalHitsDataset(Dataset):
                 table[k] = table[k][start:stop]
             n_inclusive = len(table[self._branches[0]])  # before preselection
 
-            #print("**CHECK TABLE DIMS, post basic: ", awkward.type(table["EcalRecHits_v12.id_"]))
-            #print(awkward.type(table["EcalRecHits_v12.id_"][0]))
 
 
             if apply_preselection:
-                #pos_pass_presel = (table[self._energy_branch] > 0).sum() < MAX_NUM_ECAL_HITS
                 pos_pass_presel = awkward.sum(table[self._energy_branch] > 0, axis=1) < MAX_NUM_ECAL_HITS
-                #print(awkward.type(table[self._energy_branch] > 0))
-                #print("First few hit sums: ", awkward.sum(table[self._energy_branch] > 0, axis=1)[:10])
-                #print(pos_pass_presel)
+                # NEW:
+                pos_pass_presel = (table['EcalVeto_v12.summedTightIso_'] < MAX_ISO_ENERGY) * pos_pass_presel
                 for k in table:
                     table[k] = table[k][pos_pass_presel]
             n_selected = len(table[self._branches[0]])  # after preselection
@@ -352,19 +351,17 @@ class ECalHitsDataset(Dataset):
                             continue
                         load_branches = [k for k in self._branches + obs_branches if '.' in k and k[-1] == '_']
                         table_temp = t.arrays(expressions=load_branches, interpretation_executor=executor)  #, library="ak")
-                        #print("New table type is", awkward.type(table))
-                        #print(awkward.type(table["EcalRecHits_v12.id_"]))
-                        # NOTE:  New type of table is an awkward array.  Can index w/ ["BranchName..."], but it's not a dict anymore.
-                        # Fix that:  Want to combine everything into a single dict.
                         table = {}
                         for k in load_branches:
                             table[k] = table_temp[k]
 
 
                         # Now go through and load Ecal branches separately.
+                        # New branch for cut:
+                        EcalVeto = t["EcalVeto_v12"]
+                        table["EcalVeto_v12.summedTightIso_"] = EcalVeto["summedTightIso_"].array(interpretation_executor=executor)
+                        # All other ecal branches:
                         if veto_branches:
-                            # Manually add EcalVeto vars to table
-                            EcalVeto = t["EcalVeto_v12"]
                             for branch in veto_branches:
                                 table["EcalVeto_v12."+branch] = EcalVeto[branch].array(interpretation_executor=executor)
 
@@ -377,7 +374,6 @@ class ECalHitsDataset(Dataset):
                         n_total_selected += n_sel
                         #print("N_SELECTED:  ", n_sel)
                         #print("TOTAL SELECTED:  ", n_total_selected)
-                        
 
                         for k in v_d:
                             if k in var_dict:
@@ -388,6 +384,8 @@ class ECalHitsDataset(Dataset):
                             obs_dict[k].append(o_d[k])
                         if max_event > 0 and n_total_selected >= max_event:
                             break
+
+                        gc.collect()  # May reduce RAM usage
 
                 # calc preselection eff before dropping events more than `max_event`
                 self.presel_eff[extra_label] = float(n_total_selected) / n_total_inclusive
@@ -416,6 +414,9 @@ class ECalHitsDataset(Dataset):
                 for k in obs_branches + ecal_veto_branches:
                     self.obs_data[k].append(obs_dict[k])
                 n_sum += n_total_loaded
+                
+                gc.collect()
+                #print("Usage after load: {}".format(psutil.virtual_memory().percent))
             return n_sum
 
         nsig = _load_dataset(siglist, 'sig')
@@ -458,6 +459,7 @@ class ECalHitsDataset(Dataset):
         #    del item
         #for key, item in self.obs_data.items():
         #    del item
+        gc.collect()
 
 
     def _load_cellMap(self, version='v12'):

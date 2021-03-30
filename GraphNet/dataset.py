@@ -15,7 +15,7 @@ import gc  # May reduce RAM usage
 
 executor = concurrent.futures.ThreadPoolExecutor(12)
 
-torch.set_default_dtype(torch.float64)
+torch.set_default_dtype(torch.float32)
 
 #ecalBranches = [  # EcalVeto data to save.  Could add more, but probably unnecessary.
 #    'discValue_',
@@ -144,8 +144,8 @@ class ECalHitsDataset(Dataset):
 
             # Calc z relative to ecal face
 
-            etraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float64')  # Note the 2:  Only storing start and pvec_norm
-            ptraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float64')
+            etraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float32')  # Note the 2:  Only storing start and pvec_norm
+            ptraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float32')
             # Format is [event#] x [start of traj/p_norm] x [etraj_xyz]
             for i in range(len(etraj_p_norm)):
                 etraj_ref[i][0][0] = etraj_x_sp[i]
@@ -217,18 +217,18 @@ class ECalHitsDataset(Dataset):
             # For each event, look through all hits.
             # - Determine whether hit falls inside either the e or p RoCs
             # - If so, fill corresp xyzlayer, energy, eid lists...
-            x_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')  # In theory, can lower size of 2nd dimension...
-            y_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
-            z_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            x_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')  # In theory, can lower size of 2nd dimension...
+            y_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            z_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             # eid_e =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
-            log_energy_e =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
-            layer_id_e =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
-            #x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
-            #y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
-            #z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            log_energy_e =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            layer_id_e =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            #x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            #y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            #z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             # eid_p =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
-            #log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
-            #layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
+            #log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            #layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             # Optional 3rd region:
             #x_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
             #y_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
@@ -416,7 +416,8 @@ class ECalHitsDataset(Dataset):
                 n_sum += n_total_loaded
                 
                 gc.collect()
-                #print("Usage after load: {}".format(psutil.virtual_memory().percent))
+                print("Usage after load: {}".format(psutil.virtual_memory().percent))
+                print("RETURNING", n_sum)
             return n_sum
 
         nsig = _load_dataset(siglist, 'sig')
@@ -424,7 +425,7 @@ class ECalHitsDataset(Dataset):
         print("Preparing to train on {} background events, {} (total) signal events".format(nbkg, nsig)) 
 
        # label for training
-        self.label = np.zeros(nsig + nbkg, dtype='float64')
+        self.label = np.zeros(nsig + nbkg, dtype='float32')
         self.label[:nsig] = 1
 
         self.extra_labels = np.concatenate(self.extra_labels)
@@ -436,8 +437,8 @@ class ECalHitsDataset(Dataset):
         # training features
         # There may be a better way to do this syntactically, but it saves RAM
         # **WAS PREVIOUSLY** 3, 3; 3, 5
-        self.coordinates = np.zeros((len(self.var_data['x_e']), 1, 3, MAX_NUM_ECAL_HITS), dtype='float64')
-        self.features =    np.zeros((len(self.var_data['x_e']), 1, 5, MAX_NUM_ECAL_HITS), dtype='float64')
+        self.coordinates = np.zeros((len(self.var_data['x_e']), 1, 3, MAX_NUM_ECAL_HITS), dtype='float32')
+        self.features =    np.zeros((len(self.var_data['x_e']), 1, 5, MAX_NUM_ECAL_HITS), dtype='float32')
         tmp_coord_arr = [[self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']]
                          #[self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']],
                          #[self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']]
@@ -482,9 +483,9 @@ class ECalHitsDataset(Dataset):
 
         def unflatten_array(x, base_array):
             # x = 1D flattened np array, base_array has the desired shape
-            return awkward.Array(awkward.layout.ListOffsetArray64(
-                                    base_array.layout.offsets,
-                                    awkward.layout.NumpyArray(np.array(x, dtype='float64'))
+            return awkward.Array(awkward.layout.ListOffsetArray32(
+                                    awkward.layout.Index32(base_array.layout.offsets),   # NOTE, may need to change to offsets32
+                                    awkward.layout.NumpyArray(np.array(x, dtype='float32'))
                                     )
                                 )
         x        = unflatten_array(x, cid)

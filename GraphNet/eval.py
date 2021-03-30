@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-torch.set_default_dtype(torch.float64)
+torch.set_default_dtype(torch.float32)
 
 import tqdm
 import glob

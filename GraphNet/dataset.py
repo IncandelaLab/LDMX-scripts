@@ -177,7 +177,7 @@ class ECalHitsDataset(Dataset):
                 
                 tmp = np.sqrt(t['TargetScoringPlaneHits_v12.px_'].array()[el] ** 2 + t['TargetScoringPlaneHits_v12.py_'].array()[el] ** 2)
                 tmp = awkward.pad_none(tmp, 1, clip=True)
-                tmp = awkward.fill_none(tmp, -999)
+                otmp = awkward.fill_none(tmp, -999)
                 table['TargetSPRecoilE_pt'] = awkward.flatten(tmp)
 
 
@@ -223,20 +223,21 @@ class ECalHitsDataset(Dataset):
             # eid_e =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
             log_energy_e =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             layer_id_e =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            """
+            x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             # eid_p =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
-            #log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            #layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             # Optional 3rd region:
-            #x_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            #y_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            #z_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS))
+            x_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            y_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            z_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             # eid_o =         np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            #log_energy_o =  np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            #layer_id_o =    np.zeros((len(x), MAX_NUM_ECAL_HITS))
-            
+            log_energy_o =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            layer_id_o =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
+            """
             for i in range(len(x)):  # For every event...
                 etraj_sp = table['etraj_ref'][i][0]  # e- location at scoring plane (approximate)
                 enorm_sp = table['etraj_ref'][i][1]  # normalized (dz=1) momentum = direction of trajectory
@@ -437,15 +438,16 @@ class ECalHitsDataset(Dataset):
         # training features
         # There may be a better way to do this syntactically, but it saves RAM
         # **WAS PREVIOUSLY** 3, 3; 3, 5
-        self.coordinates = np.zeros((len(self.var_data['x_e']), 1, 3, MAX_NUM_ECAL_HITS), dtype='float32')
-        self.features =    np.zeros((len(self.var_data['x_e']), 1, 5, MAX_NUM_ECAL_HITS), dtype='float32')
+        nregions = 1
+        self.coordinates = np.zeros((len(self.var_data['x_e']), nregions, 3, MAX_NUM_ECAL_HITS), dtype='float32')
+        self.features =    np.zeros((len(self.var_data['x_e']), nregions, 5, MAX_NUM_ECAL_HITS), dtype='float32')
         tmp_coord_arr = [[self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']]
                          #[self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']],
                          #[self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']]
                         ]
 
         for i in range(len(self.var_data['x_e'])):
-            for j in range(1):  #3):
+            for j in range(nregions):
                 for k in range(5):
                     for l in range(MAX_NUM_ECAL_HITS):
                         self.features[i][j][k][l] = tmp_coord_arr[j][k][i][l]

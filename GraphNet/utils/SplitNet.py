@@ -24,11 +24,13 @@ class SplitNet(nn.Module):
         self.eNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
                                 fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
         print("INITIALIZED PARTICLENET")
+        """
         self.pNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
                                 fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
         # NEW
         self.oNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
                                 fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
+        """
         nRegions = 1  #3
 
         self.use_fusion = use_fusion

@@ -106,6 +106,8 @@ def main():
             logging.info('Removing %s' % f)
             if os.path.isfile(f):
                 os.remove(f)
+            elif os.path.islink(f):
+                os.unlink(f)
             elif os.path.isdir(f):
                 shutil.rmtree(f)
             else:

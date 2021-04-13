@@ -20,9 +20,12 @@ ecal_veto_ana.tracker_veto_collection = "TrackerVeto"
 ecal_veto_ana.trig_result_collection = "Trigger"
 ecal_veto_ana.ecal_simhit_collection = "EcalSimHits"
 ecal_veto_ana.ecal_rechit_collection = "EcalRecHits"
+ecal_veto_ana.sim_particle_collection = "SimParticles"
 
-from LDMX.DetDescr import EcalHexReadout
-ecal_veto_ana.hexReadout = EcalHexReadout.EcalHexReadout()
+import LDMX.Ecal.EcalGeometry
+#from LDMX.DetDescr import EcalHexReadout
+#ecal_veto_ana.hexReadout = EcalHexReadout.EcalHexReadout()
+# Should now be done automatically upon import LDMX.Ecal.EcalGeometry
 
 # Define the order in which the analyzers will be executed.
 p.sequence=[ecal_veto_ana]

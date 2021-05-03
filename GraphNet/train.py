@@ -85,15 +85,15 @@ siglist = {
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        0: ('/home/pmasterson/GraphNet_input/v12/bkg_12M/*.root', 4000)
+        0: ('/home/pmasterson/GraphNet_input/v12/bkg_12M/*.root', 800)
         }
 
     siglist = {
         # (filepath, num_events_for_training)
-        1:    ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.001*.root', 1000),
-        10:   ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.01*.root',  1000),
-        100:  ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.1*.root',   1000),
-        1000: ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*1.0*.root',   1000),
+        1:    ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.001*.root', 200),
+        10:   ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.01*.root',  200),
+        100:  ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.1*.root',   200),
+        1000: ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*1.0*.root',   200),
         }
 #########################################################
 
@@ -111,9 +111,9 @@ if args.save_extra:
     
     # NEW:  EcalVeto branches must be handled separately in v2.2.1+.
     veto_branches = [
-        'discValue_',
-        'recoilX_',
-        'recoilY_',
+        #'discValue_',  # Commented, will always be saved for now
+        #'recoilX_',  # Only add if want to look at missing-e events (now redundant w/ fiducial studies)
+        #'recoilY_',
     ]
 
 #########################################################
@@ -387,9 +387,8 @@ awkward.to_parquet(out_data, pred_file+'.parquet')
 
 
 # export to onnx
-# NOTE:  This isn't currently being used for anything, but eats up RAM
-
-
+# NOTE:  This isn't currently being used for anything
+"""
 onnx_output = os.path.join(os.path.dirname(args.test_output_path), os.path.basename(model_path).replace('.pt', '.onnx'))
 print('Exporting ONNX model to %s' % onnx_output)
 import torch.onnx
@@ -410,5 +409,5 @@ for batch in test_loader:
                       dynamic_axes={'coordinates':[0], 'features':[0]},
                       opset_version=11)
     break
-
+"""
 

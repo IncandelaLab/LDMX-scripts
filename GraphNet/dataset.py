@@ -74,7 +74,10 @@ class ECalHitsDataset(Dataset):
         self._load_cellMap(version=detector_version)
         self._id_branch = 'EcalRecHits_v12.id_'  # Technically not necessary anymore
         self._energy_branch = 'EcalRecHits_v12.energy_'
-        ecal_veto_branches = ['EcalVeto_v12.'+b for b in veto_branches + ['summedTightIso_']]
+        #if veto_branches:
+        ecal_veto_branches = ['EcalVeto_v12.'+b for b in veto_branches + ['summedTightIso_', 'discValue_']]
+        #else:
+        #    ecal_veto_branches = ['EcalVeto_v12.'+b for b in ['summedTightIso_', 'discValue_']]
         #self._test_branch = 'EcalVeto_v12'
         #self._x_branch = 'EcalRecHits_v12.xpos_'
         #self._y_branch = 'EcalRecHits_v12.ypos_'
@@ -95,16 +98,64 @@ class ECalHitsDataset(Dataset):
         self.presel_eff = {}
         self.var_data = {}
         self.obs_data = {k:[] for k in obs_branches + ecal_veto_branches}
+        print("obs_branches:", obs_branches)
+        print("ecal_veto_branches:", ecal_veto_branches)
 
         print('Using coord_ref=%s' % coord_ref)
         def _load_coord_ref(t, table):
+            print("    Usage before coord ref: {}".format(psutil.virtual_memory().percent))
+            #print("***Finding recoil electrons!")
             # Find recoil electron (approx)
             # NOTE:  Requires precise knowledge of detector scoring plane!  Currently seems to be 240.5mm...(was plane 1)
             #        https://github.com/LDMX-Software/ldmx-sw/blob/master/Detectors/data/ldmx-det-v12/scoring_planes.gdml#L87-L88
+            # NEW:  Also, ensure that the hit selected has max p.  Create array of max pz for each hit:
+            #pz = t['EcalScoringPlaneHits_v12.pz_'].array()
+            #pz_max = np.amax(pz, axis=1)
+            #pz_max_ = awkward.from_iter([np.repeat(pz_max[i], len(pz[i])) for i in range(len(pz_max))])
+            # Array is now [[pmax1, pmax1, ...],  [pmax2, pmax2, ...], ...]
+            
+            id_ = t['EcalScoringPlaneHits_v12.pdgID_'].array()
+            z_ = t['EcalScoringPlaneHits_v12.z_'].array()
+            pz_ = t['EcalScoringPlaneHits_v12.pz_'].array()
+            el_ = []  # Just need the shape
+            has_e = []  # Also, need array to keep track of events w/ found SP e-.  If not found, False.
+            for i in range(len(pz_)):
+                pmax = 0  # Max pz for event i
+                max_index = 0
+                el_.append([])
+                for j in range(len(pz_[i])):
+                    if id_[i][j] == 11 and z_[i][j] > 240 and z_[i][j] < 241 and pz_[i][j] > pmax:
+                            pmax = pz_[i][j]
+                            max_index = j
+                has_e.append(pmax != 0)
+                for j in range(len(pz_[i])):
+                    # If pz of hit = highest pz of all SP e- hits in event i, set mask to 1; else 0
+                    el_[i].append(pz_[i][j] == pmax)
+                if not has_e[i] and sum(el_[i]) == 0:  # Just make an arbitrary hit the SP hit; willb e handled by has_e later
+                    el_[i][0] = True
+                #print("1:", sum(el_[i]), ", ", len(el_[i]))
+            el_ = awkward.from_iter(el_)
+
+            #print("***Recoil electrons found!")
+            #print(awkward.type(pz_))
+            #print(awkward.type(el_))
+            
             el = (t['EcalScoringPlaneHits_v12.pdgID_'].array() == 11) * \
                  (t['EcalScoringPlaneHits_v12.z_'].array() > 240) * \
                  (t['EcalScoringPlaneHits_v12.z_'].array() < 241) * \
-                 (t['EcalScoringPlaneHits_v12.pz_'].array() > 0)
+                 el_
+            #     (t['EcalScoringPlaneHits_v12.pz_'].array() > 0)
+
+            del el_
+            del id_
+            del z_
+            del pz_
+            gc.collect()
+            
+            #el = (t['EcalScoringPlaneHits_v12.pdgID_'].array() == 11) * \
+            #     (t['EcalScoringPlaneHits_v12.z_'].array() > 240) * \
+            #     (t['EcalScoringPlaneHits_v12.z_'].array() < 241) * \
+            #     (t['EcalScoringPlaneHits_v12.pz_'].array() > 0)
 
             # Note:  pad() below ensures that only one SP electron is used if there's multiple (I believe)
             # pad() for awkward arrays is outdated; have to replace it...
@@ -114,7 +165,7 @@ class ECalHitsDataset(Dataset):
                 # = t['EcalScoringPlaneHits_v12.x_'].array()[el].pad(1, clip=True).fillna(0).flatten()  #Arr of floats.  [0][0] fails.
                 arr = awkward.pad_none(arr, 1, clip=True)
                 arr = awkward.fill_none(arr, 0)
-                return awkward.flatten(arr)
+                return np.array(awkward.flatten(arr))  #NEW:  Include np conversion to allow stacking
 
             etraj_x_sp = _pad_array(t['EcalScoringPlaneHits_v12.x_'].array()[el])  #Arr of floats.  [0][0] fails.
             etraj_y_sp = _pad_array(t['EcalScoringPlaneHits_v12.y_'].array()[el])
@@ -123,27 +174,44 @@ class ECalHitsDataset(Dataset):
             etraj_py_sp = _pad_array(t['EcalScoringPlaneHits_v12.py_'].array()[el])
             etraj_pz_sp = _pad_array(t['EcalScoringPlaneHits_v12.pz_'].array()[el])
 
+            # Want [(x, y, z), ()...]
+            print(awkward.type(etraj_x_sp))
+            print(awkward.type(etraj_y_sp))
+            etraj_sp = np.column_stack((etraj_x_sp, etraj_y_sp, etraj_z_sp))
+
             # Create vectors holding the electron/photon momenta so the trajectory projections can be found later
             # Set xtraj_p_norm relative to z=1 to make projecting easier:
             E_beam = 4000.0  # In GeV
+            target_dist = 241.5 # distance from ecal to target, mm
+            """
             etraj_p_norm = []
             for i in range(len(etraj_pz_sp)):
-                if etraj_pz_sp[i] != 0:
+                if etraj_pz_sp[i] != 0 and has_e[i]:
                     etraj_p_norm.append((etraj_px_sp[i]/etraj_pz_sp[i], etraj_py_sp[i]/etraj_pz_sp[i], 1.0))
                 else:
                     etraj_p_norm.append((0,0,0))
-
-            ptraj_p_norm = []
+            """
+            
+            etraj_p_norm = np.zeros((len(etraj_pz_sp), 3), dtype='float32') #[]
+            ptraj_p_norm = np.zeros((len(etraj_pz_sp), 3), dtype='float32') #[]
+            ptraj_sp     = np.zeros((len(etraj_pz_sp), 3), dtype='float32') #[]  # (x, y, z) of projected photon hit @ ecal SP
             for i in range(len(etraj_pz_sp)):
-                if etraj_pz_sp[i] != 0:
-                    ptraj_p_norm.append((-etraj_px_sp[i]/(E_beam - etraj_pz_sp[i]), -etraj_py_sp[i]/(E_beam - etraj_pz_sp[i]), 1.0))
+                #print(ptraj_sp.shape)
+                if etraj_pz_sp[i] != 0 and has_e[i]:
+                    etraj_p_norm[i,:] = (etraj_px_sp[i]/etraj_pz_sp[i], etraj_py_sp[i]/etraj_pz_sp[i], 1.0)
+                    ptraj_p_norm[i,:] = (-etraj_px_sp[i]/(E_beam - etraj_pz_sp[i]), -etraj_py_sp[i]/(E_beam - etraj_pz_sp[i]), 1.0)
+                    #print(ptraj_sp.shape)
+                    #print(ptraj_sp[i,:])
+                    ptraj_sp[i,:]     = (etraj_x_sp[i] + target_dist*(ptraj_p_norm[i][0] - etraj_p_norm[i][0]),
+                                         etraj_y_sp[i] + target_dist*(ptraj_p_norm[i][1] - etraj_p_norm[i][1]),
+                                         etraj_z_sp[i])
                 else:
-                    ptraj_p_norm.append((0,0,0))
-
-
+                    etraj_p_norm[i,:] = (0,0,0)
+                    ptraj_p_norm[i,:] = (0,0,0)
+                    ptraj_sp[i,:]     = (0,0,0)
 
             # Calc z relative to ecal face
-
+            """
             etraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float32')  # Note the 2:  Only storing start and pvec_norm
             ptraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float32')
             # Format is [event#] x [start of traj/p_norm] x [etraj_xyz]
@@ -154,16 +222,22 @@ class ECalHitsDataset(Dataset):
                 etraj_ref[i][1][0] = etraj_p_norm[i][0]
                 etraj_ref[i][1][1] = etraj_p_norm[i][1]
                 etraj_ref[i][1][2] = etraj_p_norm[i][2]
-                ptraj_ref[i][0][0] = etraj_x_sp[i]
-                ptraj_ref[i][0][1] = etraj_y_sp[i]
-                ptraj_ref[i][0][2] = etraj_z_sp[i]
+                ptraj_ref[i][0][0] = ptraj_sp[i][0]
+                ptraj_ref[i][0][1] = ptraj_sp[i][1]
+                ptraj_ref[i][0][2] = ptraj_sp[i][2]
                 ptraj_ref[i][1][0] = ptraj_p_norm[i][0]
                 ptraj_ref[i][1][1] = ptraj_p_norm[i][1]
                 ptraj_ref[i][1][2] = ptraj_p_norm[i][2]
-
             table['etraj_ref'] = etraj_ref
             table['ptraj_ref'] = ptraj_ref
-            #print("Finished loading coord ref")
+            """
+            table['etraj_sp'] = etraj_sp
+            table['ptraj_sp'] = ptraj_sp
+            table['enorm_sp'] = etraj_p_norm
+            table['pnorm_sp'] = ptraj_p_norm
+            
+            print("Finished loading coord ref")
+            print("Usage after coord ref: {}".format(psutil.virtual_memory().percent))
 
 
         def _load_recoil_pt(t, table):
@@ -182,6 +256,7 @@ class ECalHitsDataset(Dataset):
 
 
         def _read_file(t, table):
+            print("    Usage before read file: {}".format(psutil.virtual_memory().percent))
             # load data from one file
             start, stop = [int(x * len(table[self._branches[0]])) for x in load_range]
             #print("start, stop: ", (start, stop))
@@ -204,13 +279,13 @@ class ECalHitsDataset(Dataset):
             if n_selected == 0:   #Ignore this file
                 print("ERROR:  ParticleNet can't handle files with no events passing selection!")
 
+            print("    Usage before array creation: {}".format(psutil.virtual_memory().percent))
             eid = table[self._id_branch]
             energy = table[self._energy_branch]
             pos = (energy > 0)
             eid = eid[pos]  # Gets rid of all (AND ONLY) hits with 0 energy
             energy = energy[pos]
             (x, y, z), layer_id = self._parse_cid(eid)  # layer_id > 0, so can use layer_id-1 to index e/ptraj_ref
-
 
             # Now, work with table['etraj_ref'] and table['ptraj_ref'].
             # Create lists:  x/y/z_e, p
@@ -220,32 +295,32 @@ class ECalHitsDataset(Dataset):
             x_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')  # In theory, can lower size of 2nd dimension...
             y_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             z_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            # eid_e =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
             log_energy_e =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             layer_id_e =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             """
             x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            # eid_p =         np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float64')
             log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             # Optional 3rd region:
+            
             x_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             y_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             z_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            # eid_o =         np.zeros((len(x), MAX_NUM_ECAL_HITS))
             log_energy_o =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             layer_id_o =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
             """
+            print("    Usage after array creation: {}".format(psutil.virtual_memory().percent))
+            
             for i in range(len(x)):  # For every event...
-                etraj_sp = table['etraj_ref'][i][0]  # e- location at scoring plane (approximate)
-                enorm_sp = table['etraj_ref'][i][1]  # normalized (dz=1) momentum = direction of trajectory
-                ptraj_sp = table['ptraj_ref'][i][0]
-                pnorm_sp = table['ptraj_ref'][i][1]
+                etraj_sp = table['etraj_sp'][i]  #table['etraj_ref'][i][0]  # e- location at scoring plane (approximate)
+                enorm_sp = table['enorm_sp'][i]  #table['etraj_ref'][i][1]  # normalized (dz=1) momentum = direction of trajectory
+                ptraj_sp = table['ptraj_sp'][i]  #table['ptraj_ref'][i][0]
+                pnorm_sp = table['pnorm_sp'][i]  #table['ptraj_ref'][i][1]
                 for j in range(len(x[i])):  #range(MAX_NUM_ECAL_HITS):  # For every hit...
                     layer_index = int(layer_id[i][j])
-                    # Calculate xy for projected trajectory in same layer
+                    # Calculate xy coord of point on projected trajectory in same layer
                     delta_z = self._layerZs[layer_index] - etraj_sp[2]
                     etraj_point = (etraj_sp[0] + enorm_sp[0]*delta_z, etraj_sp[1] + enorm_sp[1]*delta_z)
                     ptraj_point = (ptraj_sp[0] + pnorm_sp[0]*delta_z, ptraj_sp[1] + pnorm_sp[1]*delta_z)
@@ -272,25 +347,12 @@ class ECalHitsDataset(Dataset):
                     if enorm_sp[0] == 0 and enorm_sp[1] == 0:
                         insideElectronRadius = False
                         insidePhotonRadius   = False
-                    #print("edis =", np.sqrt((etraj_point[0] - x[i][j])**2 + \
-                    #        (etraj_point[1] - y[i][j])**2))
-                    #print("pdist=", np.sqrt((ptraj_point[0] - x[i][j])**2 + \
-                    #        (ptraj_point[1] - y[i][j])**2))
-                    #if enorm_sp[0] == 0 and enorm_sp[1] == 0:
-                    #    if not (insideElectronRadius and insidePhotonRadius):  print("    ***MISSED ONE***")
-                    #    else:  print("   Didn't miss one")
-                        #if insideElectronRadius:
-                        #    print("Inside e- radius")
-                        #if insidePhotonRadius:
-                        #    print("Inside p radius")
-
-                    # ***TEMP:** Revert to 1-region net!
+                    
                     insideElectronRadius = True
                     if insideElectronRadius:
                         x_e[i][j] = x[i][j] - etraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
                         y_e[i][j] = y[i][j] - etraj_point[1]
                         z_e[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
-                        #eid_e[i][j] = eid[i][j]
                         log_energy_e[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
                         layer_id_e[i][j] = layer_id[i][j]
                     """
@@ -298,27 +360,25 @@ class ECalHitsDataset(Dataset):
                         x_p[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
                         y_p[i][j] = y[i][j] - ptraj_point[1]
                         z_p[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
-                        #eid_p[i][j] = eid[i][j]
                         log_energy_p[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
                         layer_id_p[i][j] = layer_id[i][j]
-                    
                     else:
                         x_o[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the first ecal hit
                         y_o[i][j] = y[i][j] - ptraj_point[1]
                         z_o[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
-                        #eid_o[i][j] = eid[i][j]
                         log_energy_o[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
                         layer_id_o[i][j] = layer_id[i][j]
                     """
+            print("    Usage after region determination: {}".format(psutil.virtual_memory().percent))        
 
-            var_dict = {'log_energy_e':log_energy_e,   # 'id_e':eid_e,
+            var_dict = {'log_energy_e':log_energy_e,
                         'x_e':x_e, 'y_e':y_e, 'z_e':z_e, 'layer_id_e':layer_id_e,
-                        'etraj_ref':np.array(table['etraj_ref']),
-                        #'log_energy_p':log_energy_p,  # 'id_p':eid_p,
+                        #'log_energy_p':log_energy_p,
                         #'x_p':x_e, 'y_p':y_p, 'z_p':z_p, 'layer_id_p':layer_id_p,
-                        'ptraj_ref':np.array(table['ptraj_ref']),
-                        #'log_energy_o':log_energy_o,  # 'id_o':eid_o,
+                        #'log_energy_o':log_energy_o,
                         #'x_o':x_o, 'y_o':y_o, 'z_o':z_o, 'layer_id_o':layer_id_o,
+                        #'etraj_ref':np.array(table['etraj_ref']),  # No longer seems necessary
+                        #'ptraj_ref':np.array(table['ptraj_ref']),
                        }
 
             obs_dict = {k: table[k] for k in obs_branches + ecal_veto_branches}
@@ -346,6 +406,7 @@ class ECalHitsDataset(Dataset):
 
                 with tqdm.tqdm(glob.glob(filepath)) as tq:
                     for fp in tq:
+                        print("    Usage before file load: {}".format(psutil.virtual_memory().percent))
                         t = uproot.open(fp)['LDMX_Events']
                         if len(t.keys()) == 0:
 #                             print('... ignoring empty file %s' % fp)
@@ -360,11 +421,12 @@ class ECalHitsDataset(Dataset):
                         # Now go through and load Ecal branches separately.
                         # New branch for cut:
                         EcalVeto = t["EcalVeto_v12"]
-                        table["EcalVeto_v12.summedTightIso_"] = EcalVeto["summedTightIso_"].array(interpretation_executor=executor)
+                        #table["EcalVeto_v12.summedTightIso_"] = EcalVeto["summedTightIso_"].array(interpretation_executor=executor)
                         # All other ecal branches:
-                        if veto_branches:
-                            for branch in veto_branches:
-                                table["EcalVeto_v12."+branch] = EcalVeto[branch].array(interpretation_executor=executor)
+                        if ecal_veto_branches:  # Was veto_branches; also commented the summedTightIso line
+                            for branch in ecal_veto_branches:
+                                #table["EcalVeto_v12."+branch] = EcalVeto[branch].array(interpretation_executor=executor)
+                                table[branch] = EcalVeto[branch.split('.')[1]].array(interpretation_executor=executor)
 
                         _load_coord_ref(t, table)
                         _load_recoil_pt(t, table)
@@ -386,6 +448,7 @@ class ECalHitsDataset(Dataset):
                         if max_event > 0 and n_total_selected >= max_event:
                             break
 
+                        print("    Usage after loaded file: {}".format(psutil.virtual_memory().percent))
                         gc.collect()  # May reduce RAM usage
 
                 # calc preselection eff before dropping events more than `max_event`
@@ -436,26 +499,29 @@ class ECalHitsDataset(Dataset):
             self.obs_data[k] = _concat(self.obs_data[k])
 
         # training features
-        # There may be a better way to do this syntactically, but it saves RAM
-        # **WAS PREVIOUSLY** 3, 3; 3, 5
-        nregions = 1
-        self.coordinates = np.zeros((len(self.var_data['x_e']), nregions, 3, MAX_NUM_ECAL_HITS), dtype='float32')
-        self.features =    np.zeros((len(self.var_data['x_e']), nregions, 5, MAX_NUM_ECAL_HITS), dtype='float32')
-        tmp_coord_arr = [[self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']]
-                         #[self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']],
-                         #[self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']]
-                        ]
-
-        for i in range(len(self.var_data['x_e'])):
-            for j in range(nregions):
-                for k in range(5):
-                    for l in range(MAX_NUM_ECAL_HITS):
-                        self.features[i][j][k][l] = tmp_coord_arr[j][k][i][l]
-                        if k < 3:
-                            self.coordinates[i][j][k][l] = tmp_coord_arr[j][k][i][l]
-
-        assert(len(self.coordinates) == len(self.label))
-        assert(len(self.features) == len(self.label))
+        # Multiple regions:
+        """
+        coords_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']), axis=1)
+        coords_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p']), axis=1)
+        coords_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o']), axis=1)
+        self.coordinates = np.stack((coords_e, coords_p, coords_o))
+        del coords_e
+        del coords_p
+        del coords_o
+        features_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']), axis=1)
+        features_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']), axis=1)
+        features_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']), axis=1)
+        self.features    = np.stack((features_e, features_p, features_o))
+        del features_e
+        del features_p
+        del features_o
+        """
+        # 1 region:
+        self.coordinates = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']), axis=1)
+        self.features    = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'],
+                                     self.var_data['layer_id_e'], self.var_data['log_energy_e']), axis=1)
+        #assert(len(self.coordinates) == len(self.label))
+        #assert(len(self.features) == len(self.label))
 
         # NEW:  Free up old variables after the coords and features have been assigned
         #for key, item in self.var_data.items():
@@ -463,6 +529,7 @@ class ECalHitsDataset(Dataset):
         #for key, item in self.obs_data.items():
         #    del item
         gc.collect()
+        print("Usage after coord+feature creation: {}".format(psutil.virtual_memory().percent))
 
 
     def _load_cellMap(self, version='v12'):
@@ -499,8 +566,8 @@ class ECalHitsDataset(Dataset):
 
     @property
     def num_features(self):
-        #return self.features.shape[1]
-        return self.features.shape[2]  # Modified
+        return self.features.shape[1]
+        #return self.features.shape[2]  # Modified
 
     def __len__(self):
         return len(self.features)

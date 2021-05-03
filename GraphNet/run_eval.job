@@ -1,0 +1,14 @@
+#!/bin/bash
+#SBATCH -N 1 --partition=gpu --ntasks-per-node=1
+#SBATCH --gres=gpu:1
+
+export MODEL_NAME=v12_model_name
+export DATA_NAME=v12_data_name
+export BASE_DIRECTORY=/home/pmasterson/ParticleNet/LDMX-scripts/GraphNet
+
+cd $SLURM_SUBMIT_DIR
+
+/bin/hostname
+srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/pmasterson/GraphNet_input/v12/bkg_12M/evaluation/*.root' --test-sig '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 0 --device 'cuda:0'
+
+

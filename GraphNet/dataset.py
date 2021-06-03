@@ -10,6 +10,9 @@ import uproot
 import awkward
 import concurrent.futures
 
+# NEW:
+import ROOT as r
+
 import psutil
 import gc  # May reduce RAM usage
 
@@ -67,469 +70,403 @@ def _concat(arrays, axis=0):
 
 class ECalHitsDataset(Dataset):
 
-    def __init__(self, siglist, bkglist, load_range=(0, 1), apply_preselection=True, ignore_evt_limits=False, obs_branches=[], veto_branches=[], coord_ref=None, detector_version='v12'):
+    def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v12'):
         super(ECalHitsDataset, self).__init__()
-
+        print("Initializing EcalHitsDataset")
+        print("GPU usage: {}".format(psutil.virtual_memory().percent))
         # first load cell map
         self._load_cellMap(version=detector_version)
-        self._id_branch = 'EcalRecHits_v12.id_'  # Technically not necessary anymore
-        self._energy_branch = 'EcalRecHits_v12.energy_'
-        #if veto_branches:
-        ecal_veto_branches = ['EcalVeto_v12.'+b for b in veto_branches + ['summedTightIso_', 'discValue_']]
-        #else:
-        #    ecal_veto_branches = ['EcalVeto_v12.'+b for b in ['summedTightIso_', 'discValue_']]
-        #self._test_branch = 'EcalVeto_v12'
-        #self._x_branch = 'EcalRecHits_v12.xpos_'
-        #self._y_branch = 'EcalRecHits_v12.ypos_'
-        #self._z_branch = 'EcalRecHits_v12.zpos_'
+        # NOTE:  the new skimmed input doesn't have sub-branches anymore!
+        self._id_branch = 'id_rec_'  #'EcalRecHits_v12.id_'
+        self._energy_branch = 'energy_rec_'  #'EcalRecHits_v12.energy_'
+
+        self.obs_branches = obs_branches
+        # NOTE:  Need to explicitly keep track of and save all obs_dict data!  Fortunately, order doesn't matter.
+        self.obs_dict = {br:[] for br in self.obs_branches}
+
+        self.coord_ref = coord_ref
         assert(detector_version == 'v12')
         #if detector_version == 'v9':
         #    print("WARNING:  Using v9 detector!  Case is not currently handled; will produce an error.")
         #    self._id_branch = 'ecalDigis_recon.id_'
         #    self._energy_branch = 'ecalDigis_recon.energy_'
-        #if detector_version == 'v12':
-        #    self._id_branch = 'EcalRecHits_v12.id_'
-        #    self._energy_branch = 'EcalRecHits_v12.energy_'
 
-        #self._branches = [self._id_branch, self._energy_branch, self._x_branch, self._y_branch, self._z_branch]
-        self._branches = [self._id_branch, self._energy_branch] #, self._test_branch]
+        self._branches = [self._id_branch, self._energy_branch]
 
-        self.extra_labels = []
-        self.presel_eff = {}
+        # DEFINE LABELS:
+        # May need to know in advance how many events to load....
+        # OR just determine whether evt is sig/bkg after/upon loading
+        # Need a way to get the correct root file from the index!
+
+        # CURRENT OUTLINE:
+        # - Input events have all been preselected.
+        # - All event data is stored in a "simple" root tree with no sub-branches
+        # - Need to create a mapping:  event number -> returns sig/bkg, root file, and evt number within that file
+        #    - [[mass, filename, i_file], ...]
+
+        # event_list:  [[mass, filename, i_file], ...]
+        self.event_list = []
+        self.extra_labels = []  # mass in MeV if sig, 0 if bkg
+        print("   Filling event_list")
+        # fill event_list to make event access easy
+        filelist = {}
+        for label, fname in bkglist.items():
+            filelist[label] = fname
+        for label, fname in siglist.items():
+            filelist[label] = fname
+
+        for extra_label in filelist:  # For each mass:
+            filepath, max_events = filelist[extra_label]
+            if max_events == -1:
+                max_events = 1e8  # Unrealistically large so it never constrains the results
+            num_loaded_events = 0  # Number of events so far for this mass
+            print("      Filling for m={}".format(extra_label))
+            for fp in glob.glob(filepath):
+                # For each file, check the number of events, then add to event_list accordingly
+                tfile = r.TFile(fp)
+                ttree = tfile.Get('skimmed_events')
+                f_events = ttree.GetEntries()  # Num events in file
+                # load_range specifies fraction of file to load from.
+                start, stop = [int(x * f_events) for x in load_range]
+                print("         Events in {}:  {}".format(fp, f_events))
+                print("         start, stop:", start, stop)
+
+                f_event = start
+                while num_loaded_events < max_events and f_event < stop:
+                    self.event_list.append([extra_label, fp, f_event])
+                    self.extra_labels.append(extra_label)
+                    num_loaded_events += 1
+                    f_event += 1
+                print("         Filled event_list from {}:  {} events in file, {} total for current mass".format(fp, f_event, num_loaded_events))
+                print("         event_list len is",len(self.event_list))
+            print("Finished m={}:  using {} events".format(extra_label, num_loaded_events))
+
+        self.label = [1 if l > 0 else 0 for l in self.extra_labels]  # 1 if sig, 0 if bkg
+        # Set var_data to None to test whether any evts have been loaded
+        self.var_data = None
+
+        print("Initialization finished.")
+        print("GPU usage: {}".format(psutil.virtual_memory().percent))
+        #print("Quick event_list sanity check:")
+        #print(self.event_list)
+
+        #print("Initialized")
+
+
+
+    @property
+    def num_features(self):
+        #return self.features.shape[1]
+        #return self.features.shape[2]  # Modified
+        #pts, fts, y = self.__getitem__(0)  # NO, need this before __getitem()__ has been called
+        #print("**TESTING NUM_FEATURES:**", fts.shape[0])
+        # When would this *not* be 5?  Not worried about generalizing atm
+        return 5 #fts.shape[0]
+
+    def __len__(self):
+        #return len(self.features)
+        return len(self.event_list)
+
+
+    #def load_event(self, label, filename, file_index):   # name of file containing event, index (in file) of event
+    def __getitem__(self, i):
+        # On-demand, read event file_index from filename and process it
+        # By assumption, events have already been preselected!
+        # returns:  label, coords, features
+
+        print("Getting event", i)
+
+        label, filename, file_index = self.event_list[i]
+
         self.var_data = {}
-        self.obs_data = {k:[] for k in obs_branches + ecal_veto_branches}
-        print("obs_branches:", obs_branches)
-        print("ecal_veto_branches:", ecal_veto_branches)
+        self.obs_data = {k:[] for k in self.obs_branches}
 
-        print('Using coord_ref=%s' % coord_ref)
-        def _load_coord_ref(t, table):
-            print("    Usage before coord ref: {}".format(psutil.virtual_memory().percent))
-            #print("***Finding recoil electrons!")
-            # Find recoil electron (approx)
-            # NOTE:  Requires precise knowledge of detector scoring plane!  Currently seems to be 240.5mm...(was plane 1)
-            #        https://github.com/LDMX-Software/ldmx-sw/blob/master/Detectors/data/ldmx-det-v12/scoring_planes.gdml#L87-L88
-            # NEW:  Also, ensure that the hit selected has max p.  Create array of max pz for each hit:
-            #pz = t['EcalScoringPlaneHits_v12.pz_'].array()
-            #pz_max = np.amax(pz, axis=1)
-            #pz_max_ = awkward.from_iter([np.repeat(pz_max[i], len(pz[i])) for i in range(len(pz_max))])
-            # Array is now [[pmax1, pmax1, ...],  [pmax2, pmax2, ...], ...]
-            
-            id_ = t['EcalScoringPlaneHits_v12.pdgID_'].array()
-            z_ = t['EcalScoringPlaneHits_v12.z_'].array()
-            pz_ = t['EcalScoringPlaneHits_v12.pz_'].array()
-            el_ = []  # Just need the shape
-            has_e = []  # Also, need array to keep track of events w/ found SP e-.  If not found, False.
-            for i in range(len(pz_)):
-                pmax = 0  # Max pz for event i
-                max_index = 0
-                el_.append([])
-                for j in range(len(pz_[i])):
-                    if id_[i][j] == 11 and z_[i][j] > 240 and z_[i][j] < 241 and pz_[i][j] > pmax:
-                            pmax = pz_[i][j]
-                            max_index = j
-                has_e.append(pmax != 0)
-                for j in range(len(pz_[i])):
-                    # If pz of hit = highest pz of all SP e- hits in event i, set mask to 1; else 0
-                    el_[i].append(pz_[i][j] == pmax)
-                if not has_e[i] and sum(el_[i]) == 0:  # Just make an arbitrary hit the SP hit; willb e handled by has_e later
-                    el_[i][0] = True
-                #print("1:", sum(el_[i]), ", ", len(el_[i]))
-            el_ = awkward.from_iter(el_)
-
-            #print("***Recoil electrons found!")
-            #print(awkward.type(pz_))
-            #print(awkward.type(el_))
-            
-            el = (t['EcalScoringPlaneHits_v12.pdgID_'].array() == 11) * \
-                 (t['EcalScoringPlaneHits_v12.z_'].array() > 240) * \
-                 (t['EcalScoringPlaneHits_v12.z_'].array() < 241) * \
-                 el_
-            #     (t['EcalScoringPlaneHits_v12.pz_'].array() > 0)
-
-            del el_
-            del id_
-            del z_
-            del pz_
-            gc.collect()
-            
-            #el = (t['EcalScoringPlaneHits_v12.pdgID_'].array() == 11) * \
-            #     (t['EcalScoringPlaneHits_v12.z_'].array() > 240) * \
-            #     (t['EcalScoringPlaneHits_v12.z_'].array() < 241) * \
-            #     (t['EcalScoringPlaneHits_v12.pz_'].array() > 0)
-
-            # Note:  pad() below ensures that only one SP electron is used if there's multiple (I believe)
-            # pad() for awkward arrays is outdated; have to replace it...
-            etraj_branches = ['EcalScoringPlaneHits_v12.x_', 'EcalScoringPlaneHits_v12.y_', 'EcalScoringPlaneHits_v12.z_',
-                              'EcalScoringPlaneHits_v12.px_', 'EcalScoringPlaneHits_v12.py_', 'EcalScoringPlaneHits_v12.pz_']
-            def _pad_array(arr):
-                # = t['EcalScoringPlaneHits_v12.x_'].array()[el].pad(1, clip=True).fillna(0).flatten()  #Arr of floats.  [0][0] fails.
-                arr = awkward.pad_none(arr, 1, clip=True)
-                arr = awkward.fill_none(arr, 0)
-                return np.array(awkward.flatten(arr))  #NEW:  Include np conversion to allow stacking
-
-            etraj_x_sp = _pad_array(t['EcalScoringPlaneHits_v12.x_'].array()[el])  #Arr of floats.  [0][0] fails.
-            etraj_y_sp = _pad_array(t['EcalScoringPlaneHits_v12.y_'].array()[el])
-            etraj_z_sp = _pad_array(t['EcalScoringPlaneHits_v12.z_'].array()[el])
-            etraj_px_sp = _pad_array(t['EcalScoringPlaneHits_v12.px_'].array()[el])
-            etraj_py_sp = _pad_array(t['EcalScoringPlaneHits_v12.py_'].array()[el])
-            etraj_pz_sp = _pad_array(t['EcalScoringPlaneHits_v12.pz_'].array()[el])
-
-            # Want [(x, y, z), ()...]
-            print(awkward.type(etraj_x_sp))
-            print(awkward.type(etraj_y_sp))
-            etraj_sp = np.column_stack((etraj_x_sp, etraj_y_sp, etraj_z_sp))
-
-            # Create vectors holding the electron/photon momenta so the trajectory projections can be found later
-            # Set xtraj_p_norm relative to z=1 to make projecting easier:
-            E_beam = 4000.0  # In GeV
-            target_dist = 241.5 # distance from ecal to target, mm
-            """
-            etraj_p_norm = []
-            for i in range(len(etraj_pz_sp)):
-                if etraj_pz_sp[i] != 0 and has_e[i]:
-                    etraj_p_norm.append((etraj_px_sp[i]/etraj_pz_sp[i], etraj_py_sp[i]/etraj_pz_sp[i], 1.0))
-                else:
-                    etraj_p_norm.append((0,0,0))
-            """
-            
-            etraj_p_norm = np.zeros((len(etraj_pz_sp), 3), dtype='float32') #[]
-            ptraj_p_norm = np.zeros((len(etraj_pz_sp), 3), dtype='float32') #[]
-            ptraj_sp     = np.zeros((len(etraj_pz_sp), 3), dtype='float32') #[]  # (x, y, z) of projected photon hit @ ecal SP
-            for i in range(len(etraj_pz_sp)):
-                #print(ptraj_sp.shape)
-                if etraj_pz_sp[i] != 0 and has_e[i]:
-                    etraj_p_norm[i,:] = (etraj_px_sp[i]/etraj_pz_sp[i], etraj_py_sp[i]/etraj_pz_sp[i], 1.0)
-                    ptraj_p_norm[i,:] = (-etraj_px_sp[i]/(E_beam - etraj_pz_sp[i]), -etraj_py_sp[i]/(E_beam - etraj_pz_sp[i]), 1.0)
-                    #print(ptraj_sp.shape)
-                    #print(ptraj_sp[i,:])
-                    ptraj_sp[i,:]     = (etraj_x_sp[i] + target_dist*(ptraj_p_norm[i][0] - etraj_p_norm[i][0]),
-                                         etraj_y_sp[i] + target_dist*(ptraj_p_norm[i][1] - etraj_p_norm[i][1]),
-                                         etraj_z_sp[i])
-                else:
-                    etraj_p_norm[i,:] = (0,0,0)
-                    ptraj_p_norm[i,:] = (0,0,0)
-                    ptraj_sp[i,:]     = (0,0,0)
-
-            # Calc z relative to ecal face
-            """
-            etraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float32')  # Note the 2:  Only storing start and pvec_norm
-            ptraj_ref = np.zeros((len(etraj_p_norm), 2, 3), dtype='float32')
-            # Format is [event#] x [start of traj/p_norm] x [etraj_xyz]
-            for i in range(len(etraj_p_norm)):
-                etraj_ref[i][0][0] = etraj_x_sp[i]
-                etraj_ref[i][0][1] = etraj_y_sp[i]
-                etraj_ref[i][0][2] = etraj_z_sp[i]
-                etraj_ref[i][1][0] = etraj_p_norm[i][0]
-                etraj_ref[i][1][1] = etraj_p_norm[i][1]
-                etraj_ref[i][1][2] = etraj_p_norm[i][2]
-                ptraj_ref[i][0][0] = ptraj_sp[i][0]
-                ptraj_ref[i][0][1] = ptraj_sp[i][1]
-                ptraj_ref[i][0][2] = ptraj_sp[i][2]
-                ptraj_ref[i][1][0] = ptraj_p_norm[i][0]
-                ptraj_ref[i][1][1] = ptraj_p_norm[i][1]
-                ptraj_ref[i][1][2] = ptraj_p_norm[i][2]
-            table['etraj_ref'] = etraj_ref
-            table['ptraj_ref'] = ptraj_ref
-            """
-            table['etraj_sp'] = etraj_sp
-            table['ptraj_sp'] = ptraj_sp
-            table['enorm_sp'] = etraj_p_norm
-            table['pnorm_sp'] = ptraj_p_norm
-            
-            print("Finished loading coord ref")
-            print("Usage after coord ref: {}".format(psutil.virtual_memory().percent))
-
-
-        def _load_recoil_pt(t, table):
-            if len(obs_branches):
-                # Note:  0.177 value may be wrong...but should be first SP after target.
-                el = (t['TargetScoringPlaneHits_v12.pdgID_'].array() == 11) * \
-                     (t['TargetScoringPlaneHits_v12.z_'].array() > 0.176) * \
-                     (t['TargetScoringPlaneHits_v12.z_'].array() < 0.178) * \
-                     (t['TargetScoringPlaneHits_v12.pz_'].array() > 0)
-                #table['TargetSPRecoilE_pt'] = np.sqrt(t['TargetScoringPlaneHits_v12.px_'].array()[el] ** 2 + t['TargetScoringPlaneHits_v12.py_'].array()[el] ** 2).pad(1, clip=True).fillna(-999).flatten()
-                
-                tmp = np.sqrt(t['TargetScoringPlaneHits_v12.px_'].array()[el] ** 2 + t['TargetScoringPlaneHits_v12.py_'].array()[el] ** 2)
-                tmp = awkward.pad_none(tmp, 1, clip=True)
-                otmp = awkward.fill_none(tmp, -999)
-                table['TargetSPRecoilE_pt'] = awkward.flatten(tmp)
-
-
-        def _read_file(t, table):
-            print("    Usage before read file: {}".format(psutil.virtual_memory().percent))
-            # load data from one file
-            start, stop = [int(x * len(table[self._branches[0]])) for x in load_range]
-            #print("start, stop: ", (start, stop))
-            for k in table:
-                table[k] = table[k][start:stop]
-            n_inclusive = len(table[self._branches[0]])  # before preselection
-
-
-
-            if apply_preselection:
-                pos_pass_presel = awkward.sum(table[self._energy_branch] > 0, axis=1) < MAX_NUM_ECAL_HITS
-                # NEW:
-                pos_pass_presel = (table['EcalVeto_v12.summedTightIso_'] < MAX_ISO_ENERGY) * pos_pass_presel
-                for k in table:
-                    table[k] = table[k][pos_pass_presel]
-            n_selected = len(table[self._branches[0]])  # after preselection
-            #print("EVENTS BEFORE PRESELECTION (in _read_file):  {}".format(n_inclusive))
-            #print("EVENTS AFTER PRESELECTION: ", n_selected)
-
-            if n_selected == 0:   #Ignore this file
-                print("ERROR:  ParticleNet can't handle files with no events passing selection!")
-
-            print("    Usage before array creation: {}".format(psutil.virtual_memory().percent))
-            eid = table[self._id_branch]
-            energy = table[self._energy_branch]
-            pos = (energy > 0)
-            eid = eid[pos]  # Gets rid of all (AND ONLY) hits with 0 energy
-            energy = energy[pos]
-            (x, y, z), layer_id = self._parse_cid(eid)  # layer_id > 0, so can use layer_id-1 to index e/ptraj_ref
-
-            # Now, work with table['etraj_ref'] and table['ptraj_ref'].
-            # Create lists:  x/y/z_e, p
-            # For each event, look through all hits.
-            # - Determine whether hit falls inside either the e or p RoCs
-            # - If so, fill corresp xyzlayer, energy, eid lists...
-            x_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')  # In theory, can lower size of 2nd dimension...
-            y_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            z_e =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            log_energy_e =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            layer_id_e =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            """
-            x_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            y_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            z_p =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            log_energy_p =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            layer_id_p =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            # Optional 3rd region:
-            
-            x_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            y_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            z_o =           np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            log_energy_o =  np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            layer_id_o =    np.zeros((len(x), MAX_NUM_ECAL_HITS), dtype='float32')
-            """
-            print("    Usage after array creation: {}".format(psutil.virtual_memory().percent))
-            
-            for i in range(len(x)):  # For every event...
-                etraj_sp = table['etraj_sp'][i]  #table['etraj_ref'][i][0]  # e- location at scoring plane (approximate)
-                enorm_sp = table['enorm_sp'][i]  #table['etraj_ref'][i][1]  # normalized (dz=1) momentum = direction of trajectory
-                ptraj_sp = table['ptraj_sp'][i]  #table['ptraj_ref'][i][0]
-                pnorm_sp = table['pnorm_sp'][i]  #table['ptraj_ref'][i][1]
-                for j in range(len(x[i])):  #range(MAX_NUM_ECAL_HITS):  # For every hit...
-                    layer_index = int(layer_id[i][j])
-                    # Calculate xy coord of point on projected trajectory in same layer
-                    delta_z = self._layerZs[layer_index] - etraj_sp[2]
-                    etraj_point = (etraj_sp[0] + enorm_sp[0]*delta_z, etraj_sp[1] + enorm_sp[1]*delta_z)
-                    ptraj_point = (ptraj_sp[0] + pnorm_sp[0]*delta_z, ptraj_sp[1] + pnorm_sp[1]*delta_z)
-                    # Additionally, calculate recoil angle (angle of pnorm_sp):
-                    recoilangle = enorm_sp[2] / np.sqrt(enorm_sp[0]**2 + enorm_sp[1]**2 + enorm_sp[2]**2)
-                    recoil_p = np.sqrt(enorm_sp[0]**2 + enorm_sp[1]**2 + enorm_sp[2]**2)
-                    ir = -1
-                    #if recoilangle==-1 or recoil_p==-1:  ir = 1  # Not used for now
-                    if recoilangle<10 and recoil_p<500:
-                        ir = 1
-                    elif recoilangle<10 and recoil_p >= 500:
-                        ir = 2
-                    elif recoilangle<=20:
-                        ir = 3
-                    else:
-                        ir = 4
-                    # Determine what regions the hit falls into:
-                    insideElectronRadius = np.sqrt((etraj_point[0] - x[i][j])**2 + \
-                            (etraj_point[1] - y[i][j])**2) < 1.0 * radius_68[ir][layer_index]
-                    insidePhotonRadius   = np.sqrt((ptraj_point[0] - x[i][j])**2 + \
-                            (ptraj_point[1] - y[i][j])**2) < 1.0 * radius_68[ir][layer_index]
-                    # NEW:  If an SP electron hit is missing, place all hits in the event into the "other" region
-                    # 3-region:
-                    if enorm_sp[0] == 0 and enorm_sp[1] == 0:
-                        insideElectronRadius = False
-                        insidePhotonRadius   = False
-                    
-                    insideElectronRadius = True
-                    if insideElectronRadius:
-                        x_e[i][j] = x[i][j] - etraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
-                        y_e[i][j] = y[i][j] - etraj_point[1]
-                        z_e[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
-                        log_energy_e[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
-                        layer_id_e[i][j] = layer_id[i][j]
-                    """
-                    if insidePhotonRadius:
-                        x_p[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
-                        y_p[i][j] = y[i][j] - ptraj_point[1]
-                        z_p[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
-                        log_energy_p[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
-                        layer_id_p[i][j] = layer_id[i][j]
-                    else:
-                        x_o[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the first ecal hit
-                        y_o[i][j] = y[i][j] - ptraj_point[1]
-                        z_o[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
-                        log_energy_o[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
-                        layer_id_o[i][j] = layer_id[i][j]
-                    """
-            print("    Usage after region determination: {}".format(psutil.virtual_memory().percent))        
-
-            var_dict = {'log_energy_e':log_energy_e,
-                        'x_e':x_e, 'y_e':y_e, 'z_e':z_e, 'layer_id_e':layer_id_e,
-                        #'log_energy_p':log_energy_p,
-                        #'x_p':x_e, 'y_p':y_p, 'z_p':z_p, 'layer_id_p':layer_id_p,
-                        #'log_energy_o':log_energy_o,
-                        #'x_o':x_o, 'y_o':y_o, 'z_o':z_o, 'layer_id_o':layer_id_o,
-                        #'etraj_ref':np.array(table['etraj_ref']),  # No longer seems necessary
-                        #'ptraj_ref':np.array(table['ptraj_ref']),
-                       }
-
-            obs_dict = {k: table[k] for k in obs_branches + ecal_veto_branches}
-
-            return (n_inclusive, n_selected), var_dict, obs_dict
-
-        def _load_dataset(filelist, name):
-            # load data from all files in the siglist or bkglist
-            n_sum = 0
-            for extra_label in filelist:
-                filepath, max_event = filelist[extra_label]
-                if len(glob.glob(filepath)) == 0:
-                    print('No matches for filepath %s: %s, skipping...' % (extra_label, filepath))
-                    return
-                if ignore_evt_limits:
-                    max_event = -1
-                n_total_inclusive = 0
-                n_total_selected = 0
-                var_dict = {}
-                obs_dict = {k:[] for k in obs_branches + ecal_veto_branches}
-                # NEW:  Dictionary storing particle data for e/p trajectory
-                # Want position, momentum of e- hit; calc photon info from it
-                spHit_dict = {}
-                print('Start loading dataset %s (%s)' % (filepath, name))
-
-                with tqdm.tqdm(glob.glob(filepath)) as tq:
-                    for fp in tq:
-                        print("    Usage before file load: {}".format(psutil.virtual_memory().percent))
-                        t = uproot.open(fp)['LDMX_Events']
-                        if len(t.keys()) == 0:
-#                             print('... ignoring empty file %s' % fp)
-                            continue
-                        load_branches = [k for k in self._branches + obs_branches if '.' in k and k[-1] == '_']
-                        table_temp = t.arrays(expressions=load_branches, interpretation_executor=executor)  #, library="ak")
-                        table = {}
-                        for k in load_branches:
-                            table[k] = table_temp[k]
-
-
-                        # Now go through and load Ecal branches separately.
-                        # New branch for cut:
-                        EcalVeto = t["EcalVeto_v12"]
-                        #table["EcalVeto_v12.summedTightIso_"] = EcalVeto["summedTightIso_"].array(interpretation_executor=executor)
-                        # All other ecal branches:
-                        if ecal_veto_branches:  # Was veto_branches; also commented the summedTightIso line
-                            for branch in ecal_veto_branches:
-                                #table["EcalVeto_v12."+branch] = EcalVeto[branch].array(interpretation_executor=executor)
-                                table[branch] = EcalVeto[branch.split('.')[1]].array(interpretation_executor=executor)
-
-                        _load_coord_ref(t, table)
-                        _load_recoil_pt(t, table)
-
-                        (n_inc, n_sel), v_d, o_d = _read_file(t, table)
-
-                        n_total_inclusive += n_inc
-                        n_total_selected += n_sel
-                        #print("N_SELECTED:  ", n_sel)
-                        #print("TOTAL SELECTED:  ", n_total_selected)
-
-                        for k in v_d:
-                            if k in var_dict:
-                                var_dict[k].append(v_d[k])
-                            else:
-                                var_dict[k] = [v_d[k]]
-                        for k in obs_dict:
-                            obs_dict[k].append(o_d[k])
-                        if max_event > 0 and n_total_selected >= max_event:
-                            break
-
-                        print("    Usage after loaded file: {}".format(psutil.virtual_memory().percent))
-                        gc.collect()  # May reduce RAM usage
-
-                # calc preselection eff before dropping events more than `max_event`
-                self.presel_eff[extra_label] = float(n_total_selected) / n_total_inclusive
-                # now we concat the arrays and remove the extra events if needed
-                n_total_loaded = None
-                upper = None
-                if max_event > 0 and max_event < n_total_selected:
-                    upper = max_event - n_total_selected
-                for k in var_dict:
-                    var_dict[k] = _concat(var_dict[k])[:upper]
-                    if n_total_loaded is None:
-                        n_total_loaded = len(var_dict[k])
-                    else:
-                        assert(n_total_loaded == len(var_dict[k]))
-                for k in obs_dict:
-                    obs_dict[k] = _concat(obs_dict[k])[:upper]
-                    assert(n_total_loaded == len(obs_dict[k]))
-                print('Total %d events, selected %d events, finally loaded %d events.' % (n_total_inclusive, n_total_selected, n_total_loaded))
-
-                self.extra_labels.append(extra_label * np.ones(n_total_loaded, dtype='int32'))
-                for k in var_dict:
-                    if k in self.var_data:
-                        self.var_data[k].append(var_dict[k])
-                    else:
-                        self.var_data[k] = [var_dict[k]]
-                for k in obs_branches + ecal_veto_branches:
-                    self.obs_data[k].append(obs_dict[k])
-                n_sum += n_total_loaded
-                
-                gc.collect()
-                print("Usage after load: {}".format(psutil.virtual_memory().percent))
-                print("RETURNING", n_sum)
-            return n_sum
-
-        nsig = _load_dataset(siglist, 'sig')
-        nbkg = _load_dataset(bkglist, 'bkg')
-        print("Preparing to train on {} background events, {} (total) signal events".format(nbkg, nsig)) 
-
-       # label for training
-        self.label = np.zeros(nsig + nbkg, dtype='float32')
-        self.label[:nsig] = 1
-
-        self.extra_labels = np.concatenate(self.extra_labels)
-        for k in self.var_data:
-            self.var_data[k] = _concat(self.var_data[k])
-        for k in obs_branches + ecal_veto_branches:
-            self.obs_data[k] = _concat(self.obs_data[k])
+        # Load all necessary info into var_data:
+        self._load_event_data(label, filename, file_index)
 
         # training features
         # Multiple regions:
         """
-        coords_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']), axis=1)
-        coords_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p']), axis=1)
-        coords_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o']), axis=1)
+        coords_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']))
+        coords_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p']))
+        coords_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o']))
         self.coordinates = np.stack((coords_e, coords_p, coords_o))
-        del coords_e
-        del coords_p
-        del coords_o
-        features_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']), axis=1)
-        features_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']), axis=1)
-        features_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']), axis=1)
+        features_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']))
+        features_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']))
+        features_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']))
         self.features    = np.stack((features_e, features_p, features_o))
-        del features_e
-        del features_p
-        del features_o
         """
         # 1 region:
-        self.coordinates = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']), axis=1)
-        self.features    = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'],
-                                     self.var_data['layer_id_e'], self.var_data['log_energy_e']), axis=1)
-        #assert(len(self.coordinates) == len(self.label))
-        #assert(len(self.features) == len(self.label))
+        # NOTE:  self.coordinates -> coordinates, etc.
+        coordinates = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']))  #, axis=1)
+        features    = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'],
+                                self.var_data['layer_id_e'], self.var_data['log_energy_e']))  #, axis=1)
+        #print("COORD SHAPE:", coordinates.shape)
+        #print("FEATURES SHAPE:", features.shape)
+        #print("FIRST FEW COORDS ARE:")
+        #print(coordinates[:,:5])
 
-        # NEW:  Free up old variables after the coords and features have been assigned
-        #for key, item in self.var_data.items():
-        #    del item
-        #for key, item in self.obs_data.items():
-        #    del item
-        gc.collect()
-        print("Usage after coord+feature creation: {}".format(psutil.virtual_memory().percent))
+        return coordinates, features, label
+
+
+    def _load_sp_data(self):
+        #print("    Usage before coord ref: {}".format(psutil.virtual_memory().percent))
+        pdgID_leaf = self.ttree.GetLeaf('pdgID_')
+        z_leaf     = self.ttree.GetLeaf('z_')
+        pz_leaf    = self.ttree.GetLeaf('pz_')
+        pdgID_ = [int(pdgID_leaf.GetValue(i)) for i in range(pdgID_leaf.GetLen())]
+        z_     = [z_leaf.GetValue(i)          for i in range(z_leaf.GetLen())    ]
+        pz_    = [pz_leaf.GetValue(i)         for i in range(pz_leaf.GetLen())   ]
+        el_ = 0  # SP index of recoil electron
+        pmax = 0  # Max pz
+        max_index = 0
+        for j in range(pdgID_leaf.GetLen()):
+            if pdgID_[j] == 11 and z_[j] > 240 and z_[j] < 241 and pz_[j] > pmax:
+                pmax = pz_[j]
+                el_ = j
+                #print("FOUND SP CANDIDATE")
+        has_e = pmax != 0  # Check whether event has a SP electron
+        
+        etraj_x_sp  = self.ttree.GetLeaf('x_').GetValue(el_)  #_pad_array(t['EcalScoringPlaneHits_v12.x_'].array()[el])  #Arr of floats.  [0][0] fails.
+        etraj_y_sp  = self.ttree.GetLeaf('y_').GetValue(el_)
+        etraj_z_sp  = self.ttree.GetLeaf('z_').GetValue(el_)
+        etraj_px_sp = self.ttree.GetLeaf('px_').GetValue(el_)
+        etraj_py_sp = self.ttree.GetLeaf('py_').GetValue(el_)
+        etraj_pz_sp = self.ttree.GetLeaf('pz_').GetValue(el_)
+
+        self.etraj_sp = np.array((etraj_x_sp, etraj_y_sp, etraj_z_sp))
+
+        # Create vectors holding the electron/photon momenta so the trajectory projections can be found later
+        # Set xtraj_p_norm relative to z=1 to make projecting easier:
+        E_beam = 4000.0  # In MeV
+        target_dist = 241.5 # distance from ecal to target, mm
+        
+        if etraj_pz_sp != 0 and has_e:
+            # was etraj_p_norm, -> enorm_sp; etc.
+            self.enorm_sp = np.array((etraj_px_sp/etraj_pz_sp, etraj_py_sp/etraj_pz_sp, 1.0))
+            self.pnorm_sp = np.array((-etraj_px_sp/(E_beam - etraj_pz_sp), -etraj_py_sp/(E_beam - etraj_pz_sp), 1.0))
+            #print(ptraj_sp.shape)
+            #print(ptraj_sp[i,:])
+            self.ptraj_sp = np.array((etraj_x_sp + target_dist*(self.pnorm_sp[0] - self.enorm_sp[0]),
+                                      etraj_y_sp + target_dist*(self.pnorm_sp[1] - self.enorm_sp[1]),
+                                      etraj_z_sp))
+        else:
+            self.enorm_sp = np.array((0,0,0))
+            self.pnorm_sp = np.array((0,0,0))
+            self.ptraj_sp = np.array((0,0,0))
+
+        #print("IN _load_sp_data():")
+        #print("etraj_sp:", self.etraj_sp)
+        #print("ptraj_sp:", self.ptraj_sp)
+        #print("enorm_sp:", self.enorm_sp)
+        #print("pnorm_sp:", self.pnorm_sp)
+          
+
+
+    def _read_event(self):
+        # Fill var_dict and obs_dict:
+        # obs_dict contains obs_branches info loaded from train.py; saved for plotting
+        # var_dict contains info necessary for PN:  x, y, z, layer, log(E); more if other regions included
+
+        eid_leaf    = self.ttree.GetLeaf(self._id_branch)
+        energy_leaf = self.ttree.GetLeaf(self._energy_branch)
+        eid    = np.array([eid_leaf.GetValue(i)    for i in range(eid_leaf.GetLen())   ], dtype='int')  #table[self._id_branch]
+        energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float32')  #table[self._energy_branch]
+        pos = (energy > 0)
+        eid = eid[pos]  # Gets rid of all (AND ONLY) hits with 0 energy
+        energy = energy[pos]
+        (x, y, z), layer_id = self._parse_cid(eid)  # layer_id > 0, so can use layer_id-1 to index e/ptraj_ref
+
+        # Now, work with table['etraj_ref'] and table['ptraj_ref'].
+        # Create lists:  x/y/z_e, p
+        # For each event, look through all hits.
+        # - Determine whether hit falls inside either the e or p RoCs
+        # - If so, fill corresp xyzlayer, energy, eid lists...
+        x_e =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')  # In theory, can lower size of 2nd dimension...
+        y_e =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        z_e =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        log_energy_e =  np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        layer_id_e =    np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        """
+        x_p =           np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
+        y_p =           np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
+        z_p =           np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
+        log_energy_p =  np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
+        layer_id_p =    np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
+        # Optional 3rd region:
+            
+        x_o =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        y_o =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        z_o =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        log_energy_o =  np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        layer_id_o =    np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        
+        print("    Usage after array creation: {}".format(psutil.virtual_memory().percent))
+        """
+
+        for j in range(eid_leaf.GetLen()):  #range(MAX_NUM_ECAL_HITS):  # For every hit...
+
+            layer_index = int(layer_id[j])
+            # Calculate xy coord of point on projected trajectory in same layer
+            delta_z = self._layerZs[layer_index] - self.etraj_sp[2]
+            etraj_point = (self.etraj_sp[0] + self.enorm_sp[0]*delta_z, self.etraj_sp[1] + self.enorm_sp[1]*delta_z)
+            ptraj_point = (self.ptraj_sp[0] + self.pnorm_sp[0]*delta_z, self.ptraj_sp[1] + self.pnorm_sp[1]*delta_z)
+            # Additionally, calculate recoil angle (angle of pnorm_sp):
+            recoilangle = self.enorm_sp[2] / np.sqrt(self.enorm_sp[0]**2 + self.enorm_sp[1]**2 + self.enorm_sp[2]**2) if self.enorm_sp[2] > 0 else 0
+            recoil_p = np.sqrt(self.enorm_sp[0]**2 + self.enorm_sp[1]**2 + self.enorm_sp[2]**2)
+            ir = -1
+            #if recoilangle==-1 or recoil_p==-1:  ir = 1  # Not used for now
+            if recoilangle < 10 and recoil_p < 500:
+                ir = 1
+            elif recoilangle < 10 and recoil_p >= 500:
+                ir = 2
+            elif recoilangle <= 20:
+                ir = 3
+            else:
+                ir = 4
+            # Determine what regions the hit falls into:
+            insideElectronRadius = np.sqrt((etraj_point[0] - x[j])**2 + \
+                    (etraj_point[1] - y[j])**2) < 1.0 * radius_68[ir][layer_index]
+            insidePhotonRadius   = np.sqrt((ptraj_point[0] - x[j])**2 + \
+                    (ptraj_point[1] - y[j])**2) < 1.0 * radius_68[ir][layer_index]
+            # NEW:  If an SP electron hit is missing, place all hits in the event into the "other" region
+            # 3-region:
+            if self.enorm_sp[0] == 0 and self.enorm_sp[1] == 0:
+                insideElectronRadius = False
+                insidePhotonRadius   = False
+            
+            insideElectronRadius = True
+            if insideElectronRadius:
+                x_e[j] = x[j] - etraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
+                y_e[j] = y[j] - etraj_point[1]
+                z_e[j] = z[j] - self._layerZs[0]  # Defined relative to the ecal face
+                log_energy_e[j] = np.log(energy[j]) if energy[j] > 0 else 0
+                layer_id_e[j] = layer_id[j]
+            """
+            if insidePhotonRadius:
+                x_p[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
+                y_p[i][j] = y[i][j] - ptraj_point[1]
+                z_p[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
+                log_energy_p[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
+                layer_id_p[i][j] = layer_id[i][j]
+            else:
+                x_o[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the photon traj
+                y_o[i][j] = y[i][j] - ptraj_point[1]
+                z_o[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
+                log_energy_o[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
+                layer_id_o[i][j] = layer_id[i][j]
+            """
+        #print("    Usage after region determination: {}".format(psutil.virtual_memory().percent))        
+
+        #print("Results given to var_dict:")
+        #print("x_e:", x_e)
+        #print("logE:", log_energy_e)
+
+        var_dict = {'log_energy_e':log_energy_e,
+                    'x_e':x_e, 'y_e':y_e, 'z_e':z_e, 'layer_id_e':layer_id_e,
+                    #'log_energy_p':log_energy_p,
+                    #'x_p':x_e, 'y_p':y_p, 'z_p':z_p, 'layer_id_p':layer_id_p,
+                    #'log_energy_o':log_energy_o,
+                    #'x_o':x_o, 'y_o':y_o, 'z_o':z_o, 'layer_id_o':layer_id_o,
+                    #'etraj_ref':np.array(table['etraj_ref']),  # No longer seems necessary
+                    #'ptraj_ref':np.array(table['ptraj_ref']),
+                   }
+
+        # Lastly, load obs_dict:
+        o_dict = {}
+        for branch in self.obs_branches:
+            #print("Branch:", branch)
+            o_leaf = self.ttree.GetLeaf(branch)
+            #print("oleaf:", o_leaf)
+            o_arr = np.array([o_leaf.GetValue(i) for i in range(o_leaf.GetLen())], dtype='float32')
+            o_dict[branch] = o_arr
+
+        #print("obs_dict, loaded:")
+        #for b in self.obs_branches:
+        #    print(b, o_dict[b])
+
+        return var_dict, o_dict
+
+
+    def _load_event_data(self, label, filename, file_index):
+        # load data from the passed event
+        var_dict = {}
+
+        # MUST BE HEAVILY REDONE.
+        # Goal:  load data from selected event (1 event!) into var_dict.
+        # Use ROOT, not uproot.
+        # *NOTE*:  Will still load data before processing, but now only storing data for ONE event.
+
+        tfile = r.TFile(filename)
+        self.ttree = tfile.Get('skimmed_events')
+        # Prepare to load data from event [file_index]:
+        self.ttree.GetEntry(file_index)
+        self._load_sp_data()
+
+        # Fill var_dict and obs_dict:
+        # obs_dict contains obs_branches info loaded from train.py; saved for plotting
+        # var_dict contains info necessary for PN:  x, y, z, layer, log(E); more if other regions included
+        self.var_data, o_d = self._read_event() #???  #t, table)
+        
+        # self.var_data is used by _load_...().  o_d data must be saved:
+        for branch in self.obs_branches:
+            self.obs_dict[branch].append(o_d[branch])
+
+
+
+        """
+
+        for k in var_dict:
+                if k in self.var_data:
+                    self.var_data[k].append(var_dict[k])
+                else:
+                    self.var_data[k] = [var_dict[k]]
+            for k in obs_branches + ecal_veto_branches:
+                self.obs_data[k].append(obs_dict[k])
+
+
+
+                   print("    Usage after loaded file: {}".format(psutil.virtual_memory().percent))
+                    gc.collect()  # May reduce RAM usage
+
+            # now we concat the arrays and remove the extra events if needed
+            n_total_loaded = None
+            upper = None
+            if max_event > 0 and max_event < n_total_selected:
+                upper = max_event - n_total_selected
+            for k in var_dict:
+                var_dict[k] = _concat(var_dict[k])[:upper]
+                if n_total_loaded is None:
+                    n_total_loaded = len(var_dict[k])
+                else:
+                    assert(n_total_loaded == len(var_dict[k]))
+            for k in obs_dict:
+                obs_dict[k] = _concat(obs_dict[k])[:upper]
+                assert(n_total_loaded == len(obs_dict[k]))
+            print('Total %d events, selected %d events, finally loaded %d events.' % (n_total_inclusive, n_total_selected, n_total_loaded))
+
+            #self.extra_labels.append(extra_label * np.ones(n_total_loaded, dtype='int32'))
+            for k in var_dict:
+                if k in self.var_data:
+                    self.var_data[k].append(var_dict[k])
+                else:
+                    self.var_data[k] = [var_dict[k]]
+            for k in obs_branches + ecal_veto_branches:
+                self.obs_data[k].append(obs_dict[k])
+            n_sum += n_total_loaded
+                
+            gc.collect()
+            print("Usage after load: {}".format(psutil.virtual_memory().percent))
+            print("RETURNING", n_sum)
+        return n_sum
+        """
+
+    # NOTE/WARNING:  After use, obs_dict will consist of np arrays, not lists, and cannot be appended to.
+    # Shouldn't be an issue--should never need to call get() again after calling get_obs_data.
+    def get_obs_data(self):
+        for branch in self.obs_branches:
+            self.obs_dict[branch] = np.concatenate(self.obs_dict[branch])
+        return self.obs_dict
 
 
     def _load_cellMap(self, version='v12'):
@@ -542,14 +479,15 @@ class ECalHitsDataset(Dataset):
     def _parse_cid(self, cid):  # Retooled for v12
         # For id details, see (?):  DetDescr/src/EcalID.cxx
         # Flatten arrays to 1D numpy arrays so zip, map will work
-        cell   = (awkward.to_numpy(awkward.flatten(cid)) >> 0)  & 0xFFF
-        module = (awkward.to_numpy(awkward.flatten(cid)) >> 12) & 0x1F
-        layer  = (awkward.to_numpy(awkward.flatten(cid)) >> 17) & 0x3F
+        # NOTE:  Now input arrays are 1D numpy arrays!  Much simpler.
+        cell   = (cid >> 0)  & 0xFFF #(awkward.to_numpy(awkward.flatten(cid)) >> 0)  & 0xFFF
+        module = (cid >> 12) & 0x1F  #(awkward.to_numpy(awkward.flatten(cid)) >> 12) & 0x1F
+        layer  = (cid >> 17) & 0x3F  #(awkward.to_numpy(awkward.flatten(cid)) >> 17) & 0x3F
         
         mcid = 10 * cell + module
         x, y = zip(*map(self._cellMap.__getitem__, mcid))
         z = list(map(self._layerZs.__getitem__, layer))
-
+        """
         def unflatten_array(x, base_array):
             # x = 1D flattened np array, base_array has the desired shape
             return awkward.Array(awkward.layout.ListOffsetArray32(
@@ -561,22 +499,10 @@ class ECalHitsDataset(Dataset):
         y        = unflatten_array(y, cid)
         z        = unflatten_array(z, cid)
         layer_id = unflatten_array(layer, cid)
+        """
+        return (x, y, z), layer
 
-        return (x, y, z), layer_id
 
-    @property
-    def num_features(self):
-        return self.features.shape[1]
-        #return self.features.shape[2]  # Modified
-
-    def __len__(self):
-        return len(self.features)
-
-    def __getitem__(self, i):  # NOTE:  This now returns e/p data.  May need modification.
-        pts = self.coordinates[i]
-        fts = self.features[i]
-        y = self.label[i]
-        return pts, fts, y
 
 
 class _SimpleCustomBatch:

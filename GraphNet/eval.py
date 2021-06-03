@@ -1,5 +1,9 @@
 from __future__ import print_function
 
+print("Importing ROOT")
+import ROOT as r
+print("ROOT imported")
+
 import resource
 #resource.setrlimit(resource.RLIMIT_NOFILE, (1048576, 1048576))
 
@@ -23,7 +27,7 @@ from dataset import collate_wrapper as collate_fn
 parser = argparse.ArgumentParser()
 parser.add_argument('--test-sig', type=str, default='')
 parser.add_argument('--test-bkg', type=str, default='')
-parser.add_argument('--coord-ref', type=str, default='ecal_sp', choices=['none', 'ecal_sp', 'target_sp', 'ecal_centroid'])
+i#parser.add_argument('--coord-ref', type=str, default='ecal_sp', choices=['none', 'ecal_sp', 'target_sp', 'ecal_centroid'])
 parser.add_argument('--save-extra', action='store_true', default=False)
 parser.add_argument('--network', type=str, default='particle-net-lite', choices=['particle-net', 'particle-net-lite', 'particle-net-k5', 'particle-net-k7'])
 parser.add_argument('--load-model-path', type=str, default='')
@@ -40,17 +44,18 @@ if args.save_extra:
     # NOW using v12:
     # Commented 
     obs_branches = [
-        #'ecalDigis_recon.id_',
-        #'ecalDigis_recon.energy_',
+        'discValue_',
+        'recoilX_',
+        'recoilY_',
         'TargetSPRecoilE_pt',
         ]
 
     # NEW:  EcalVeto branches must be handled separately in v2.2.1+.
-    veto_branches = [
-        'discValue_',
-        'recoilX_',
-        'recoilY_',
-    ]
+    #veto_branches = [
+    #    'discValue_',
+    #    'recoilX_',
+    #    'recoilY_',
+    #]
 
 # model parameter
 if args.network == 'particle-net':
@@ -164,7 +169,8 @@ def run_one_file(filepath, extra_label=0):
         siglist = {extra_label:(filepath, -1)}
 
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
-    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, ignore_evt_limits=True, obs_branches=obs_branches, veto_branches=veto_branches, coord_ref=args.coord_ref)
+    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, ignore_evt_limits=True, obs_branches=obs_branches)
+                                #, veto_branches=veto_branches, coord_ref=args.coord_ref)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
 
@@ -173,7 +179,7 @@ def run_one_file(filepath, extra_label=0):
 #     test_extra_labels = test_data.extra_labels
 
     import awkward
-    out_data = test_data.obs_data
+    out_data = test_data.get_obs_data()
 #    out_data['ParticleNet_extra_label'] = test_extra_labels
     out_data['ParticleNet_disc'] = test_preds[:, 1]
     # OLD:

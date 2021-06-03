@@ -1,8 +1,10 @@
 from __future__ import print_function
 
-# TEMP
 import psutil
 
+print("Importing ROOT")
+import ROOT as r
+print("ROOT imported")
 
 import resource
 # Don't have permissions for this on pod...
@@ -27,8 +29,8 @@ from utils.SplitNet import SplitNet
 parser = argparse.ArgumentParser()
 parser.add_argument('--demo', action='store_true', default=False,
                     help='quickly test the setup by running over only a small number of events')
-parser.add_argument('--coord-ref', type=str, default='none', choices=['none', 'ecal_sp', 'target_sp', 'ecal_centroid'],
-                    help='refernce points for the x-y coordinates')
+#parser.add_argument('--coord-ref', type=str, default='none', choices=['none', 'ecal_sp', 'target_sp', 'ecal_centroid'],
+#                    help='refernce points for the x-y coordinates')
 parser.add_argument('--network', type=str, default='particle-net-lite', choices=['particle-net', 'particle-net-lite', 'particle-net-k5', 'particle-net-k7'],
                     help='network architecture')
 parser.add_argument('--focal-loss-gamma', type=float, default=2,
@@ -69,52 +71,61 @@ args = parser.parse_args()
 bkglist = {
     # (filepath, num_events_for_training)
     # In 
-    0: ('/home/pmasterson/GraphNet_input/v12/bkg_12M/*.root', -1)
-    #0: ('/home/pmasterson/GraphNet_input/v12/kaon_training/*.root', -1)
+    0: ('/home/pmasterson/GraphNet_input/v12/processed/*.root', -1)
     }
 
 siglist = {
     # (filepath, num_events_for_training)
     # NOTE:  the signal files in /v12/ are incorrect!  (Recent ldmx-sw change affecting signal hit distr)
-    1:    ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.001*.root', 200000),
-    10:   ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.01*.root',  200000),
-    100:  ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.1*.root',   200000),
-    1000: ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*1.0*.root',   200000),
+    1:    ('/home/pmasterson/GraphNet_input/v12/processed/*0.001*.root', 200000),
+    10:   ('/home/pmasterson/GraphNet_input/v12/processed/*0.01*.root',  200000),
+    100:  ('/home/pmasterson/GraphNet_input/v12/processed/*0.1*.root',   200000),
+    1000: ('/home/pmasterson/GraphNet_input/v12/processed/*1.0*.root',   200000),
     }
 
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        0: ('/home/pmasterson/GraphNet_input/v12/bkg_12M/*.root', 800)
+        0: ('/home/pmasterson/GraphNet_input/v12/processed/*.root', 800)
         }
 
     siglist = {
         # (filepath, num_events_for_training)
-        1:    ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.001*.root', 200),
-        10:   ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.01*.root',  200),
-        100:  ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.1*.root',   200),
-        1000: ('/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*1.0*.root',   200),
+        1:    ('/home/pmasterson/GraphNet_input/v12/processed/*0.001*.root', 200),
+        10:   ('/home/pmasterson/GraphNet_input/v12/processed/*0.01*.root',  200),
+        100:  ('/home/pmasterson/GraphNet_input/v12/processed/*0.1*.root',   200),
+        1000: ('/home/pmasterson/GraphNet_input/v12/processed/*1.0*.root',   200),
         }
+
+# NOTE:  Must manually pass this to PN from preprocessing input
+presel_eff = {1: 0.9622, 10: 0.9906, 100: 0.9957, 1000: 0.9982, 0: 0.025127295226218364}
+
 #########################################################
 
 ###### `observer` variables to be saved in the prediction output ######
+# NOTE:  Now unnecessary; only required branches are saved in the input files.
+# -> have to modify+rerun preprocessing script if new vars are required
+
 obs_branches = []
-veto_branches = []
+#veto_branches = []
 if args.save_extra:
-    # NOW using v12:
-    # Commented 
+    # Should match everything in plot_ldmx_nn.ipynb
+    # EXCEPT for ParticleNet_extra_label and ParticleNet_disc, which are computed after training
     obs_branches = [
-        #'ecalDigis_recon.id_',
-        #'ecalDigis_recon.energy_',
-        'TargetSPRecoilE_pt',
+        'discValue_',
+        'recoilX_',
+        'recoilY_',
+        'TargetSPRecoilE_pt'
         ]
     
     # NEW:  EcalVeto branches must be handled separately in v2.2.1+.
-    veto_branches = [
-        #'discValue_',  # Commented, will always be saved for now
-        #'recoilX_',  # Only add if want to look at missing-e events (now redundant w/ fiducial studies)
-        #'recoilY_',
-    ]
+    # ...and not anymore.
+    #veto_branches = [
+    #    #'discValue_',  # Commented, will always be saved for now
+    #    #'recoilX_',  # Only add if want to look at missing-e events (now redundant w/ fiducial studies)
+    #    #'recoilY_',
+    #]
+
 
 #########################################################
 #########################################################
@@ -179,9 +190,9 @@ dev = torch.device(args.device)
 if training_mode:
     # for training: we use the first 0-20% for testing, and 20-80% for training
     print("Usage: {}".format(psutil.virtual_memory().percent))
-    train_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), coord_ref=args.coord_ref)
+    train_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1))  #, coord_ref=args.coord_ref)
     print("Usage: {}".format(psutil.virtual_memory().percent))
-    val_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), coord_ref=args.coord_ref)
+    val_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2))  #, coord_ref=args.coord_ref)
     print("Usage: {}".format(psutil.virtual_memory().percent))
     train_loader = DataLoader(train_data, num_workers=args.num_workers, batch_size=args.batch_size,
                               collate_fn=collate_fn, shuffle=True, drop_last=True, pin_memory=True)
@@ -196,8 +207,9 @@ if training_mode:
 else:
 
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
-    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, ignore_evt_limits=(not args.demo),
-                                obs_branches=obs_branches, veto_branches=veto_branches, coord_ref=args.coord_ref)
+    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, 
+                                obs_branches=obs_branches)  #, coord_ref=args.coord_ref)
+                                #obs_branches=obs_branches, veto_branches=veto_branches, coord_ref=args.coord_ref)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                              collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
 
@@ -223,12 +235,20 @@ def train(model, opt, scheduler, train_loader, dev):
     count = 0
     with tqdm.tqdm(train_loader) as tq:
         for batch in tq:
+            print("Shapes:")
+            print(batch.label.shape)  # looks fine
+            print(batch.coordinates.shape)
+            print(batch.features.shape)
             label = batch.label
             num_examples = label.shape[0]
             label = label.to(dev).squeeze().long()
+            print("squeezed label")
             opt.zero_grad()
+            print("did zero_grad")
             logits = model(batch.coordinates.to(dev), batch.features.to(dev))
+            print("got logits")
             loss = loss_func(logits, label)
+            print("| || || |_")
             loss.backward()
             opt.step()
 
@@ -345,7 +365,7 @@ info_dict = {'model_name':args.network,
              'model_path': args.load_model_path,
              'siglist': siglist,
              'bkglist': bkglist,
-             'presel_eff': test_data.presel_eff,
+             'presel_eff': presel_eff,  #test_data.presel_eff,
              }
 if training_mode:
     info_dict.update({'model_path': args.save_model_path})
@@ -355,7 +375,7 @@ for k in siglist:
     if k > 0:
         mass = '%d MeV' % k
         fpr, tpr, auc, acc = plotROC(test_preds, test_labels, sample_weight=np.logical_or(test_extra_labels == 0, test_extra_labels == k),
-                                     sig_eff=test_data.presel_eff[k], bkg_eff=test_data.presel_eff[0],
+                                     sig_eff=presel_eff[k], bkg_eff=presel_eff[0],
                                      output=os.path.splitext(args.test_output_path)[0] + 'ROC_%s.pdf' % mass, label=mass, xlim=[1e-6, .01], ylim=[0, 1], logx=True)
         info_dict[mass] = {'auc-presel': auc,
                            'acc-presel': acc,
@@ -374,7 +394,7 @@ with open(info_file, 'w') as f:
 # save prediction output
 import awkward
 pred_file = os.path.splitext(args.test_output_path)[0] + '_OUTPUT'
-out_data = test_data.obs_data
+out_data = test_data.get_obs_data()  #test_data.obs_data
 out_data['ParticleNet_extra_label'] = test_extra_labels
 out_data['ParticleNet_disc'] = test_preds[:, 1]
 # OUTDATED:

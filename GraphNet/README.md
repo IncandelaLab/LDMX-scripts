@@ -25,15 +25,21 @@ export PATH="$HOME/miniconda3/bin:$PATH"
 
 The following instruction is for training on Nvidia GPU w/ [CUDA](https://developer.nvidia.com/cuda-downloads) installed.
 
+NOTE:  A working installation of ldmx-sw is now required to facilitate data loading with ROOT.  After installing, you'll need to add `/path/to/ldmx-sw/install/lib` to `$LD_LIBRARY_PATH` (ideally in your `.bashrc`).
+
+To set up the conda environment, use:
+
 ```bash
 # create a new conda environment
-conda create -n pytorch python=3.7
+# OLD COMMAND:  conda create -n pytorch python=3.7
+# ROOT is now required for efficiency lazy data loading
+conda create -c conda-forge --name torchroot root
 
 # activate the environment
-conda activate pytorch
+conda activate torchroot
 
 # install the necessary python packages
-pip install numpy pandas scikit-learn scipy matplotlib tqdm
+pip install numpy pandas scikit-learn scipy matplotlib tqdm psutil
 
 # we use uproot to access ROOT files
 pip install uproot

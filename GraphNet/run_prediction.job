@@ -9,7 +9,7 @@ export BASE_DIRECTORY=/home/pmasterson/ParticleNet/LDMX-scripts/GraphNet
 cd $SLURM_SUBMIT_DIR
 
 /bin/hostname
-srun --gres=gpu:1 python -u train.py --predict --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME/output --num-workers 0 --device 'cuda:0'
+srun --gres=gpu:1 python -u train.py --predict --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME/output --num-workers 2 --device 'cuda:0'
 
 
 

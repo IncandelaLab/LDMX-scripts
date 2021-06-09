@@ -27,7 +27,7 @@ from dataset import collate_wrapper as collate_fn
 parser = argparse.ArgumentParser()
 parser.add_argument('--test-sig', type=str, default='')
 parser.add_argument('--test-bkg', type=str, default='')
-i#parser.add_argument('--coord-ref', type=str, default='ecal_sp', choices=['none', 'ecal_sp', 'target_sp', 'ecal_centroid'])
+#parser.add_argument('--coord-ref', type=str, default='ecal_sp', choices=['none', 'ecal_sp', 'target_sp', 'ecal_centroid'])
 parser.add_argument('--save-extra', action='store_true', default=False)
 parser.add_argument('--network', type=str, default='particle-net-lite', choices=['particle-net', 'particle-net-lite', 'particle-net-k5', 'particle-net-k7'])
 parser.add_argument('--load-model-path', type=str, default='')
@@ -169,18 +169,26 @@ def run_one_file(filepath, extra_label=0):
         siglist = {extra_label:(filepath, -1)}
 
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
-    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, ignore_evt_limits=True, obs_branches=obs_branches)
+    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, obs_branches=obs_branches)
                                 #, veto_branches=veto_branches, coord_ref=args.coord_ref)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
 
     test_preds = evaluate(model, test_loader, dev, return_scores=True)
+    print("First 10 pred values:", test_preds[:10])
     test_labels = test_data.label
 #     test_extra_labels = test_data.extra_labels
+
+    #for i in range(len(test_data)):
+    #    if i % 1000 == 0:  print("Getting event", i)
+    #    temp_var = test_data[i]
 
     import awkward
     out_data = test_data.get_obs_data()
 #    out_data['ParticleNet_extra_label'] = test_extra_labels
+    #print("PRINTING BRANCHES")
+    #for branch in out_data:
+    #    print(out_data[branch])
     out_data['ParticleNet_disc'] = test_preds[:, 1]
     # OLD:
     #awkward.save(pred_file, out_data, mode='w')

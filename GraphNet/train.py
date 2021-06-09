@@ -71,7 +71,7 @@ args = parser.parse_args()
 bkglist = {
     # (filepath, num_events_for_training)
     # In 
-    0: ('/home/pmasterson/GraphNet_input/v12/processed/*.root', -1)
+    0: ('/home/pmasterson/GraphNet_input/v12/processed/*pn*.root', -1)
     }
 
 siglist = {
@@ -86,7 +86,7 @@ siglist = {
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        0: ('/home/pmasterson/GraphNet_input/v12/processed/*.root', 800)
+        0: ('/home/pmasterson/GraphNet_input/v12/processed/*pn*.root', 800)
         }
 
     siglist = {
@@ -235,20 +235,12 @@ def train(model, opt, scheduler, train_loader, dev):
     count = 0
     with tqdm.tqdm(train_loader) as tq:
         for batch in tq:
-            print("Shapes:")
-            print(batch.label.shape)  # looks fine
-            print(batch.coordinates.shape)
-            print(batch.features.shape)
             label = batch.label
             num_examples = label.shape[0]
             label = label.to(dev).squeeze().long()
-            print("squeezed label")
             opt.zero_grad()
-            print("did zero_grad")
             logits = model(batch.coordinates.to(dev), batch.features.to(dev))
-            print("got logits")
             loss = loss_func(logits, label)
-            print("| || || |_")
             loss.backward()
             opt.step()
 
@@ -341,6 +333,13 @@ if training_mode:
                 torch.save(model, args.save_model_path + '_full.pt')
         torch.save(model.state_dict(), args.save_model_path + '_state_epoch-%d_acc-%.4f.pt' % (epoch, valid_acc))
         print('Current validation acc: %.5f (best: %.5f)' % (valid_acc, best_valid_acc))
+else:
+    # NOTE: NEW
+    # Need to load obs_dict info otherwise, which can only be done by calling __getitem__() once on every event.  So:
+    for i in range(len(test_data)):
+        if i % 1000 == 0:  print("Getting event", i)
+        temp_var = test_data[i]
+
 
 # load saved model
 model_path = args.load_model_path if args.predict else args.save_model_path
@@ -360,7 +359,6 @@ test_extra_labels = test_data.extra_labels
 
 info_dict = {'model_name':args.network,
              'model_params': {'conv_params':conv_params, 'fc_params':fc_params},
-             'coord_ref':args.coord_ref,
              'date': str(datetime.date.today()),
              'model_path': args.load_model_path,
              'siglist': siglist,
@@ -391,6 +389,7 @@ with open(info_file, 'w') as f:
     for k in info_dict:
         f.write('%s: %s\n' % (k, info_dict[k]))
 
+print("SAVING OUTPUT")
 # save prediction output
 import awkward
 pred_file = os.path.splitext(args.test_output_path)[0] + '_OUTPUT'
@@ -403,8 +402,10 @@ out_data['ParticleNet_disc'] = test_preds[:, 1]
 out_data = awkward.copy(awkward.Array(out_data))  # NOW trying a direct conversion from dict...
 # The copy may make the memory continguous...
 # Confirm that recoilX is nonzero...
+print("Sending to parquet")
 awkward.to_parquet(out_data, pred_file+'.parquet')
 
+print("DONE")
 
 # export to onnx
 # NOTE:  This isn't currently being used for anything

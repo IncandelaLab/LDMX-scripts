@@ -16,6 +16,8 @@ import ROOT as r
 import psutil
 import gc  # May reduce RAM usage
 
+import time # Can remove whenever
+
 executor = concurrent.futures.ThreadPoolExecutor(12)
 
 torch.set_default_dtype(torch.float32)
@@ -73,7 +75,8 @@ class ECalHitsDataset(Dataset):
     def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v12'):
         super(ECalHitsDataset, self).__init__()
         print("Initializing EcalHitsDataset")
-        print("GPU usage: {}".format(psutil.virtual_memory().percent))
+        print("GPU usage: {}%".format(psutil.virtual_memory().percent))
+        print("GPU available: {} GB".format(psutil.virtual_memory().available/1e9))
         # first load cell map
         self._load_cellMap(version=detector_version)
         # NOTE:  the new skimmed input doesn't have sub-branches anymore!
@@ -107,7 +110,7 @@ class ECalHitsDataset(Dataset):
         # event_list:  [[mass, filename, i_file], ...]
         self.event_list = []
         self.extra_labels = []  # mass in MeV if sig, 0 if bkg
-        print("   Filling event_list")
+        print("Filling event_list")
         # fill event_list to make event access easy
         filelist = {}
         for label, fname in bkglist.items():
@@ -120,7 +123,7 @@ class ECalHitsDataset(Dataset):
             if max_events == -1:
                 max_events = 1e8  # Unrealistically large so it never constrains the results
             num_loaded_events = 0  # Number of events so far for this mass
-            print("      Filling for m={}".format(extra_label))
+            print("   Filling for m={}".format(extra_label))
             for fp in glob.glob(filepath):
                 # For each file, check the number of events, then add to event_list accordingly
                 tfile = r.TFile(fp)
@@ -128,20 +131,21 @@ class ECalHitsDataset(Dataset):
                 f_events = ttree.GetEntries()  # Num events in file
                 # load_range specifies fraction of file to load from.
                 start, stop = [int(x * f_events) for x in load_range]
-                print("         Events in {}:  {}".format(fp, f_events))
-                print("         start, stop:", start, stop)
+                #print("         Events in {}:  {}".format(fp, f_events))
+                #print("         start, stop:", start, stop)
 
                 f_event = start
                 while num_loaded_events < max_events and f_event < stop:
-                    self.event_list.append([extra_label, fp, f_event])
+                    self.event_list.append([extra_label if extra_label <= 1 else 1, fp, f_event])
                     self.extra_labels.append(extra_label)
                     num_loaded_events += 1
                     f_event += 1
-                print("         Filled event_list from {}:  {} events in file, {} total for current mass".format(fp, f_event, num_loaded_events))
-                print("         event_list len is",len(self.event_list))
-            print("Finished m={}:  using {} events".format(extra_label, num_loaded_events))
+                print("      Filled event_list from {}:  {} events in file, {} total for current mass".format(fp, f_event, num_loaded_events))
+                #print("         event_list len is",len(self.event_list))
+            print("   Finished m={}:  using {} events".format(extra_label, num_loaded_events))
 
-        self.label = [1 if l > 0 else 0 for l in self.extra_labels]  # 1 if sig, 0 if bkg
+        self.extra_labels = np.array(self.extra_labels)
+        self.label = np.array([1 if l > 0 else 0 for l in self.extra_labels])  # 1 if sig, 0 if bkg
         # Set var_data to None to test whether any evts have been loaded
         self.var_data = None
 
@@ -174,7 +178,7 @@ class ECalHitsDataset(Dataset):
         # By assumption, events have already been preselected!
         # returns:  label, coords, features
 
-        print("Getting event", i)
+        #print("Getting event", i)
 
         label, filename, file_index = self.event_list[i]
 
@@ -186,26 +190,22 @@ class ECalHitsDataset(Dataset):
 
         # training features
         # Multiple regions:
-        """
+        
         coords_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']))
         coords_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p']))
-        coords_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o']))
-        self.coordinates = np.stack((coords_e, coords_p, coords_o))
+        #coords_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o']))
+        coordinates = np.stack((coords_e, coords_p))#, coords_o))
         features_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']))
         features_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']))
-        features_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']))
-        self.features    = np.stack((features_e, features_p, features_o))
+        #features_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']))
+        features    = np.stack((features_e, features_p))#, features_o))
         """
         # 1 region:
         # NOTE:  self.coordinates -> coordinates, etc.
         coordinates = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']))  #, axis=1)
         features    = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'],
                                 self.var_data['layer_id_e'], self.var_data['log_energy_e']))  #, axis=1)
-        #print("COORD SHAPE:", coordinates.shape)
-        #print("FEATURES SHAPE:", features.shape)
-        #print("FIRST FEW COORDS ARE:")
-        #print(coordinates[:,:5])
-
+        """
         return coordinates, features, label
 
 
@@ -287,22 +287,22 @@ class ECalHitsDataset(Dataset):
         z_e =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
         log_energy_e =  np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
         layer_id_e =    np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        """
-        x_p =           np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
-        y_p =           np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
-        z_p =           np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
-        log_energy_p =  np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
-        layer_id_p =    np.zeros(MAX_NUM_ECAL_HITS), dtype='float32')
+        
+        x_p =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        y_p =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        z_p =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        log_energy_p =  np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
+        layer_id_p =    np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
         # Optional 3rd region:
-            
+        """
         x_o =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
         y_o =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
         z_o =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
         log_energy_o =  np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
         layer_id_o =    np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        
-        print("    Usage after array creation: {}".format(psutil.virtual_memory().percent))
         """
+        #print("    Usage after array creation: {}".format(psutil.virtual_memory().percent))
+        
 
         for j in range(eid_leaf.GetLen()):  #range(MAX_NUM_ECAL_HITS):  # For every hit...
 
@@ -340,21 +340,23 @@ class ECalHitsDataset(Dataset):
                 x_e[j] = x[j] - etraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
                 y_e[j] = y[j] - etraj_point[1]
                 z_e[j] = z[j] - self._layerZs[0]  # Defined relative to the ecal face
-                log_energy_e[j] = np.log(energy[j]) if energy[j] > 0 else 0
+                log_energy_e[j] = np.log(energy[j]) if energy[j] > 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
                 layer_id_e[j] = layer_id[j]
-            """
-            if insidePhotonRadius:
-                x_p[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
-                y_p[i][j] = y[i][j] - ptraj_point[1]
-                z_p[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
-                log_energy_p[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
-                layer_id_p[i][j] = layer_id[i][j]
+            
             else:
-                x_o[i][j] = x[i][j] - ptraj_point[0]  # Store coordinates relative to the photon traj
-                y_o[i][j] = y[i][j] - ptraj_point[1]
-                z_o[i][j] = z[i][j] - self._layerZs[0]  # Defined relative to the ecal face
-                log_energy_o[i][j] = np.log(energy[i][j]) if energy[i][j] > 0 else 0
-                layer_id_o[i][j] = layer_id[i][j]
+                #elif insidePhotonRadius:
+                x_p[j] = x[j] - ptraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
+                y_p[j] = y[j] - ptraj_point[1]
+                z_p[j] = z[j] - self._layerZs[0]  # Defined relative to the ecal face
+                log_energy_p[j] = np.log(energy[j]) if energy[j] > 0 else -1
+                layer_id_p[j] = layer_id[j]
+            """
+            else:
+                x_o[j] = x[j] - ptraj_point[0]  # Store coordinates relative to the photon traj
+                y_o[j] = y[j] - ptraj_point[1]
+                z_o[j] = z[j] - self._layerZs[0]  # Defined relative to the ecal face
+                log_energy_o[j] = np.log(energy[j]) if energy[j] > 0 else -1
+                layer_id_o[j] = layer_id[j]
             """
         #print("    Usage after region determination: {}".format(psutil.virtual_memory().percent))        
 
@@ -364,12 +366,10 @@ class ECalHitsDataset(Dataset):
 
         var_dict = {'log_energy_e':log_energy_e,
                     'x_e':x_e, 'y_e':y_e, 'z_e':z_e, 'layer_id_e':layer_id_e,
-                    #'log_energy_p':log_energy_p,
-                    #'x_p':x_e, 'y_p':y_p, 'z_p':z_p, 'layer_id_p':layer_id_p,
+                    'log_energy_p':log_energy_p,
+                    'x_p':x_e, 'y_p':y_p, 'z_p':z_p, 'layer_id_p':layer_id_p,
                     #'log_energy_o':log_energy_o,
                     #'x_o':x_o, 'y_o':y_o, 'z_o':z_o, 'layer_id_o':layer_id_o,
-                    #'etraj_ref':np.array(table['etraj_ref']),  # No longer seems necessary
-                    #'ptraj_ref':np.array(table['ptraj_ref']),
                    }
 
         # Lastly, load obs_dict:
@@ -396,76 +396,40 @@ class ECalHitsDataset(Dataset):
         # Goal:  load data from selected event (1 event!) into var_dict.
         # Use ROOT, not uproot.
         # *NOTE*:  Will still load data before processing, but now only storing data for ONE event.
+        #t1 = time.time()
 
-        tfile = r.TFile(filename)
+        tfile = r.TFile(filename) # NOTE:  This is the bottleneck!
         self.ttree = tfile.Get('skimmed_events')
         # Prepare to load data from event [file_index]:
+        #t2 = time.time()
         self.ttree.GetEntry(file_index)
+        #t3 = time.time()
         self._load_sp_data()
-
+        #t4 = time.time()
         # Fill var_dict and obs_dict:
         # obs_dict contains obs_branches info loaded from train.py; saved for plotting
         # var_dict contains info necessary for PN:  x, y, z, layer, log(E); more if other regions included
         self.var_data, o_d = self._read_event() #???  #t, table)
-        
         # self.var_data is used by _load_...().  o_d data must be saved:
         for branch in self.obs_branches:
             self.obs_dict[branch].append(o_d[branch])
+        #print("Time intervals: {}, {}, {}".format(t2-t1, t3-t2, t4-t3))
+        #if t2-t1 > t3-t2 and t2-t1 > t4-t3:
+        #    print("1")
+        #elif t3-t2 > t2-t1 and t3-t2 > t4-t3:
+        #    print("2")
+        #elif t4-t3 > t2-t1 and t42-t3 > t3-t2:
+        #    print("3")
 
-
-
-        """
-
-        for k in var_dict:
-                if k in self.var_data:
-                    self.var_data[k].append(var_dict[k])
-                else:
-                    self.var_data[k] = [var_dict[k]]
-            for k in obs_branches + ecal_veto_branches:
-                self.obs_data[k].append(obs_dict[k])
-
-
-
-                   print("    Usage after loaded file: {}".format(psutil.virtual_memory().percent))
-                    gc.collect()  # May reduce RAM usage
-
-            # now we concat the arrays and remove the extra events if needed
-            n_total_loaded = None
-            upper = None
-            if max_event > 0 and max_event < n_total_selected:
-                upper = max_event - n_total_selected
-            for k in var_dict:
-                var_dict[k] = _concat(var_dict[k])[:upper]
-                if n_total_loaded is None:
-                    n_total_loaded = len(var_dict[k])
-                else:
-                    assert(n_total_loaded == len(var_dict[k]))
-            for k in obs_dict:
-                obs_dict[k] = _concat(obs_dict[k])[:upper]
-                assert(n_total_loaded == len(obs_dict[k]))
-            print('Total %d events, selected %d events, finally loaded %d events.' % (n_total_inclusive, n_total_selected, n_total_loaded))
-
-            #self.extra_labels.append(extra_label * np.ones(n_total_loaded, dtype='int32'))
-            for k in var_dict:
-                if k in self.var_data:
-                    self.var_data[k].append(var_dict[k])
-                else:
-                    self.var_data[k] = [var_dict[k]]
-            for k in obs_branches + ecal_veto_branches:
-                self.obs_data[k].append(obs_dict[k])
-            n_sum += n_total_loaded
-                
-            gc.collect()
-            print("Usage after load: {}".format(psutil.virtual_memory().percent))
-            print("RETURNING", n_sum)
-        return n_sum
-        """
 
     # NOTE/WARNING:  After use, obs_dict will consist of np arrays, not lists, and cannot be appended to.
     # Shouldn't be an issue--should never need to call get() again after calling get_obs_data.
     def get_obs_data(self):
+        #print("GETTING OBS DATA")
         for branch in self.obs_branches:
-            self.obs_dict[branch] = np.concatenate(self.obs_dict[branch])
+            #print(self.obs_dict[branch])
+            if self.obs_dict[branch] is list:
+                self.obs_dict[branch] = np.concatenate(self.obs_dict[branch])
         return self.obs_dict
 
 
@@ -487,19 +451,7 @@ class ECalHitsDataset(Dataset):
         mcid = 10 * cell + module
         x, y = zip(*map(self._cellMap.__getitem__, mcid))
         z = list(map(self._layerZs.__getitem__, layer))
-        """
-        def unflatten_array(x, base_array):
-            # x = 1D flattened np array, base_array has the desired shape
-            return awkward.Array(awkward.layout.ListOffsetArray32(
-                                    awkward.layout.Index32(base_array.layout.offsets),   # NOTE, may need to change to offsets32
-                                    awkward.layout.NumpyArray(np.array(x, dtype='float32'))
-                                    )
-                                )
-        x        = unflatten_array(x, cid)
-        y        = unflatten_array(y, cid)
-        z        = unflatten_array(z, cid)
-        layer_id = unflatten_array(layer, cid)
-        """
+
         return (x, y, z), layer
 
 

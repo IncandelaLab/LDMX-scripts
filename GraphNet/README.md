@@ -39,9 +39,9 @@ conda create -c conda-forge --name torchroot root
 conda activate torchroot
 
 # install the necessary python packages
-pip install numpy pandas scikit-learn scipy matplotlib tqdm psutil
+pip install numpy pandas scikit-learn scipy matplotlib tqdm psutil pyarrow
 
-# we use uproot to access ROOT files
+# we (sometimes) use uproot to access ROOT files
 pip install uproot
 
 # install pytorch

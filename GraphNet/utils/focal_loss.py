@@ -43,11 +43,8 @@ def one_hot(labels: torch.Tensor,
         raise ValueError("The number of classes must be bigger than one."
                          " Got: {}".format(num_classes))
     batch_size = labels.shape[0]
-    print("creating zeros")
     one_hot = torch.zeros(batch_size, num_classes,
                           device=device, dtype=dtype)
-    print("created zeros")
-    print("unzqueezed:", labels.unsqueeze(1))
     return one_hot.scatter_(1, labels.unsqueeze(1), 1.0) + eps
 
 
@@ -71,22 +68,16 @@ def focal_loss(
                 input.device, target.device))
 
     # compute softmax over the classes axis
-    print("softmax:")
     input_soft: torch.Tensor = F.softmax(input, dim=1) + eps
 
-    print("labels:")
-    print(input.shape)
-    print(target.shape)
     # create the labels one hot tensor
     target_one_hot: torch.Tensor = one_hot(
         target, num_classes=input.shape[1],
         device=input.device, dtype=input.dtype)
 
-    print("weight:")
     # compute the actual focal loss
     weight = torch.pow(-input_soft + 1., gamma)
 
-    print("Final:")
     focal = -alpha * weight * torch.log(input_soft)
     loss_tmp = torch.sum(target_one_hot * focal, dim=1)
 
@@ -145,6 +136,5 @@ class FocalLoss(nn.Module):
             self,
             input: torch.Tensor,
             target: torch.Tensor) -> torch.Tensor:
-        print("CALLING FORWARD IN FOCAL_LOSS")
         return focal_loss(input, target, self.alpha, self.gamma, self.reduction, self.eps)
 

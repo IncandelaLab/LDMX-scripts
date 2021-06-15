@@ -7,6 +7,7 @@ import re
 print("Importing ROOT")
 import ROOT as r
 print("Imported root.  Starting...")
+from multiprocessing import Pool
 
 # NEW:  Introduced in tandem w/ lazy loading to lower increasing GPU usage
 # NOTE:  Must run this with a working ldmx-sw installation
@@ -44,17 +45,17 @@ data_to_save = {
 }
 
 # Base:
-"""
-output_dir = '/home/pmasterson/GraphNet_input/v12/processed'
+
+#output_dir = '/home/pmasterson/GraphNet_input/v12/processed'
+output_dir = 'test_output_files'
 file_templates = {
-    0.001: '/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.001*.root',
-    0.01:  '/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.01*.root',
-    0.1:   '/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*0.1*.root',
-    1.0:   '/home/pmasterson/GraphNet_input/v12/sig_extended_tracking/*1.0*.root',
-    #0:     '/home/pmasterson/GraphNet_input/v12/bkg_12M/*.root'
+    #0.001: '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.001*.root',
+    #0.01:  '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.01*.root',
+    #0.1:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.1*.root',
+    #1.0:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*1.0*.root',  # was sig_extended_tracking
+    0:     '/home/pmasterson/GraphNet_input/v12/background_230_trunk/*.root'  # was bkg_12M
 }
 """
-
 # For eval:
 output_dir = '/home/pmasterson/GraphNet_input/v12/processed_eval'
 file_templates = {
@@ -64,15 +65,25 @@ file_templates = {
     #1.0:   '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*1.0*.root',
     0:     '/home/pmasterson/GraphNet_input/v12/bkg_12M/evaluation/*.root'
 }
+"""
 
+def processFile(input_vars):
 
-def processFile(filename, mass, filenum):
+    filename = input_vars[0]  # Apparently this is the easiest approach to multiple args...
+    mass = input_vars[1]
+    filenum = input_vars[2]
+
     print("Processing file {}".format(filename))
     if mass == 0:
-        outfile_name = "v12_pn_{}.root".format(filenum)
+        outfile_name = "v12_pn_mipless_{}.root".format(filenum)
     else:
-        outfile_name = "v12_{}_{}.root".format(mass, filenum)
+        outfile_name = "v12_{}_mipless_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
+
+    # NOTE:  Added this to ...
+    if os.path.exists(outfile_path):
+        print("FILE {} ALREADY EXISTS.  SKIPPING...".format(outfile_name))
+        return 0, 0
 
     branchList = []
     for branchname, leafdict in data_to_save.items():
@@ -241,7 +252,7 @@ def processFile(filename, mass, filenum):
     print("All branches added.  Filling...")
 
     for i in range(nEvents):
-        if i % 1000 == 0:  print("  Filling event {}".format(i))
+        #if i % 1000 == 0:  print("  Filling event {}".format(i))
         for branch in branchList:
             # Contains both vector and scalar data.  Treat them differently:
             #print("  branch:", branch)
@@ -262,25 +273,50 @@ def processFile(filename, mass, filenum):
 
     outfile.Write()
     print("FINISHED.  File written to {}.".format(outfile_path))
-    return nTotalEvents, nEvents
+    return (nTotalEvents, nEvents)
 
 
-presel_eff = {}
-for mass, filepath in file_templates.items():
-    #if mass != 0:  continue
-    filenum = 0
-    nTotal = 0  # pre-preselection
-    nEvents = 0 # post-preselection
-    print("======  m={}  ======".format(mass))
-    for f in glob.glob(filepath):
-        # Process each file separately
-        nT, nE = processFile(f, mass, filenum)
-        nTotal += nT
-        nEvents += nE
-        filenum += 1
-    print("m = {} MeV:  Read {} events, {} passed preselection".format(int(mass*1000), nTotal, nEvents))
-    presel_eff[int(mass * 1000)] = nEvents / nTotal
+if __name__ == '__main__':
+    # New approach:  Use multiprocessing
+    #pool = Pool(8)  # 8 processors, factor of 8 speedup in theory...
+    presel_eff = {}
+    for mass, filepath in file_templates.items():
+        print("======  m={}  ======".format(mass))
+        # Assemble list of function params
+        params = []
+        for filenum, f in enumerate(glob.glob(filepath)[:4]):
+            params.append([f, mass, filenum])
+        print("num params:", len(params))
+        with Pool(2) as pool:
+            results = pool.map(processFile, params)
+        print("Finished.  Result len:", len(results))
+        print(results)
+        nTotal  = sum([r[0] for r in results])
+        nEvents = sum([r[1] for r in results])
+        print("m = {} MeV:  Read {} events, {} passed preselection".format(int(mass*1000), nTotal, nEvents))
+        presel_eff[int(mass * 1000)] = nEvents / nTotal
+    print("Done.  Presel_eff:")
+    print(presel_eff)
 
-print("DONE.  presel_eff: ", presel_eff)
+    """
+    presel_eff = {}
+    for mass, filepath in file_templates.items():
+        #if mass != 0:  continue
+        filenum = 0
+        nTotal = 0  # pre-preselection
+        nEvents = 0 # post-preselection
+        print("======  m={}  ======".format(mass))
+        for f in glob.glob(filepath):
+            # Process each file separately
+            nT, nE = processFile(f, mass, filenum)
+            nTotal += nT
+            nEvents += nE
+            filenum += 1
+        print("m = {} MeV:  Read {} events, {} passed preselection".format(int(mass*1000), nTotal, nEvents))
+        presel_eff[int(mass * 1000)] = nEvents / nTotal
+
+    print("DONE.  presel_eff: ", presel_eff)
+    """
+
 
 

@@ -64,23 +64,23 @@ parser.add_argument('--save-extra', action='store_true', default=False,
                     help='save extra information defined in `obs_branches` and `veto_branches` to the prediction output')
 parser.add_argument('--test-output-path', type=str, default='test-outputs/particle_net_output',
                     help='path to save the prediction output')
+parser.add_argument('--num-regions', type=int, default=1,
+                    help='Number of regions for SplitNet')
 
 args = parser.parse_args()
 
 #####i# location of the signal and background files ######
 bkglist = {
     # (filepath, num_events_for_training)
-    # In 
     0: ('/home/pmasterson/GraphNet_input/v12/processed/*pn*.root', -1)
     }
 
 siglist = {
     # (filepath, num_events_for_training)
-    # NOTE:  the signal files in /v12/ are incorrect!  (Recent ldmx-sw change affecting signal hit distr)
-    1:    ('/home/pmasterson/GraphNet_input/v12/processed/*0.001*.root', 200000),
-    10:   ('/home/pmasterson/GraphNet_input/v12/processed/*0.01*.root',  200000),
-    100:  ('/home/pmasterson/GraphNet_input/v12/processed/*0.1*.root',   200000),
-    1000: ('/home/pmasterson/GraphNet_input/v12/processed/*1.0*.root',   200000),
+    1:    ('/home/pmasterson/GraphNet_input/v12/processed/*0.001*.root', 400000),
+    10:   ('/home/pmasterson/GraphNet_input/v12/processed/*0.01*.root',  400000),
+    100:  ('/home/pmasterson/GraphNet_input/v12/processed/*0.1*.root',   400000),
+    1000: ('/home/pmasterson/GraphNet_input/v12/processed/*1.0*.root',   400000),
     }
 
 if args.demo:
@@ -98,7 +98,7 @@ if args.demo:
         }
 
 # NOTE:  Must manually pass this to PN from preprocessing input
-presel_eff = {1: 0.9622, 10: 0.9906, 100: 0.9957, 1000: 0.9982, 0: 0.025127295226218364}
+presel_eff = {1: 0.9619039328342329, 10: 0.9906173128305598, 100: 0.9955994049017305, 1000: 0.9981730111154327, 0: 0.03439702293791625}
 
 #########################################################
 
@@ -189,17 +189,17 @@ dev = torch.device(args.device)
 # load data
 if training_mode:
     # for training: we use the first 0-20% for testing, and 20-80% for training
-    print("Usage: {}".format(psutil.virtual_memory().percent))
-    train_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1))  #, coord_ref=args.coord_ref)
-    print("Usage: {}".format(psutil.virtual_memory().percent))
-    val_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2))  #, coord_ref=args.coord_ref)
-    print("Usage: {}".format(psutil.virtual_memory().percent))
+    #print("Usage: {}".format(psutil.virtual_memory().percent))
+    train_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), nRegions=args.num_regions)  #, coord_ref=args.coord_ref)
+    #print("Usage: {}".format(psutil.virtual_memory().percent))
+    val_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), nRegions=args.num_regions)  #, coord_ref=args.coord_ref)
+    #print("Usage: {}".format(psutil.virtual_memory().percent))
     train_loader = DataLoader(train_data, num_workers=args.num_workers, batch_size=args.batch_size,
                               collate_fn=collate_fn, shuffle=True, drop_last=True, pin_memory=True)
-    print("Usage: {}".format(psutil.virtual_memory().percent))
+    #print("Usage: {}".format(psutil.virtual_memory().percent))
     val_loader = DataLoader(val_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
-    print("Usage: {}".format(psutil.virtual_memory().percent))
+    print("Current usage: {}".format(psutil.virtual_memory().percent))
     print('Train: %d events, Val: %d events' % (len(train_data), len(val_data)))
     print('Using val sample for testing!')
     test_data = val_data
@@ -208,7 +208,7 @@ else:
 
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
     test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, 
-                                obs_branches=obs_branches)  #, coord_ref=args.coord_ref)
+                                obs_branches=obs_branches, nRegions=args.num_regions)  #, coord_ref=args.coord_ref)
                                 #obs_branches=obs_branches, veto_branches=veto_branches, coord_ref=args.coord_ref)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                              collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
@@ -221,9 +221,12 @@ print("Usage: {}".format(psutil.virtual_memory().percent))
 model = SplitNet(input_dims=input_dims, num_classes=2,
                  conv_params=conv_params,
                  fc_params=fc_params,
-                 use_fusion=True)
+                 use_fusion=True,
+                 nRegions=args.num_regions)
 
 model = model.to(dev)
+# NEW to resolve GPU error
+model.particle_nets_to(dev)
 
 
 def train(model, opt, scheduler, train_loader, dev):
@@ -356,6 +359,9 @@ if path and not os.path.exists(path):
 test_preds = evaluate(model, test_loader, dev, return_scores=True)
 test_labels = test_data.label
 test_extra_labels = test_data.extra_labels
+print(test_preds.shape)
+print(test_extra_labels.shape)
+print(test_labels.shape)
 
 info_dict = {'model_name':args.network,
              'model_params': {'conv_params':conv_params, 'fc_params':fc_params},

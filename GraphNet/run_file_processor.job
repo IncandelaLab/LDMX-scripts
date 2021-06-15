@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH --nodes=1 --ntasks-per-node 2
+#  this is asking for 1 node, with *2* cores
+#     the -l is needed on first line if you want to use modules
+#     Note:  ntasks should equal the number in file_processor (probably)
+
+cd $SLURM_SUBMIT_DIR
+
+/bin/hostname
+
+python file_processor.py
+

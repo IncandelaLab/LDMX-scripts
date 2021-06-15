@@ -22,17 +22,8 @@ executor = concurrent.futures.ThreadPoolExecutor(12)
 
 torch.set_default_dtype(torch.float32)
 
-#ecalBranches = [  # EcalVeto data to save.  Could add more, but probably unnecessary.
-#    'discValue_',
-#    'recoilX_',
-#    'recoilY_',
-#    ]
-
 MAX_NUM_ECAL_HITS = 110  # Still need this to determine array sizes...110 gives >98% efficiency, so using that.
 MAX_ISO_ENERGY = 650  # 600 gives slightly under 95% sig eff; shoot for a bit over
-
-# NEW:  LayerZ data (may be outdated)
-# Assumed outdated; not currently used
 
 # NEW: Radius of containment data
 #from 2e (currently not used)
@@ -65,47 +56,40 @@ def _concat(arrays, axis=0):
     else:
         return awkward.concatenate(arrays, axis=axis)
 
-# Outdated
-#def _pad(a, pad_value=0):
-#    return a.pad(MAX_NUM_ECAL_HITS, clip=True).fillna(0).regular()
 
 
 class ECalHitsDataset(Dataset):
 
-    def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v12'):
+    def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v12', nRegions=1):
         super(ECalHitsDataset, self).__init__()
         print("Initializing EcalHitsDataset")
-        print("GPU usage: {}%".format(psutil.virtual_memory().percent))
-        print("GPU available: {} GB".format(psutil.virtual_memory().available/1e9))
+        #print("GPU usage: {}%".format(psutil.virtual_memory().percent))
+        #print("GPU available: {} GB".format(psutil.virtual_memory().available/1e9))
         # first load cell map
         self._load_cellMap(version=detector_version)
         # NOTE:  the new skimmed input doesn't have sub-branches anymore!
         self._id_branch = 'id_rec_'  #'EcalRecHits_v12.id_'
         self._energy_branch = 'energy_rec_'  #'EcalRecHits_v12.energy_'
+        self._branches = [self._id_branch, self._energy_branch]
 
         self.obs_branches = obs_branches
         # NOTE:  Need to explicitly keep track of and save all obs_dict data!  Fortunately, order doesn't matter.
         self.obs_dict = {br:[] for br in self.obs_branches}
+        # Also need to keep track of events that have been loaded into obs_dict, to ensure no duplicates
+        # Just store a list of the event numbers
+        self.loaded_events = []
 
         self.coord_ref = coord_ref
-        assert(detector_version == 'v12')
-        #if detector_version == 'v9':
-        #    print("WARNING:  Using v9 detector!  Case is not currently handled; will produce an error.")
-        #    self._id_branch = 'ecalDigis_recon.id_'
-        #    self._energy_branch = 'ecalDigis_recon.energy_'
+        assert(detector_version == 'v12')  # v9 compatibility would be nontrivial to add, and is probably unnecessary
 
-        self._branches = [self._id_branch, self._energy_branch]
+        self.nRegions = nRegions
 
-        # DEFINE LABELS:
-        # May need to know in advance how many events to load....
-        # OR just determine whether evt is sig/bkg after/upon loading
-        # Need a way to get the correct root file from the index!
-
-        # CURRENT OUTLINE:
+        # General approach to init():
         # - Input events have all been preselected.
         # - All event data is stored in a "simple" root tree with no sub-branches
         # - Need to create a mapping:  event number -> returns sig/bkg, root file, and evt number within that file
         #    - [[mass, filename, i_file], ...]
+        #    - Get element i of the list whenever PN requests an event, and find the event location based on that info
 
         # event_list:  [[mass, filename, i_file], ...]
         self.event_list = []
@@ -126,13 +110,12 @@ class ECalHitsDataset(Dataset):
             print("   Filling for m={}".format(extra_label))
             for fp in glob.glob(filepath):
                 # For each file, check the number of events, then add to event_list accordingly
+                #print("file {}".format(fp))
                 tfile = r.TFile(fp)
                 ttree = tfile.Get('skimmed_events')
                 f_events = ttree.GetEntries()  # Num events in file
                 # load_range specifies fraction of file to load from.
                 start, stop = [int(x * f_events) for x in load_range]
-                #print("         Events in {}:  {}".format(fp, f_events))
-                #print("         start, stop:", start, stop)
 
                 f_event = start
                 while num_loaded_events < max_events and f_event < stop:
@@ -140,19 +123,15 @@ class ECalHitsDataset(Dataset):
                     self.extra_labels.append(extra_label)
                     num_loaded_events += 1
                     f_event += 1
-                print("      Filled event_list from {}:  {} events in file, {} total for current mass".format(fp, f_event, num_loaded_events))
+                #print("      Filled event_list from {}:  {} events in file, {} total for current mass".format(fp, f_event, num_loaded_events))
                 #print("         event_list len is",len(self.event_list))
             print("   Finished m={}:  using {} events".format(extra_label, num_loaded_events))
 
         self.extra_labels = np.array(self.extra_labels)
         self.label = np.array([1 if l > 0 else 0 for l in self.extra_labels])  # 1 if sig, 0 if bkg
-        # Set var_data to None to test whether any evts have been loaded
-        self.var_data = None
 
         print("Initialization finished.")
-        print("GPU usage: {}".format(psutil.virtual_memory().percent))
-        #print("Quick event_list sanity check:")
-        #print(self.event_list)
+        #print("GPU usage: {}".format(psutil.virtual_memory().percent))
 
         #print("Initialized")
 
@@ -160,15 +139,10 @@ class ECalHitsDataset(Dataset):
 
     @property
     def num_features(self):
-        #return self.features.shape[1]
-        #return self.features.shape[2]  # Modified
-        #pts, fts, y = self.__getitem__(0)  # NO, need this before __getitem()__ has been called
-        #print("**TESTING NUM_FEATURES:**", fts.shape[0])
         # When would this *not* be 5?  Not worried about generalizing atm
-        return 5 #fts.shape[0]
+        return 5
 
     def __len__(self):
-        #return len(self.features)
         return len(self.event_list)
 
 
@@ -178,34 +152,43 @@ class ECalHitsDataset(Dataset):
         # By assumption, events have already been preselected!
         # returns:  label, coords, features
 
-        #print("Getting event", i)
-
         label, filename, file_index = self.event_list[i]
 
-        self.var_data = {}
         self.obs_data = {k:[] for k in self.obs_branches}
+        # Also, keep track of all event nums that have been added to obs_data
 
-        # Load all necessary info into var_data:
-        self._load_event_data(label, filename, file_index)
+        # Load all necessary info into var_data and obs_data:
+
+        # NOW HEAVILY REDONE.
+        # Goal:  load data from selected event (1 event!) into var_dict.
+        # Use ROOT, not uproot.
+        # *NOTE*:  Will still load data before processing, but now only storing data for ONE event.
+
+        tfile = r.TFile(filename) # NOTE:  This is the bottleneck!
+        self.ttree = tfile.Get('skimmed_events')
+        # Prepare to load data from event [file_index]:
+        self.ttree.GetEntry(file_index)
+        self._load_sp_data()
+        # Fill var_dict and obs_dict:
+        # obs_dict contains obs_branches info loaded from train.py; saved for plotting
+        # var_dict contains info necessary for PN:  x, y, z, layer, log(E); more if other regions included
+        var_data, obs_data = self._read_event()
+        # var_data is used by _load_...().  o_d data must be saved.  First, check whether event has already been recorded:
+        if not i in self.loaded_events:
+            for branch in self.obs_branches:
+                self.obs_dict[branch].append(obs_data[branch])
+            self.loaded_events.append(i)
+
+
 
         # training features
-        # Multiple regions:
-        
-        coords_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']))
-        coords_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p']))
-        #coords_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o']))
-        coordinates = np.stack((coords_e, coords_p))#, coords_o))
-        features_e = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'], self.var_data['layer_id_e'], self.var_data['log_energy_e']))
-        features_p = np.stack((self.var_data['x_p'], self.var_data['y_p'], self.var_data['z_p'], self.var_data['layer_id_p'], self.var_data['log_energy_p']))
-        #features_o = np.stack((self.var_data['x_o'], self.var_data['y_o'], self.var_data['z_o'], self.var_data['layer_id_o'], self.var_data['log_energy_o']))
-        features    = np.stack((features_e, features_p))#, features_o))
-        """
-        # 1 region:
-        # NOTE:  self.coordinates -> coordinates, etc.
-        coordinates = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e']))  #, axis=1)
-        features    = np.stack((self.var_data['x_e'], self.var_data['y_e'], self.var_data['z_e'],
-                                self.var_data['layer_id_e'], self.var_data['log_energy_e']))  #, axis=1)
-        """
+
+        # NOTE:  Now needs to have an outer index anyway!  [[a, b...]] for 1-region PN
+
+        coordinates = np.stack((var_data['x_'], var_data['y_'], var_data['z_']), axis=1)
+        features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
+                                var_data['layer_id_'], var_data['log_energy_']), axis=1)
+        #print("Coordinates shape is:", coordinates.shape)
         return coordinates, features, label
 
 
@@ -220,14 +203,15 @@ class ECalHitsDataset(Dataset):
         el_ = 0  # SP index of recoil electron
         pmax = 0  # Max pz
         max_index = 0
+
+        # Find the SP electron (first layer, maximum pZ)
         for j in range(pdgID_leaf.GetLen()):
             if pdgID_[j] == 11 and z_[j] > 240 and z_[j] < 241 and pz_[j] > pmax:
                 pmax = pz_[j]
                 el_ = j
-                #print("FOUND SP CANDIDATE")
         has_e = pmax != 0  # Check whether event has a SP electron
         
-        etraj_x_sp  = self.ttree.GetLeaf('x_').GetValue(el_)  #_pad_array(t['EcalScoringPlaneHits_v12.x_'].array()[el])  #Arr of floats.  [0][0] fails.
+        etraj_x_sp  = self.ttree.GetLeaf('x_').GetValue(el_)
         etraj_y_sp  = self.ttree.GetLeaf('y_').GetValue(el_)
         etraj_z_sp  = self.ttree.GetLeaf('z_').GetValue(el_)
         etraj_px_sp = self.ttree.GetLeaf('px_').GetValue(el_)
@@ -242,11 +226,8 @@ class ECalHitsDataset(Dataset):
         target_dist = 241.5 # distance from ecal to target, mm
         
         if etraj_pz_sp != 0 and has_e:
-            # was etraj_p_norm, -> enorm_sp; etc.
             self.enorm_sp = np.array((etraj_px_sp/etraj_pz_sp, etraj_py_sp/etraj_pz_sp, 1.0))
             self.pnorm_sp = np.array((-etraj_px_sp/(E_beam - etraj_pz_sp), -etraj_py_sp/(E_beam - etraj_pz_sp), 1.0))
-            #print(ptraj_sp.shape)
-            #print(ptraj_sp[i,:])
             self.ptraj_sp = np.array((etraj_x_sp + target_dist*(self.pnorm_sp[0] - self.enorm_sp[0]),
                                       etraj_y_sp + target_dist*(self.pnorm_sp[1] - self.enorm_sp[1]),
                                       etraj_z_sp))
@@ -255,12 +236,6 @@ class ECalHitsDataset(Dataset):
             self.pnorm_sp = np.array((0,0,0))
             self.ptraj_sp = np.array((0,0,0))
 
-        #print("IN _load_sp_data():")
-        #print("etraj_sp:", self.etraj_sp)
-        #print("ptraj_sp:", self.ptraj_sp)
-        #print("enorm_sp:", self.enorm_sp)
-        #print("pnorm_sp:", self.pnorm_sp)
-          
 
 
     def _read_event(self):
@@ -282,25 +257,12 @@ class ECalHitsDataset(Dataset):
         # For each event, look through all hits.
         # - Determine whether hit falls inside either the e or p RoCs
         # - If so, fill corresp xyzlayer, energy, eid lists...
-        x_e =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')  # In theory, can lower size of 2nd dimension...
-        y_e =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        z_e =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        log_energy_e =  np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        layer_id_e =    np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        
-        x_p =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        y_p =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        z_p =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        log_energy_p =  np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        layer_id_p =    np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        # Optional 3rd region:
-        """
-        x_o =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        y_o =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        z_o =           np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        log_energy_o =  np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        layer_id_o =    np.zeros(MAX_NUM_ECAL_HITS, dtype='float32')
-        """
+        x_          = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
+        y_          = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
+        z_          = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
+        log_energy_ = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
+        layer_id_   = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
+
         #print("    Usage after array creation: {}".format(psutil.virtual_memory().percent))
         
 
@@ -335,99 +297,53 @@ class ECalHitsDataset(Dataset):
                 insideElectronRadius = False
                 insidePhotonRadius   = False
             
-            insideElectronRadius = True
-            if insideElectronRadius:
-                x_e[j] = x[j] - etraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
-                y_e[j] = y[j] - etraj_point[1]
-                z_e[j] = z[j] - self._layerZs[0]  # Defined relative to the ecal face
-                log_energy_e[j] = np.log(energy[j]) if energy[j] > 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
-                layer_id_e[j] = layer_id[j]
-            
-            else:
-                #elif insidePhotonRadius:
-                x_p[j] = x[j] - ptraj_point[0]  # Store coordinates relative to the xy distance from the trajectory
-                y_p[j] = y[j] - ptraj_point[1]
-                z_p[j] = z[j] - self._layerZs[0]  # Defined relative to the ecal face
-                log_energy_p[j] = np.log(energy[j]) if energy[j] > 0 else -1
-                layer_id_p[j] = layer_id[j]
-            """
-            else:
-                x_o[j] = x[j] - ptraj_point[0]  # Store coordinates relative to the photon traj
-                y_o[j] = y[j] - ptraj_point[1]
-                z_o[j] = z[j] - self._layerZs[0]  # Defined relative to the ecal face
-                log_energy_o[j] = np.log(energy[j]) if energy[j] > 0 else -1
-                layer_id_o[j] = layer_id[j]
-            """
-        #print("    Usage after region determination: {}".format(psutil.virtual_memory().percent))        
+            regions = []  # Regions hit falls inside
+            if self.nRegions == 1:
+                regions.append(0)
+            elif self.nRegions == 2:
+                if insideElectronRadius:
+                    regions.append(0)
+                else:
+                    regions.append(1)
+            elif self.nRegions == 3:
+                if insideElectronRadius:
+                    regions.append(0)
+                if insidePhotonRadius:
+                    regions.append(1)
+                if not insideElectronRadius and not insidePhotonRadius:
+                    regions.append(2)
+            # Add to each region (need multiple in case inside electron and photon in 3-region)
+            for r in range(self.nRegions):
+                if r in regions:
+                    x_[r][j] = x[j] - etraj_point[0]  # Store relative ot xy distance from trajectory
+                    y_[r][j] = y[j] - etraj_point[1]
+                    z_[r][j] = z[j] - self._layerZs[0]  # Defined relative to the ecal face
+                    layer_id_[r][j] = layer_id[j]
+                    log_energy_[r][j] = np.log(energy[j]) if energy[j] > 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
 
-        #print("Results given to var_dict:")
-        #print("x_e:", x_e)
-        #print("logE:", log_energy_e)
 
-        var_dict = {'log_energy_e':log_energy_e,
-                    'x_e':x_e, 'y_e':y_e, 'z_e':z_e, 'layer_id_e':layer_id_e,
-                    'log_energy_p':log_energy_p,
-                    'x_p':x_e, 'y_p':y_p, 'z_p':z_p, 'layer_id_p':layer_id_p,
-                    #'log_energy_o':log_energy_o,
-                    #'x_o':x_o, 'y_o':y_o, 'z_o':z_o, 'layer_id_o':layer_id_o,
+        var_dict = {'x_':x_, 'y_':y_, 'z_':z_,
+                    'layer_id_':layer_id_,
+                    'log_energy_':log_energy_,
                    }
 
         # Lastly, load obs_dict:
         o_dict = {}
         for branch in self.obs_branches:
-            #print("Branch:", branch)
             o_leaf = self.ttree.GetLeaf(branch)
-            #print("oleaf:", o_leaf)
             o_arr = np.array([o_leaf.GetValue(i) for i in range(o_leaf.GetLen())], dtype='float32')
             o_dict[branch] = o_arr
-
-        #print("obs_dict, loaded:")
-        #for b in self.obs_branches:
-        #    print(b, o_dict[b])
 
         return var_dict, o_dict
 
 
-    def _load_event_data(self, label, filename, file_index):
-        # load data from the passed event
-        var_dict = {}
 
-        # MUST BE HEAVILY REDONE.
-        # Goal:  load data from selected event (1 event!) into var_dict.
-        # Use ROOT, not uproot.
-        # *NOTE*:  Will still load data before processing, but now only storing data for ONE event.
-        #t1 = time.time()
-
-        tfile = r.TFile(filename) # NOTE:  This is the bottleneck!
-        self.ttree = tfile.Get('skimmed_events')
-        # Prepare to load data from event [file_index]:
-        #t2 = time.time()
-        self.ttree.GetEntry(file_index)
-        #t3 = time.time()
-        self._load_sp_data()
-        #t4 = time.time()
-        # Fill var_dict and obs_dict:
-        # obs_dict contains obs_branches info loaded from train.py; saved for plotting
-        # var_dict contains info necessary for PN:  x, y, z, layer, log(E); more if other regions included
-        self.var_data, o_d = self._read_event() #???  #t, table)
-        # self.var_data is used by _load_...().  o_d data must be saved:
-        for branch in self.obs_branches:
-            self.obs_dict[branch].append(o_d[branch])
-        #print("Time intervals: {}, {}, {}".format(t2-t1, t3-t2, t4-t3))
-        #if t2-t1 > t3-t2 and t2-t1 > t4-t3:
-        #    print("1")
-        #elif t3-t2 > t2-t1 and t3-t2 > t4-t3:
-        #    print("2")
-        #elif t4-t3 > t2-t1 and t42-t3 > t3-t2:
-        #    print("3")
-
-
+        
     # NOTE/WARNING:  After use, obs_dict will consist of np arrays, not lists, and cannot be appended to.
     # Shouldn't be an issue--should never need to call get() again after calling get_obs_data.
+    # Could just return a new array instead, ofc, but unnecessary+eats up ram.
     def get_obs_data(self):
-        #print("GETTING OBS DATA")
         for branch in self.obs_branches:
-            #print(self.obs_dict[branch])
             if self.obs_dict[branch] is list:
                 self.obs_dict[branch] = np.concatenate(self.obs_dict[branch])
         return self.obs_dict

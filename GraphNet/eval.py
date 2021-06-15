@@ -179,17 +179,18 @@ def run_one_file(filepath, extra_label=0):
     test_labels = test_data.label
 #     test_extra_labels = test_data.extra_labels
 
-    #for i in range(len(test_data)):
-    #    if i % 1000 == 0:  print("Getting event", i)
-    #    temp_var = test_data[i]
+    for i in range(len(test_data)):
+        if i % 1000 == 0:  print("Getting event", i)
+        temp_var = test_data[i]
 
     import awkward
     out_data = test_data.get_obs_data()
 #    out_data['ParticleNet_extra_label'] = test_extra_labels
-    #print("PRINTING BRANCHES")
-    #for branch in out_data:
-    #    print(out_data[branch])
+    print("PRINTING BRANCHES")
+    for branch in out_data:
+        print(out_data[branch][:10])
     out_data['ParticleNet_disc'] = test_preds[:, 1]
+    print("Test preds", out_data['ParticleNet_disc'][:20])
     # OLD:
     #awkward.save(pred_file, out_data, mode='w')
     #print('Written pred to %s' % pred_file)

@@ -16,28 +16,20 @@ class SplitNet(nn.Module):
                  fc_params=[(128,0.1)],
                  use_fusion=False,
                  return_softmax=False,
+                 nRegions=1,
                  **kwargs):
         super(SplitNet, self).__init__(**kwargs)
         print("INITIALIZING SPLITNET")
 
-        self.nRegions = 2
+        self.nRegions = nRegions
 
         # Particle nets:
-        if self.nRegions == 1:
-            self.eNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
-                                    fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
-        else:
-            #self.particleNets = []
-            #for i in range(self.nRegions):
-            #    self.particleNets.append(ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
-            #                                         fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax))
-            self.eNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
-                                    fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
-            self.pNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
-                                    fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
-            #self.oNet = ParticleNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, \
-            #                        fc_params=fc_params, use_fusion=use_fusion, return_softmax = return_softmax)
-        print("INITIALIZED PARTICLENET")
+        
+        self.particleNets = []
+        for i in range(self.nRegions):
+            self.particleNets.append(ParticleNet(input_dims=input_dims,   num_classes=2,
+                                                 conv_params=conv_params, fc_params=fc_params,
+                                                 use_fusion=use_fusion,   return_softmax = return_softmax))
         
         self.use_fusion = use_fusion
         if self.use_fusion:
@@ -61,22 +53,22 @@ class SplitNet(nn.Module):
 
         print("FINISHED INIT")
 
+    def particle_nets_to(self, dev):  # Added separately--PNs in list aren't automatically put on gpu by to()
+        #return
+        for i in range(self.nRegions):
+            self.particleNets[i] = self.particleNets[i].to(dev)
+
     def forward(self, points, features):
         # Divide up provided points+features, then hand them to the PNs
         # Points are [nregions] x 128  x 3 x 50 (note: nregions axis is gone for 1 region)
         # Note:  points[:,0].shape = (128, 3, 50)
-        if self.nRegions == 1:
-            x_e = self.eNet(points, features)
-            output = self.fc(x_e)
-        else:
-            #xi = []
-            #for i in range(self.nRegions):
-            #    xi.append(self.particleNets[i](points[i], features[i]))
-            #output = self.fc(torch.cat(xi, dim=1))
-            x_e = self.eNet(points[:,0], features[:,0])
-            x_p = self.pNet(points[:,1], features[:,1])
-            #x_o = self.oNet(points[:,2], features[:,2])
-            output = self.fc(torch.cat((x_e, x_p), dim=1))  #, x_o), dim=1))
+
+        xi = [self.particleNets[i](points[:,i], features[:,i]) for i in range(self.nRegions)]
+
+        output = self.fc(torch.cat(xi, dim=1))
+        
         if self.return_softmax:
             output = torch.softmax(output, dim=1)
         return output
+
+

@@ -41,7 +41,7 @@ def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
                         mst = 2, returnN=True, returnHitList = False, returnTracks = False):
 
     strtracklist = []   # Initialize output
-    hitscopy = hitlist  # Need this because hitlist gets eddited
+    hitscopy = hitlist.copy()  # Need this because hitlist gets eddited
 
     for hit in hitlist:  #Go through all hits, starting at the back of the ecal
         track = [hit]

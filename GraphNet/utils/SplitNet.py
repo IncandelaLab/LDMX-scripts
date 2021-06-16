@@ -24,13 +24,19 @@ class SplitNet(nn.Module):
         self.nRegions = nRegions
 
         # Particle nets:
-        
+        """
         self.particleNets = []
         for i in range(self.nRegions):
             self.particleNets.append(ParticleNet(input_dims=input_dims,   num_classes=2,
                                                  conv_params=conv_params, fc_params=fc_params,
                                                  use_fusion=use_fusion,   return_softmax = return_softmax))
-        
+        """
+        # PROBLEM:  load_state_dict doesn't seem to like this.  Maybe PNs need to be attrs of the class itself, instead of elements inside a list attr?
+        for i in range(self.nRegions):
+            pn = ParticleNet(input_dims=input_dims, num_classes=2,           conv_params=conv_params,
+                             fc_params=fc_params,   use_fusion=use_fusion,   return_softmax = return_softmax)
+            setattr(self, 'pn{}'.format(i), pn)
+
         self.use_fusion = use_fusion
         if self.use_fusion:
             in_chn = sum(x[-1] for _, x in conv_params)
@@ -54,16 +60,17 @@ class SplitNet(nn.Module):
         print("FINISHED INIT")
 
     def particle_nets_to(self, dev):  # Added separately--PNs in list aren't automatically put on gpu by to()
-        #return
-        for i in range(self.nRegions):
-            self.particleNets[i] = self.particleNets[i].to(dev)
+        return
+        #for i in range(self.nRegions):
+        #    setattr(self, 'pn{i}'.format(i), getattr(self, 'pn{i}'.format(i)).to(dev))
+        #    self.particleNets[i] = self.particleNets[i].to(dev)
 
     def forward(self, points, features):
         # Divide up provided points+features, then hand them to the PNs
         # Points are [nregions] x 128  x 3 x 50 (note: nregions axis is gone for 1 region)
         # Note:  points[:,0].shape = (128, 3, 50)
 
-        xi = [self.particleNets[i](points[:,i], features[:,i]) for i in range(self.nRegions)]
+        xi = [getattr(self, 'pn{}'.format(i))(points[:,i], features[:,i]) for i in range(self.nRegions)]
 
         output = self.fc(torch.cat(xi, dim=1))
         

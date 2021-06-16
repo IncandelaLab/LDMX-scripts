@@ -110,7 +110,7 @@ class ECalHitsDataset(Dataset):
             print("   Filling for m={}".format(extra_label))
             for fp in glob.glob(filepath):
                 # For each file, check the number of events, then add to event_list accordingly
-                #print("file {}".format(fp))
+                print("file {}".format(fp))
                 tfile = r.TFile(fp)
                 ttree = tfile.Get('skimmed_events')
                 f_events = ttree.GetEntries()  # Num events in file
@@ -123,8 +123,8 @@ class ECalHitsDataset(Dataset):
                     self.extra_labels.append(extra_label)
                     num_loaded_events += 1
                     f_event += 1
-                #print("      Filled event_list from {}:  {} events in file, {} total for current mass".format(fp, f_event, num_loaded_events))
-                #print("         event_list len is",len(self.event_list))
+                print("      Filled event_list from {}:  {} events in file, {} total for current mass".format(fp, f_event, num_loaded_events))
+                print("         event_list len is",len(self.event_list))
             print("   Finished m={}:  using {} events".format(extra_label, num_loaded_events))
 
         self.extra_labels = np.array(self.extra_labels)

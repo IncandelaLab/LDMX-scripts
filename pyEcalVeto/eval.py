@@ -42,7 +42,7 @@ def main():
                                          )
 
         # RUN
-        proc.extraf = proc.tfMaker.wq # Gets executed at the end of run()
+        proc.extrafs = [ proc.tfMaker.wq ] # Gets executed at the end of run()
         proc.run(maxEvents=maxEvent)
 
     # Remove scratch directory if there is one

@@ -30,8 +30,6 @@ class sampleContainer:
             if len(self.events) >= self.maxEvts:
                 continue
 
-            # Put all segmentation variables in for now (Take out the ones we won't need once
-            # we make sure that all the python bdt stuff works)
             evt = [
                     # Base variables
                     event.nReadoutHits              ,
@@ -522,7 +520,7 @@ if __name__ == "__main__":
     params     = {'objective': 'binary:logistic',
                   'eta': options.eta,
                   'max_depth': options.depth,
-                  'min_child_weigrt': 20,
+                  'min_child_weight': 20,
                   'silent': 1,
                   'subsample':.9,
                   'colsample_bytree': .85,

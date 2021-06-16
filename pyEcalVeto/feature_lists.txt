@@ -1,0 +1,117 @@
+Gabrielle                                    Segmipv3                            Segmipv4                            SegmipX (intersection of Segmipv3 and Segmipv4 sets)
+                                                                                                                  
+# Base variables                             # Base variables                    # Base variables                    # Base variables
+nReadoutHits                         # 0     nReadoutHits               # 0      nReadoutHits               # 0      nReadoutHits               # 0
+summedDet                            # 1     summedDet                  # 1      summedDet                  # 1      summedDet                  # 1
+summedTightIso                       # 2     summedTightIso             # 2      summedTightIso             # 2      summedTightIso             # 2
+maxCellDep                           # 3     maxCellDep                 # 3      maxCellDep                 # 3      maxCellDep                 # 3
+showerRMS                            # 4     showerRMS                  # 4      showerRMS                  # 4      showerRMS                  # 4
+xStd                                 # 5     xStd                       # 5      xStd                       # 5      xStd                       # 5
+yStd                                 # 6     yStd                       # 6      yStd                       # 6      yStd                       # 6
+avgLayerHit                          # 7     avgLayerHit                # 7      avgLayerHit                # 7      avgLayerHit                # 7
+stdLayerHit                          # 8     stdLayerHit                # 8      stdLayerHit                # 8      stdLayerHit                # 8
+deepestLayerHit                      # 9     deepestLayerHit            # 9      deepestLayerHit            # 9      deepestLayerHit            # 9
+ecalBackEnergy                       # 10    ecalBackEnergy             # 10     ecalBackEnergy             # 10     ecalBackEnergy             # 10
+                                                                                                                     
+# Electron RoC variables                     # MIP Tracking variables            # MIP Tracking variables            # MIP Tracking variables
+electronContainmentEnergy_x1         # 11    straight4                  # 11     straight4                  # 11     straight4                  # 11
+electronContainmentEnergy_x2         # 12    firstNearPhLayer           # 12     firstNearPhLayer           # 12     firstNearPhLayer           # 12
+electronContainmentEnergy_x3         # 13    nNearPhHits                # 13     nNearPhHits                # 13     nNearPhHits                # 13
+electronContainmentEnergy_x4         # 14    photonTerritoryHits        # 14     fullElectronTerritoryHits  # 14     photonTerritoryHits        # 14
+electronContainmentEnergy_x5         # 15    epSep                      # 15     fullPhotonTerritoryHits    # 15     epSep                      # 15
+                                             epDot                      # 16     fullTerritoryRatio         # 16     epDot                      # 16
+# Photon RoC variables                                                           electronTerritoryHits      # 17     
+photonContainmentEnergy_x1           # 16    # Longitudinal segment variables    photonTerritoryHits        # 18     # Longitudinal segment variables
+photonContainmentEnergy_x2           # 17    energy_s1                  # 17     TerritoryRatio             # 19     energy_s1                  # 17
+photonContainmentEnergy_x3           # 18    xMean_s1                   # 18     epSep                      # 20     xMean_s1                   # 18
+photonContainmentEnergy_x4           # 19    yMean_s1                   # 19     epDot                      # 21     yMean_s1                   # 19
+photonContainmentEnergy_x5           # 20    layerMean_s1               # 20                                         layerMean_s1               # 20
+                                             xStd_s1                    # 21     # Longitudinal segment variables    energy_s2                  # 21
+# Outside RoC variables                      yStd_s1                    # 22     energy_s1                  # 22     yMean_s3                   # 22
+outsideContainmentEnergy_x1          # 21    layerStd_s1                # 23     nHits_s1                   # 23     
+outsideContainmentEnergy_x2          # 22    energy_s2                  # 24     xMean_s1                   # 24     # Electron RoC variables
+outsideContainmentEnergy_x3          # 23    nHits_s2                   # 25     yMean_s1                   # 25     eContEnergy_x1_s1          # 23
+outsideContainmentEnergy_x4          # 24    yMean_s2                   # 26     layerMean_s1               # 26     eContEnergy_x2_s1          # 24
+outsideContainmentEnergy_x5          # 25    energy_s3                  # 27     energy_s2                  # 27     eContYMean_x1_s1           # 25
+outsideContainmentNHits_x1           # 26    yMean_s3                   # 28     xStd_s2                    # 28     eContEnergy_x1_s2          # 26
+outsideContainmentNHits_x2           # 27                                        yStd_s2                    # 29     eContEnergy_x2_s2          # 27
+outsideContainmentNHits_x3           # 28    # Electron RoC variables            layerStd_s2                # 30     eContYMean_x1_s2           # 28
+outsideContainmentNHits_x4           # 29    eContEnergy_x1_s1          # 29     nHits_s3                   # 31     
+outsideContainmentNHits_x5           # 30    eContEnergy_x2_s1          # 30     xMean_s3                   # 32     # Photon RoC variables
+outsideContainmentXStd_x1            # 31    eContYMean_x1_s1           # 31     yMean_s3                   # 33     gContNHits_x1_s1           # 29
+outsideContainmentXStd_x2            # 32    eContEnergy_x1_s2          # 32     layerMean_s3               # 34     gContYMean_x1_s1           # 30
+outsideContainmentXStd_x3            # 33    eContEnergy_x2_s2          # 33     xStd_s3                    # 35     gContNHits_x1_s2           # 31
+outsideContainmentXStd_x4            # 34    eContNHits_x1_s2           # 34     yStd_s3                    # 36     
+outsideContainmentXStd_x5            # 35    eContYMean_x1_s2           # 35     layerStd_s3                # 37     # Outside RoC variables
+outsideContainmentYStd_x1            # 36    eContEnergy_x1_s3          # 36                                         oContEnergy_x1_s1          # 32 
+outsideContainmentYStd_x2            # 37                                        # Electron RoC variables            oContEnergy_x2_s1          # 33
+outsideContainmentYStd_x3            # 38    # Photon RoC variables              eContEnergy_x1_s1          # 38     oContEnergy_x3_s1          # 34
+outsideContainmentYStd_x4            # 39    gContNHits_x1_s1           # 37     eContEnergy_x2_s1          # 39     oContNHits_x1_s1           # 35
+outsideContainmentYStd_x5            # 40    gContYMean_x1_s1           # 38     eContNHits_x1_s1           # 40     oContXMean_x1_s1           # 36
+                                             gContEnergy_x1_s2          # 39     eContNHits_x2_s1           # 41     oContYMean_x1_s1           # 37
+                                             gContEnergy_x2_s2          # 40     eContYMean_x1_s1           # 42     oContYMean_x2_s1           # 38
+                                             gContEnergy_x3_s2          # 41     eContYMean_x2_s1           # 43     oContYStd_x1_s1            # 39
+                                             gContNHits_x1_s2           # 42     eContLayerMean_x1_s1       # 44     oContEnergy_x1_s2          # 40
+                                             gContYMean_x1_s2           # 43     eContLayerMean_x2_s1       # 45     oContEnergy_x2_s2          # 41
+                                                                                 eContEnergy_x1_s2          # 46     oContEnergy_x3_s2          # 42
+                                             # Outside RoC variables             eContEnergy_x2_s2          # 47     oContLayerMean_x1_s2       # 43
+                                             oContEnergy_x1_s1          # 44     eContXMean_x1_s2           # 48     oContLayerStd_x1_s2        # 44
+                                             oContEnergy_x2_s1          # 45     eContXMean_x2_s2           # 49     oContEnergy_x1_s3          # 45
+                                             oContEnergy_x3_s1          # 46     eContYMean_x1_s2           # 50     oContLayerMean_x1_s3       # 46
+                                             oContNHits_x1_s1           # 47     eContYMean_x2_s2           # 51  
+                                             oContXMean_x1_s1           # 48                                      
+                                             oContYMean_x1_s1           # 49     # Photon RoC variables           
+                                             oContYMean_x2_s1           # 50     gContEnergy_x1_s1          # 52  
+                                             oContLayerMean_x1_s1       # 51     gContEnergy_x2_s1          # 53  
+                                             oContYStd_x1_s1            # 52     gContNHits_x1_s1           # 54  
+                                             oContYStd_x2_s1            # 53     gContNHits_x2_s1           # 55  
+                                             oContEnergy_x1_s2          # 54     gContYMean_x1_s1           # 56  
+                                             oContEnergy_x2_s2          # 55     gContYMean_x2_s1           # 57  
+                                             oContEnergy_x3_s2          # 56     gContLayerMean_x1_s1       # 58  
+                                             oContNHits_x2_s2           # 57     gContLayerMean_x2_s1       # 59  
+                                             oContXMean_x1_s2           # 58     gContNHits_x1_s2           # 60  
+                                             oContYMean_x1_s2           # 59     gContNHits_x2_s2           # 61  
+                                             oContYMean_x2_s2           # 60     gContXMean_x1_s2           # 62  
+                                             oContYMean_x3_s2           # 61     gContXMean_x2_s2           # 63  
+                                             oContLayerMean_x1_s2       # 62     gContLayerMean_x1_s2       # 64  
+                                             oContYStd_x1_s2            # 63     gContLayerMean_x2_s2       # 65  
+                                             oContYStd_x2_s2            # 64     gContEnergy_x1_s3          # 66  
+                                             oContLayerStd_x1_s2        # 65     gContEnergy_x2_s3          # 67  
+                                             oContEnergy_x1_s3          # 66                                      
+                                             oContLayerMean_x1_s3       # 67     # Outside RoC variables          
+                                                                                 oContEnergy_x1_s1          # 68  
+                                                                                 oContEnergy_x2_s1          # 69  
+                                                                                 oContEnergy_x3_s1          # 70  
+                                                                                 oContNHits_x1_s1           # 71  
+                                                                                 oContNHits_x2_s1           # 72  
+                                                                                 oContNHits_x3_s1           # 73  
+                                                                                 oContXMean_x1_s1           # 74  
+                                                                                 oContXMean_x2_s1           # 75  
+                                                                                 oContXMean_x3_s1           # 76  
+                                                                                 oContYMean_x1_s1           # 77  
+                                                                                 oContYMean_x2_s1           # 78  
+                                                                                 oContYMean_x3_s1           # 79  
+                                                                                 oContXStd_x1_s1            # 80  
+                                                                                 oContXStd_x2_s1            # 81  
+                                                                                 oContXStd_x3_s1            # 82  
+                                                                                 oContYStd_x1_s1            # 83  
+                                                                                 oContYStd_x2_s1            # 84  
+                                                                                 oContYStd_x3_s1            # 85  
+                                                                                 oContLayerStd_x1_s1        # 86  
+                                                                                 oContLayerStd_x2_s1        # 87  
+                                                                                 oContLayerStd_x3_s1        # 88  
+                                                                                 oContEnergy_x1_s2          # 89  
+                                                                                 oContEnergy_x2_s2          # 90  
+                                                                                 oContEnergy_x3_s2          # 91  
+                                                                                 oContLayerMean_x1_s2       # 92  
+                                                                                 oContLayerMean_x2_s2       # 93  
+                                                                                 oContLayerMean_x3_s2       # 94  
+                                                                                 oContLayerStd_x1_s2        # 95  
+                                                                                 oContLayerStd_x2_s2        # 96  
+                                                                                 oContLayerStd_x3_s2        # 97  
+                                                                                 oContEnergy_x1_s3          # 98  
+                                                                                 oContEnergy_x2_s3          # 99  
+                                                                                 oContEnergy_x3_s3          # 100 
+                                                                                 oContLayerMean_x1_s3       # 101 
+                                                                                 oContLayerMean_x2_s3       # 102 
+                                                                                 oContLayerMean_x3_s3       # 103 

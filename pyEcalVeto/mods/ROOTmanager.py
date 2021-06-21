@@ -48,7 +48,7 @@ class TreeProcess:
     # For analysing .root samples
 
     def __init__(self, event_process, group=[], tree=None, tree_name = None, ID = '',\
-            color=1, maxEvents=-1, pfreq=1000, interactive=True, extraf=None):
+            color=1, strEvent=0, maxEvents=-1, pfreq=1000, batch=False, extrafs=None):
 
         print('\nPreparing {}'.format(ID))
 
@@ -58,10 +58,11 @@ class TreeProcess:
         self.tree_name = tree_name
         self.ID = ID
         self.color = color
+        self.strEvent = strEvent
         self.maxEvents = maxEvents
         self.pfreq = pfreq
-        self.interactive = interactive
-        self.extraf = extraf
+        self.batch = batch
+        self.extrafs = extrafs
         self.cwd = os.getcwd()
         
         # Build tree amd move operations to a scratch directory
@@ -86,10 +87,10 @@ class TreeProcess:
                     check = False 
 
             # Create and mv into tmp directory that can be used to copy files into
-            if self.interactive:
-                self.tmp_dir = '%s/%s' % (scratch_dir, 'tmp_'+str(num))
-            else:
+            if self.batch:
                 self.tmp_dir='%s/%s' % (scratch_dir, os.environ['LSB_JOBID'])
+            else:
+                self.tmp_dir = '%s/%s' % (scratch_dir, 'tmp_'+str(num))
             if not os.path.exists(self.tmp_dir):
                 print( 'Creating tmp directory %s' % self.tmp_dir )
             os.makedirs(self.tmp_dir)
@@ -120,38 +121,40 @@ class TreeProcess:
         if self.tree == None:
             sys.exit('Set tree')
 
-        if ldmx_class == 'EventHeader':
-            branch = r.ldmx.EventHeader()
-        elif ldmx_class == 'EcalVetoResult':
-            branch = r.ldmx.EcalVetoResult()
-        elif ldmx_class == 'SimParticle': 
-            branch = r.map(int, 'ldmx::'+ldmx_class)() 
-        else:
-            branch = r.std.vector('ldmx::'+ldmx_class)()
+        if ldmx_class == 'EventHeader': branch = r.ldmx.EventHeader()
+        elif ldmx_class == 'EcalVetoResult': branch = r.ldmx.EcalVetoResult()
+        elif ldmx_class == 'HcalVetoResult': branch = r.ldmx.HcalVetoResult()
+        elif ldmx_class == 'TriggerResult': branch = r.ldmx.TriggerResult()
+        elif ldmx_class == 'SimParticle': branch = r.map(int, 'ldmx::'+ldmx_class)()
+        else: branch = r.std.vector('ldmx::'+ldmx_class)()
 
         self.tree.SetBranchAddress(branch_name,r.AddressOf(branch))
 
         return branch
  
-    def run(self, maxEvents=-1, pfreq=1000):
+    def run(self, strEvent=0, maxEvents=-1, pfreq=1000):
    
         # Process events
 
+        if strEvent != 0: self.strEvent = strEvent
         if maxEvents != -1: self.maxEvents = maxEvents
-        else: self.maxEvents = self.tree.GetEntries()
+        if self.maxEvents == -1 or self.strEvent + self.maxEvents > self.tree.GetEntries():
+            self.maxEvents = self.tree.GetEntries() - self.strEvent
+        maxEvent = self.strEvent + self.maxEvents
         if pfreq != 1000: self.pfreq = pfreq
 
-        self.event_count = 0
-        while self.event_count < self.maxEvents:
+        self.event_count = self.strEvent
+        while self.event_count < maxEvent:
             self.tree.GetEntry(self.event_count)
             if self.event_count%self.pfreq == 0:
                 print('Processing Event: %s'%(self.event_count))
             self.event_process(self)
             self.event_count += 1
 
-        # Execute any closing function(s)
-        if self.extraf != None:
-            self.extraf()
+        # Execute any closing function(s) (might impliment *args, **kwargs later)
+        if self.extrafs != None:
+            for extraf in self.extrafs:
+                extraf()
 
         # Move back to cwd in case running multiple procs
         os.chdir(self.cwd)
@@ -213,14 +216,12 @@ class TreeMaker:
 
         for feat in feats:
             self.branches[feat][0] = feats[feat]
-
         self.tree.Fill()
 
     def wq(self):
 
         # Save the tree and close the file
-
-        self.tree.Write()
+        self.tfout.Write(self.tree_name)
         self.tfout.Close()
 
         if self.outdir != '':
@@ -257,8 +258,10 @@ def parse(nolist = False):
 
     # Arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--interactive', action='store_true',
-            help='Run in interactive mode [Default: False]')
+    parser.add_argument('--batch', action='store_true', dest='batch', default=False,
+            help='Run in batch mode [Default: False]')
+    parser.add_argument('--sep', action='store_true', dest='separate', default = False,
+            help='separate events into different files [Default: False]')
     parser.add_argument('-i', nargs='+', action='store', dest='infiles', default=[],
             help='input file(s)')
     parser.add_argument('--indirs', nargs='+', action='store', dest='indirs', default=[],
@@ -271,7 +274,9 @@ def parse(nolist = False):
             # for naming files in main() of main script 
     parser.add_argument('--notlist', action='store_true', dest='nolist',
             help="return things without lists (to make things neater for 1 sample runs")
-    parser.add_argument('-m','--max', type=int, action='store', dest='maxEvent',
+    parser.add_argument('-s','--start', type=int, action='store', dest='startEvent',
+            default=0, help='event to start at')
+    parser.add_argument('-m','--max', type=int, action='store', dest='maxEvents',
             default=-1, help='max events to run over for EACH group')
     args = parser.parse_args()
 
@@ -296,10 +301,13 @@ def parse(nolist = False):
         sys.exit('provide output')
     
     pdict = {
-            'inlist':inlist,
-            'groupls':args.group_labels,
-            'outlist':outlist,
-            'maxEvent':args.maxEvent
+            'batch': args.batch,
+            'separate': args.separate,
+            'inlist': inlist,
+            'groupls': args.group_labels,
+            'outlist': outlist,
+            'startEvent': args.startEvent,
+            'maxEvents': args.maxEvents
             }
 
     return pdict

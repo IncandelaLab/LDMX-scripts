@@ -1,8 +1,9 @@
 import math
 import numpy as np
-# all space values in mm unless otherwise noted
+# All space values in mm unless otherwise noted
 
-#gdml values
+# Gdml values
+#Ecal
 ecal_front_z = 240.5
 sp_thickness = 0.001
 clearance = 0.001
@@ -11,11 +12,57 @@ ecal_envelope_z = ECal_dz + 1
 sp_ecal_front_z = ecal_front_z + (ecal_envelope_z - ECal_dz)/2 - sp_thickness/2 + clearance
 
 sin60 = np.sin(np.radians(60))
-module_radius = 85. # dist form center to midpoint of side
+module_radius = 85. # Dist form center to midpoint of side
 module_side = module_radius/sin60
-module_gap = 1.5 # space between sides of side-by-side mods
-
+module_gap = 1.5 # Space between sides of side-by-side mods
+cell_radius = 5 # Real circle
 cellWidth = 8.7
+
+# DetDescr
+ecal_LAYER_MASK = 0x3F  # space for up to 64 layers
+ecal_LAYER_SHIFT = 17
+ecal_MODULE_MASK = 0x1F  # space for up to 32 modules/layer
+ecal_MODULE_SHIFT = 12
+ecal_CELL_MASK = 0xFFF  # space for 4096 cells/module (!)
+ecal_CELL_SHIFT = 0
+
+# Hcal
+# Layer 1 has no absorber, layers 2 and 3 have absorber of different thickness
+air_thick = 2
+scint_thick = 20
+hcal_back_dx = 3100
+hcal_back_dy = 3100   
+back_numLayers1 = 0        
+back_numLayers2 = 100        
+back_numLayers3 = 0        
+back_abso2_thick = 25
+back_abso3_thick = 50
+back_layer1_thick = scint_thick + air_thick
+back_layer2_thick = back_abso2_thick + scint_thick + 2.0*air_thick
+back_layer3_thick = back_abso3_thick + scint_thick + 2.0*air_thick
+hcal_back_dz1 = back_numLayers1*back_layer1_thick
+hcal_back_dz2 = back_numLayers2*back_layer2_thick
+hcal_back_dz3 = back_numLayers3*back_layer3_thick
+hcal_back_dz = hcal_back_dz1 + hcal_back_dz2 + hcal_back_dz3
+
+# Side HCal Layer component
+sideTB_layers = 28
+sideLR_layers = 26
+side_abso_thick = 20
+hcal_side_dz = 600
+
+# Macro
+back_start_z = 860.5 # ecal_front_z + hcal_side_dz + 20
+hcal_dz = hcal_back_dz + hcal_side_dz
+
+# DetDescr
+# HcalSection BACK = 0, TOP = 1, BOTTOM = 2, LEFT = 4, RIGHT = 3
+hcal_SECTION_MASK = 0x7 # space for up to 7 sections
+hcal_SECTION_SHIFT = 18
+hcal_LAYER_MASK = 0xFF  # space for up to 255 layers
+hcal_LAYER_SHIFT = 10
+hcal_STRIP_MASK = 0xFF  # space for 255 strips/layer
+hcal_STRIP_SHIFT = 0
 
 ecal_layerZs = ecal_front_z + np.array([7.850,   13.300,  26.400,  33.500,  47.950,
                                         56.550,  72.250,  81.350,  97.050,  106.150,
@@ -72,7 +119,7 @@ def rotate(point,ang): # move to math eventually
                     [np.sin(ang), np.cos(ang)]])
     return list(np.dot(rotM,point))
 
-# Get layer number from hitZ (Replaced by layerIDofHit)
+# Get layer number from hitZ (Replaced by ecal_layer)
 def layerofHitZ(hitZ, index = 0):
     num = ecal_rz2layer[ round(hitZ) ]
     if index == 1: return num
@@ -83,13 +130,9 @@ def layerofHitZ(hitZ, index = 0):
 def layerZofHitZ(hitZ):
     return ecal_layerZs[ layerofHitZ(hitZ) ]
 
-# Get layerID from hit
-def layerIDofHit(hit):
-    return (hit.getID()>>17)&0x3F
-
 # Get layerZ from hit
 def layerZofHit(hit):
-    return ecal_layerZs[layerIDofHit(hit)]
+    return ecal_layerZs[ecal_layer(hit)]
 
 # Project poimt to z_final
 def projection(pos_init, mom_init, z_final): # infty >.<
@@ -107,7 +150,7 @@ def mag(iterable):
 
 # Return normalized np array
 def unit(arrayy):
-    return arrayy/mag(arrayy)
+    return np.array(arrayy)/mag(arrayy)
 
 # Dot iterables
 def dot(i1, i2):
@@ -115,8 +158,7 @@ def dot(i1, i2):
 
 # Distance detween points
 def dist(p1, p2):
-    p1, p2 = np.array(p1), np.array(p2)
-    return mag(p1 - p2)
+    return math.sqrt(np.sum( ( np.array(p1) - np.array(p2) )**2 ))
 
 # Distance between a point and the nearest point on a line defined by endpoints
 def distPtToLine(h1,p1,p2):
@@ -133,15 +175,43 @@ def distTwoLines(h1,h2,p1,p2):
     else: # Lines are parallel; need different method
         return mag( np.cross(e1,h1-p1) )
 
-# Angle with Z
-def angle(vec, units):
-    if units=='degrees': return math.acos(vec[2]/mag(vec))*180.0/math.pi
-    elif units=='radians': return math.acos(vec[2]/mag(vec))
+# Angle between vectors (with z by default)
+def angle(vec, units, vec2=[0,0,1]):
+    if units=='degrees': return math.acos( dot( unit(vec), unit(vec2) ) )*180.0/math.pi
+    elif units=='radians': return math.acos( dot( unit(vec), unit(vec2) ) )
     else: print('\nSpecify valid angle unit ("degrees" or "randians")')
 
 # Get np.ndarray of hit position
 def pos(hit):
     return np.array( ( hit.getXPos(), hit.getYPos(), hit.getZPos() ) )
+
+###########################
+# Get hitID-related info
+###########################
+
+# Get layerID from ecal hit
+def ecal_layer(hit):
+    return (hit.getID() >> ecal_LAYER_SHIFT) & ecal_LAYER_MASK
+
+# Get moduleID from ecal hit
+def ecal_module(hit):
+    return (hit.getID() >> ecal_MODULE_SHIFT) & ecal_MODULE_MASK
+
+# Get cellID from ecal hit
+def ecal_cell(hit):
+    return (hit.getID() >> ecal_CELL_SHIFT) & ecal_CELL_MASK
+
+# Get sectionID from hcal hit
+def hcal_section(hit):
+    return (hit.getID() >> hcal_SECTION_SHIFT) & hcal_SECTION_MASK
+
+# Get layerID from hcal hit
+def hcal_layer(hit):
+    return (hit.getID() >> hcal_LAYER_SHIFT) & hcal_LAYER_MASK
+
+# Get stripID from hcal hit
+def hcal_strip(hit):
+    return (hit.getID() >> hcal_STRIP_SHIFT) & hcal_STRIP_MASK
 
 ###########################
 # Get e/gamma SP hit info
@@ -173,7 +243,7 @@ def electronEcalSPHit(ecalSPHits):
     pmax = 0
     for hit in ecalSPHits:
 
-        if hit.getPosition()[2] > ecal_front_z + sp_thickness + 0.5 or\
+        if hit.getPosition()[2] > sp_ecal_front_z + sp_thickness/2 or\
                 hit.getMomentum()[2] <= 0 or\
                 hit.getTrackID() != 1 or\
                 hit.getPdgID() != 11:
@@ -207,7 +277,7 @@ def gammaEcalSPHit(ecalSPHits):
     pmax = 0
     for hit in ecalSPHits:
 
-        if hit.getPosition()[2] > ecal_front_z + sp_thickness + 0.5 or\
+        if hit.getPosition()[2] > sp_ecal_front_z + sp_thickness/2 or\
                 hit.getMomentum()[2] <= 0 or\
                 not (hit.getPdgID() in [-22,22]):
             continue
@@ -225,4 +295,3 @@ def elec_gamma_ecalSPHits(ecalSPHits):
     gSPHit = gammaEcalSPHit(ecalSPHits)
 
     return eSPHit, gSPHit
-

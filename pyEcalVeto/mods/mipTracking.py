@@ -18,12 +18,12 @@ def nearPhotonInfo(trackingHitList, g_trajectory, returnLayer=True, returnNumber
 
         # Near the photn trajectory
         if physTools.dist( physTools.pos(hit)[:2],
-                g_trajectory[ physTools.layerIDofHit( hit ) ] ) < physTools.cellWidth:
+                g_trajectory[ physTools.ecal_layer( hit ) ] ) < physTools.cellWidth:
             n += 1
 
             # Earliest layer
-            if physTools.layerIDofHit( hit ) < layer:
-                layer = physTools.layerIDofHit( hit )
+            if physTools.ecal_layer( hit ) < layer:
+                layer = physTools.ecal_layer( hit )
 
     # Prepare and return desired output
     out = []
@@ -41,7 +41,7 @@ def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
                         mst = 2, returnN=True, returnHitList = False, returnTracks = False):
 
     strtracklist = []   # Initialize output
-    hitscopy = hitlist  # Need this because hitlist gets eddited
+    hitscopy = hitlist.copy()  # Need this because hitlist gets eddited
 
     for hit in hitlist:  #Go through all hits, starting at the back of the ecal
         track = [hit]
@@ -73,7 +73,7 @@ def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
         if len(track) == mst: 
             for hitt in track:
                 if physTools.distPtToLine( physTools.pos(hitt),
-                        ptraj_ends[0], ptraj_ends[1] ) > 8:
+                        ptraj_ends[0], ptraj_ends[1] ) > physTools.cellWidth - 0.5:
                     break
                 continue
 
@@ -82,7 +82,7 @@ def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
         trk_e = np.array( (track[-1].getXPos(), track[-1].getYPos(), track[-1].getZPos() ) )
         closest_e = physTools.distTwoLines( etraj_ends[0], etraj_ends[1], trk_s, trk_e )
         closest_p = physTools.distTwoLines( ptraj_ends[0], ptraj_ends[1], trk_s, trk_e )
-        if closest_p > 8.7 and closest_e < 17.4:
+        if closest_p > physTools.cellWidth and closest_e < 2*physTools.cellWidth:
             continue
 
         # Remove hits in current track from further consideration
@@ -111,7 +111,7 @@ def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
             trk_s = np.array( (track[ 0].getXPos(), track[ 0].getYPos(),
                                                     track[ 0].getZPos() ) )
             # If head+tail are w/in one cell of each other
-            if physTools.dist( trk_e, trk_s ) < 8.7:
+            if physTools.dist( trk_e, trk_s ) < physTools.cellWidth:
                 for hit in trk_:
                     trk.append(hit)
                 strtracklist.remove(trk_)

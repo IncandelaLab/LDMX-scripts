@@ -4,7 +4,8 @@ import ROOT as r
 import numpy as np
 from mods import ROOTmanager as manager
 from mods import physTools, mipTracking
-r.gSystem.Load('<path-to>/ldmx-sw/install/lib/libFramework.so')
+cellMap = np.loadtxt('mods/cellmodule.txt')
+r.gSystem.Load('libFramework.so')
 
 # TreeModel to build here
 branches_info = {
@@ -82,15 +83,20 @@ def main():
 
     # Inputs and their trees and stuff
     pdict = manager.parse()
+    batch_mode = pdict['batch']
+    separate = pdict['separate']
     inlist = pdict['inlist']
     outlist = pdict['outlist']
     group_labels = pdict['groupls']
-    maxEvent = pdict['maxEvent']
+    startEvent = pdict['startEvent']
+    maxEvents = pdict['maxEvents']
+    # Should maybe put in parsing eventually and make event_process *arg
 
     # Construct tree processes
     procs = []
     for gl, group in zip(group_labels,inlist):
-        procs.append( manager.TreeProcess(event_process, group, ID=gl, pfreq=100) )
+        procs.append( manager.TreeProcess(event_process, group,
+                                          ID=gl, batch=batch_mode, pfreq=100) )
 
     # Process jobs
     for proc in procs:
@@ -106,18 +112,35 @@ def main():
 
         # Tree/Files(s) to make
         print('\nRunning %s'%(proc.ID))
-        proc.tfMaker = manager.TreeMaker(group_labels[procs.index(proc)]+'.root',\
-                                         "EcalVeto",\
-                                         branches_info,\
-                                         outlist[procs.index(proc)]
-                                         )
+
+        proc.separate = separate
+
+        proc.tfMakers = {'unsorted': None}
+        if proc.separate:
+            proc.tfMakers = {
+                'egin': None,
+                'ein': None,
+                'gin': None,
+                'none': None
+                }
+
+        for tfMaker in proc.tfMakers:
+            proc.tfMakers[tfMaker] = manager.TreeMaker(group_labels[procs.index(proc)]+\
+                                        '_{}.root'.format(tfMaker),\
+                                        "EcalVeto",\
+                                        branches_info,\
+                                        outlist[procs.index(proc)]
+                                        )
+
+        # Gets executed at the end of run()
+        proc.extrafs = [ proc.tfMakers[tfMaker].wq for tfMaker in proc.tfMakers ]
 
         # RUN
-        proc.extraf = proc.tfMaker.wq # Gets executed at the end of run()
-        proc.run(maxEvents=maxEvent)
+        proc.run(strEvent=startEvent, maxEvents=maxEvents)
 
     # Remove scratch directory if there is one
-    manager.rmScratch()
+    if not batch_mode:     # Don't want to break other batch jobs when one finishes
+        manager.rmScratch()
 
     print('\nDone!\n')
 
@@ -126,7 +149,7 @@ def main():
 def event_process(self):
 
     # Initialize BDT input variables w/ defaults
-    feats = self.tfMaker.resetFeats()
+    feats = next(iter(self.tfMakers.values())).resetFeats()
 
     # Assign pre-computed variables
     feats['nReadoutHits']       = self.ecalVeto.getNReadoutHits()
@@ -142,28 +165,50 @@ def event_process(self):
     feats['ecalBackEnergy']     = self.ecalVeto.getEcalBackEnergy()
     
     ###################################
-    # Compute extra BDT input variables
+    # Determine event type
     ###################################
 
-    # Get e position and momentum, and make note of presence
+    # Get e position and momentum from EcalSP
     e_ecalHit = physTools.electronEcalSPHit(self.ecalSPHits)
     if e_ecalHit != None:
         e_ecalPos, e_ecalP = e_ecalHit.getPosition(), e_ecalHit.getMomentum()
 
+    # Photon Info from targetSP
+    e_targetHit = physTools.electronTargetSPHit(self.targetSPHits)
+    if e_targetHit != None:
+        g_targPos, g_targP = physTools.gammaTargetInfo(e_targetHit)
+    else:  # Should about never happen -> division by 0 in g_traj
+        print('no e at targ!')
+        g_targPos = g_targP = np.zeros(3)
+
     # Get electron and photon trajectories
     e_traj = g_traj = None
-    if e_ecalHit != None:
 
-        # Photon Info from target
-        e_targetHit = physTools.electronTargetSPHit(self.targetSPHits)
-        if e_targetHit != None:
-            g_targPos, g_targP = physTools.gammaTargetInfo(e_targetHit)
-        else:  # Should about never happen -> division by 0 in g_traj
-            print('no e at targ!')
-            g_targPos = g_targP = np.zeros(3)
-        
+    if e_ecalHit != None:
         e_traj = physTools.layerIntercepts(e_ecalPos, e_ecalP)
+
+    if e_targetHit != None:
         g_traj = physTools.layerIntercepts(g_targPos, g_targP)
+
+    # Fiducial categories (filtered into different output trees)
+    if self.separate:
+        e_fid = g_fid = False
+
+        if e_traj != None:
+            for cell in cellMap:
+                if physTools.dist( cell[1:], e_traj[0] ) <= physTools.cell_radius:
+                    e_fid = True
+                    break
+
+        if g_traj != None:
+            for cell in cellMap:
+                if physTools.dist( cell[1:], g_traj[0] ) <= physTools.cell_radius:
+                    g_fid = True
+                    break
+
+    ###################################
+    # Compute extra BDT input variables
+    ###################################
 
     # Find epSep and epDot, and prepare electron and photon trajectory vectors
     if e_traj != None and g_traj != None:
@@ -175,6 +220,8 @@ def event_process(self):
                        np.array([g_traj[-1][0], g_traj[-1][1], physTools.ecal_layerZs[-1] ])]
 
         # Unused epDot and epSep
+        #e_norm  = physTools.unit( e_traj_ends[1] - e_traj_ends[0] )
+        #g_norm  = physTools.unit( g_traj_ends[1] - g_traj_ends[0] )
         #feats['epSep'] = physTools.dist( e_traj_ends[0], g_traj_ends[0] )
         #feats['epDot'] = physTools.dot(e_norm,g_norm)
 
@@ -192,8 +239,6 @@ def event_process(self):
     # Territory setup (consider missing case)
     gToe    = physTools.unit( e_traj_ends[0] - g_traj_ends[0] )
     origin  = g_traj_ends[0] + 0.5*8.7*gToe
-    e_norm  = physTools.unit( e_traj_ends[1] - e_traj_ends[0] )
-    g_norm  = physTools.unit( g_traj_ends[1] - g_traj_ends[0] )
 
     # Recoil electron momentum magnitude and angle with z-axis
     recoilPMag  = physTools.mag(  e_ecalP )                 if e_ecalHit != None else -1.0
@@ -216,7 +261,7 @@ def event_process(self):
         
         if hit.getEnergy() > 0:
 
-            layer = physTools.layerIDofHit(hit)
+            layer = physTools.ecal_layer(hit)
             xy_pair = ( hit.getXPos(), hit.getYPos() )
 
             # Territory selections
@@ -324,7 +369,7 @@ def event_process(self):
     # Loop over hits again to calculate the standard deviations
     for hit in self.ecalRecHits:
 
-        layer = physTools.layerIDofHit(hit)
+        layer = physTools.ecal_layer(hit)
         xy_pair = (hit.getXPos(), hit.getYPos())
 
         # Distance to electron trajectory
@@ -463,8 +508,14 @@ def event_process(self):
                                 trackingHitList, e_traj_ends, g_traj_ends,
                                 mst = 4, returnHitList = True)
 
-    # Fill the tree with values for this event
-    self.tfMaker.fillEvent(feats)
+    # Fill the tree (according to fiducial category) with values for this event
+    if not self.separate:
+        self.tfMakers['unsorted'].fillEvent(feats)
+    else:
+        if e_fid and g_fid: self.tfMakers['egin'].fillEvent(feats)
+        elif e_fid and not g_fid: self.tfMakers['ein'].fillEvent(feats)
+        elif not e_fid and g_fid: self.tfMakers['gin'].fillEvent(feats)
+        else: self.tfMakers['none'].fillEvent(feats)
 
 if __name__ == "__main__":
     main()

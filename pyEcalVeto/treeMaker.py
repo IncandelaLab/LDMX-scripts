@@ -439,7 +439,7 @@ def event_process(self):
             feats['layerStd_s{}'.format(i)] = math.sqrt(feats['layerStd_s{}'.format(i)]/\
                     feats['energy_s{}'.format(i)])
 
-        for j in range(1, physTools.nSegments + 1):
+        for j in range(1, physTools.nRegions + 1):
 
             if feats['eContEnergy_x{}_s{}'.format(j,i)] > 0:
                 feats['eContXStd_x{}_s{}'.format(j,i)] =\

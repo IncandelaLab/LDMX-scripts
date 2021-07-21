@@ -68,7 +68,7 @@ def main():
     logging.info('Command to be executed: %s' % command)
 
     # Set starting seed number. Should be incremented with each batch submission
-    seed = 0
+    seed = 1
     if args.seed: 
         seed = int(args.seed)
     logging.info('Starting seeds from %s' % seed)
@@ -115,10 +115,13 @@ def main():
     # Standard submission
     elif jobs > 0: 
         # Calculated number of jobs, setting number of tasks per job to npertask
-        njobs, nlast = int(jobs)/args.npertask + 1, int(jobs)%args.npertask
+        print(jobs)
+        print(args.npertask)
+        njobs, nlast = int(jobs)//args.npertask + 1, int(jobs)%args.npertask
         if nlast == 0:
             njobs -= 1
 
+        logging.info("SUBMITTING {} jobs".format(njobs))
         # Set up slurm job submission scripts
         for job in range(0, njobs):
             logging.info('Job %s' % job)
@@ -127,7 +130,8 @@ def main():
             if job==njobs-1 and nlast>0:
                 arraymax=nlast-1
 
-            python_command = command + ' --run %s' % (job+1) 
+            #python_command = command + ' --run %s' % seed  #(job+1) 
+            python_command = command + ' --run %s' % config['command']['arguments']['run']
 
             # Set seed and increment it for the next set of tasks
             if args.seed:
@@ -135,7 +139,7 @@ def main():
                 seed += args.npertask*2
 
             # Write job submission script
-            with open('%s/slurm_submit_%d.job' % (jobdir,job), 'w') as f:
+            with open('%s/slurm_submit_%d_%d.job' % (jobdir,job,seed), 'w') as f:
                 f.write('#!/bin/bash\n\n')
                 f.write('#SBATCH --nodes=1 --ntasks-per-node=1\n')
                 f.write('#SBATCH --array=0-%d\n' % arraymax)
@@ -149,7 +153,7 @@ def main():
                 f.write('%s\n' % python_command)
 
             # Format submission command and submit if this is not a test
-            submit_command = '%s %s/slurm_submit_%d.job' % (batch_command,jobdir,job)
+            submit_command = '%s %s/slurm_submit_%d_%d.job' % (batch_command,jobdir,job,seed)
             logging.info('Job submit command: %s' % submit_command)
             if not args.test: 
                 subprocess.Popen(submit_command, shell=True).communicate()

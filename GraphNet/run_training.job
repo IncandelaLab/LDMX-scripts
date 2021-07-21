@@ -2,13 +2,13 @@
 #SBATCH -N 1 --partition=gpu --ntasks-per-node=1
 #SBATCH --gres=gpu:1
 
-export MODEL_NAME=v12_lazy_3region_extended
+export MODEL_NAME=v12_lazy_1region_kaon
 export BASE_DIRECTORY=/home/pmasterson/ParticleNet/LDMX-scripts/GraphNet
 
 cd $SLURM_SUBMIT_DIR
 
 /bin/hostname
-srun --gres=gpu:1 python -u train.py --optimizer ranger --start-lr 5e-3 --focal-loss-gamma 2 --network particle-net-lite --batch-size 128 --save-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model --test-output-path $BASE_DIRECTORY/test_output/$MODEL_NAME/output --num-epochs 20 --num-workers 16 --device 'cuda:0' --num-regions 3
+srun --gres=gpu:1 python -u train.py --optimizer ranger --start-lr 5e-3 --focal-loss-gamma 2 --network particle-net-lite --batch-size 128 --save-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model --test-output-path $BASE_DIRECTORY/test_output/$MODEL_NAME/output --num-epochs 20 --num-workers 16 --device 'cuda:0' --num-regions 1
 
 
 

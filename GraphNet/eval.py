@@ -178,7 +178,7 @@ def run_one_file(filepath, extra_label=0):
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
 
     test_preds = evaluate(model, test_loader, dev, return_scores=True)
-    print("First 10 pred values:", test_preds[:10])
+    #print("First 10 pred values:", test_preds[:10])
     test_labels = test_data.label
 #     test_extra_labels = test_data.extra_labels
 
@@ -189,11 +189,11 @@ def run_one_file(filepath, extra_label=0):
     import awkward
     out_data = test_data.get_obs_data()
 #    out_data['ParticleNet_extra_label'] = test_extra_labels
-    print("PRINTING BRANCHES")
-    for branch in out_data:
-        print(out_data[branch][:10])
+    #print("PRINTING BRANCHES")
+    #for branch in out_data:
+    #    print(out_data[branch][:10])
     out_data['ParticleNet_disc'] = test_preds[:, 1]
-    print("Test preds", out_data['ParticleNet_disc'][:20])
+    #print("Test preds", out_data['ParticleNet_disc'][:20])
     # OLD:
     #awkward.save(pred_file, out_data, mode='w')
     #print('Written pred to %s' % pred_file)

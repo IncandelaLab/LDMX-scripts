@@ -47,6 +47,7 @@ data_to_save = {
 # Base:
 
 #output_dir = '/home/pmasterson/GraphNet_input/v12/processed'
+"""
 output_dir = 'test_output_files'
 file_templates = {
     #0.001: '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.001*.root',
@@ -55,6 +56,7 @@ file_templates = {
     #1.0:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*1.0*.root',  # was sig_extended_tracking
     0:     '/home/pmasterson/GraphNet_input/v12/background_230_trunk/*.root'  # was bkg_12M
 }
+"""
 """
 # For eval:
 output_dir = '/home/pmasterson/GraphNet_input/v12/processed_eval'
@@ -66,6 +68,10 @@ file_templates = {
     0:     '/home/pmasterson/GraphNet_input/v12/bkg_12M/evaluation/*.root'
 }
 """
+output_dir = '/home/pmasterson/GraphNet_input/v12/processed_eval'
+file_templates = {
+    0:     '/home/aminali/production/kaon_prod/v2.3.0_upkaons/0run100jobs/*.root'  #'/home/pmasterson/GraphNet_input/v12/kaon_training/*.root'
+}
 
 def processFile(input_vars):
 
@@ -75,9 +81,9 @@ def processFile(input_vars):
 
     print("Processing file {}".format(filename))
     if mass == 0:
-        outfile_name = "v12_pn_mipless_{}.root".format(filenum)
+        outfile_name = "v12_pn_upkaon_{}.root".format(filenum)
     else:
-        outfile_name = "v12_{}_mipless_{}.root".format(mass, filenum)
+        outfile_name = "v12_{}_upkaon_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
 
     # NOTE:  Added this to ...
@@ -279,6 +285,7 @@ def processFile(input_vars):
 if __name__ == '__main__':
     # New approach:  Use multiprocessing
     #pool = Pool(8)  # 8 processors, factor of 8 speedup in theory...
+    
     presel_eff = {}
     for mass, filepath in file_templates.items():
         print("======  m={}  ======".format(mass))
@@ -287,7 +294,7 @@ if __name__ == '__main__':
         for filenum, f in enumerate(glob.glob(filepath)[:4]):
             params.append([f, mass, filenum])
         print("num params:", len(params))
-        with Pool(2) as pool:
+        with Pool(8) as pool:
             results = pool.map(processFile, params)
         print("Finished.  Result len:", len(results))
         print(results)
@@ -306,9 +313,9 @@ if __name__ == '__main__':
         nTotal = 0  # pre-preselection
         nEvents = 0 # post-preselection
         print("======  m={}  ======".format(mass))
-        for f in glob.glob(filepath):
+        for f in glob.glob(filepath)[15:20]:
             # Process each file separately
-            nT, nE = processFile(f, mass, filenum)
+            nT, nE = processFile([f, mass, filenum])
             nTotal += nT
             nEvents += nE
             filenum += 1

@@ -7,7 +7,7 @@ import ROOT as r
 print("ROOT imported")
 
 import resource
-# Don't have permissions for this on pod...
+# Note:  This doesn't work on POD
 #resource.setrlimit(resource.RLIMIT_NOFILE, (1048576, 1048576))
 
 import numpy as np
@@ -69,7 +69,8 @@ parser.add_argument('--num-regions', type=int, default=1,
 
 args = parser.parse_args()
 
-#####i# location of the signal and background files ######
+###### locations of the signal and background files ######
+# NOTE:  These must be output files produced by file_processor.py, not unprocessed ldmx-sw ROOT files.
 bkglist = {
     # (filepath, num_events_for_training)
     0: ('/home/pmasterson/GraphNet_input/v12/processed/*pn*.root', -1)
@@ -97,7 +98,7 @@ if args.demo:
         1000: ('/home/pmasterson/GraphNet_input/v12/processed/*1.0*.root',   200),
         }
 
-# NOTE:  Must manually pass this to PN from preprocessing input
+# NOTE:  Must manually type this in here from file_processor.py output
 presel_eff = {1: 0.9619039328342329, 10: 0.9906173128305598, 100: 0.9955994049017305, 1000: 0.9981730111154327, 0: 0.03439702293791625}
 
 #########################################################
@@ -109,6 +110,7 @@ presel_eff = {1: 0.9619039328342329, 10: 0.9906173128305598, 100: 0.995599404901
 obs_branches = []
 #veto_branches = []
 if args.save_extra:
+    # List of extra branches to save for plotting information
     # Should match everything in plot_ldmx_nn.ipynb
     # EXCEPT for ParticleNet_extra_label and ParticleNet_disc, which are computed after training
     obs_branches = [
@@ -117,14 +119,6 @@ if args.save_extra:
         'recoilY_',
         'TargetSPRecoilE_pt'
         ]
-    
-    # NEW:  EcalVeto branches must be handled separately in v2.2.1+.
-    # ...and not anymore.
-    #veto_branches = [
-    #    #'discValue_',  # Commented, will always be saved for now
-    #    #'recoilX_',  # Only add if want to look at missing-e events (now redundant w/ fiducial studies)
-    #    #'recoilY_',
-    #]
 
 
 #########################################################
@@ -189,27 +183,24 @@ dev = torch.device(args.device)
 # load data
 if training_mode:
     # for training: we use the first 0-20% for testing, and 20-80% for training
-    #print("Usage: {}".format(psutil.virtual_memory().percent))
-    train_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), nRegions=args.num_regions)  #, coord_ref=args.coord_ref)
-    #print("Usage: {}".format(psutil.virtual_memory().percent))
-    val_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), nRegions=args.num_regions)  #, coord_ref=args.coord_ref)
-    #print("Usage: {}".format(psutil.virtual_memory().percent))
+    # Create one EcalHitsDatset storing the testing/validation sample...
+    train_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), nRegions=args.num_regions)
+    # ...and one storing the training sample.
+    val_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), nRegions=args.num_regions)
     train_loader = DataLoader(train_data, num_workers=args.num_workers, batch_size=args.batch_size,
                               collate_fn=collate_fn, shuffle=True, drop_last=True, pin_memory=True)
-    #print("Usage: {}".format(psutil.virtual_memory().percent))
     val_loader = DataLoader(val_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
-    print("Current usage: {}".format(psutil.virtual_memory().percent))
     print('Train: %d events, Val: %d events' % (len(train_data), len(val_data)))
     print('Using val sample for testing!')
     test_data = val_data
     test_loader = val_loader
-else:
 
+else:
+    # If not in training mode, don't need to bother with the second training dataset.
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
     test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, 
-                                obs_branches=obs_branches, nRegions=args.num_regions)  #, coord_ref=args.coord_ref)
-                                #obs_branches=obs_branches, veto_branches=veto_branches, coord_ref=args.coord_ref)
+                                obs_branches=obs_branches, nRegions=args.num_regions)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                              collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
 
@@ -217,16 +208,17 @@ input_dims = test_data.num_features
 
 # model
 print("Initializing model")
-print("Usage: {}".format(psutil.virtual_memory().percent))
+# Create the SplitNet model here.  This is the "real" ParticleNet.
 model = SplitNet(input_dims=input_dims, num_classes=2,
                  conv_params=conv_params,
                  fc_params=fc_params,
                  use_fusion=True,
                  nRegions=args.num_regions)
-
+# Tell python to run the model on the specified device (usually GPU)
 model = model.to(dev)
-# NEW to resolve GPU error
-model.particle_nets_to(dev)
+# ...and this function does the same thing for the three SplitNets.
+# Note:  Not necessary anymore after SplitNet.py revision!
+#model.particle_nets_to(dev)
 
 
 def train(model, opt, scheduler, train_loader, dev):
@@ -359,9 +351,6 @@ if path and not os.path.exists(path):
 test_preds = evaluate(model, test_loader, dev, return_scores=True)
 test_labels = test_data.label
 test_extra_labels = test_data.extra_labels
-print(test_preds.shape)
-print(test_extra_labels.shape)
-print(test_labels.shape)
 
 info_dict = {'model_name':args.network,
              'model_params': {'conv_params':conv_params, 'fc_params':fc_params},
@@ -413,28 +402,4 @@ awkward.to_parquet(out_data, pred_file+'.parquet')
 
 print("DONE")
 
-# export to onnx
-# NOTE:  This isn't currently being used for anything
-"""
-onnx_output = os.path.join(os.path.dirname(args.test_output_path), os.path.basename(model_path).replace('.pt', '.onnx'))
-print('Exporting ONNX model to %s' % onnx_output)
-import torch.onnx
-model_softmax = SplitNet(input_dims=input_dims, num_classes=2,
-                         conv_params=conv_params,
-                         fc_params=fc_params,
-                         use_fusion=True,
-                         return_softmax=True)  # add softmax to convert output to [0, 1]
-
-model_softmax.load_state_dict(torch.load(model_path))
-model_softmax.to(dev)
-for batch in test_loader:
-    model_softmax.eval()
-    inputs = (batch.coordinates.to(dev), batch.features.to(dev))
-    torch.onnx.export(model_softmax, inputs, onnx_output,
-                      input_names=['coordinates', 'features'],
-                      output_names=['output'],
-                      dynamic_axes={'coordinates':[0], 'features':[0]},
-                      opset_version=11)
-    break
-"""
 

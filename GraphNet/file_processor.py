@@ -9,20 +9,33 @@ import ROOT as r
 print("Imported root.  Starting...")
 from multiprocessing import Pool
 
-# NEW:  Introduced in tandem w/ lazy loading to lower increasing GPU usage
-# NOTE:  Must run this with a working ldmx-sw installation
-# Goal:
-# - Loop through each input root file (no difference in treatment except filename)
-# - Perform preselection
-# - Compute pT from TargetScoringPlaneHits
-# - If event passes presel, keep it; otherwise, drop it
-# - Write necessary branches ONLY to new output root trees
+"""
+file_processor.py
+
+Purpose:  Read through ROOT files containing LDMX events that ParrticleNet will be trained on, drop every event that
+doesn't pass the ParticleNet preselection, and save the remainder to output ROOT files that ParticleNet can read.
+This was introduced because both the preselection and the pT calculation involve loading information from the ROOT
+files that ParticleNet itself doesn't need, and would substantially increase runtime if ParticleNet performed the
+calculation for every event individually.
+
+Outline:
+- For every input file, do the following:
+   - Read all necessary data from the file into arrays using uproot.
+   - Drop all events that fail the preselection condition.
+   - Compute the pT of each event from the TargetScoringPlaneHit information (needed for pT bias plots, and not
+     present in ROOT files), and keep track of it alongside the other arrays/branches loaded for the file.
+   - Use ROOT to create new output files and to fill them with the contents of the loaded arrays.
+
+"""
+
 
 # Standard preselection values (-> 95% sig/5% bkg)
 MAX_NUM_ECAL_HITS = 110
 MAX_ISO_ENERGY = 650
 
 # Branches to save:
+# Quantities labeled with 'scalars' have a single value per event.  Quantities labeled with 'vectors' have
+# one value for every hit (e.g. number of ecal hits vs x position of each hit).
 # (Everything else can be safely ignored)
 # data[branch_name][scalars/vectors][leaf_name]
 data_to_save = {
@@ -47,34 +60,35 @@ data_to_save = {
 # Base:
 
 #output_dir = '/home/pmasterson/GraphNet_input/v12/processed'
-"""
+
+# Directory to write output files to:
 output_dir = 'test_output_files'
+# Locations of the ldmx-sw ROOT files to process+train on:
 file_templates = {
-    #0.001: '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.001*.root',
-    #0.01:  '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.01*.root',
-    #0.1:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.1*.root',
-    #1.0:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*1.0*.root',  # was sig_extended_tracking
-    0:     '/home/pmasterson/GraphNet_input/v12/background_230_trunk/*.root'  # was bkg_12M
+    0.001: '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.001*.root',  # 0.001 GeV, etc.
+    0.01:  '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.01*.root',
+    0.1:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.1*.root',
+    1.0:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*1.0*.root',
+    # Note:  m=0 here refers to PN background events
+    0:     '/home/pmasterson/GraphNet_input/v12/background_230_trunk/*.root'
 }
+
 """
-"""
-# For eval:
+# Additional sample for evaluation:
 output_dir = '/home/pmasterson/GraphNet_input/v12/processed_eval'
 file_templates = {
-    #0.001: '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.001*.root',
-    #0.01:  '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.01*.root',
-    #0.1:   '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.1*.root',
-    #1.0:   '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*1.0*.root',
+    0.001: '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.001*.root',
+    0.01:  '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.01*.root',
+    0.1:   '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.1*.root',
+    1.0:   '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*1.0*.root',
     0:     '/home/pmasterson/GraphNet_input/v12/bkg_12M/evaluation/*.root'
 }
 """
-output_dir = '/home/pmasterson/GraphNet_input/v12/processed_eval'
-file_templates = {
-    0:     '/home/aminali/production/kaon_prod/v2.3.0_upkaons/0run100jobs/*.root'  #'/home/pmasterson/GraphNet_input/v12/kaon_training/*.root'
-}
+
 
 def processFile(input_vars):
-
+    # input_vars is a list:
+    # [file_to_read, signal_mass, nth_file_in_mass_group]
     filename = input_vars[0]  # Apparently this is the easiest approach to multiple args...
     mass = input_vars[1]
     filenum = input_vars[2]
@@ -91,6 +105,10 @@ def processFile(input_vars):
         print("FILE {} ALREADY EXISTS.  SKIPPING...".format(outfile_name))
         return 0, 0
 
+    # Fix branch names:  uproot refers to EcalVeto branches with a / ('EcalVeto_v12/nReadoutHits_', etc), while
+    # all other branches are referred to with a . ('EcalRecHits_v12.energy_', etc).  This is because ldmx-sw
+    # writes EcalVeto information to the ROOT files in a somewhat unusual way; this may change in future updates
+    # to ldmx-sw.
     branchList = []
     for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
@@ -99,20 +117,22 @@ def processFile(input_vars):
                 branchList.append(branchname + '/' + leaf)
             else:
                 branchList.append(branchname + '.' + leaf)
-    # Load only events passing the preselection
-    #print("branchList is:")
-    #print(branchList)
-    #alias_dict = {'EcalVeto_v12/nReadoutHits_': 'nHits',
-    #              'EcalVeto_v12/summedTightIso_': 'isoEnergy'}
-    #preselection = '(EcalVeto_v12/nReadoutHits_ < {})'.format(MAX_NUM_ECAL_HITS) # & (EcalVeto_v12/summedTightIso_ < {})'.format(MAX_NUM_ECAL_HITS, MAX_ISO_ENERGY)
 
+
+    # Open the file and read all necessary data from it:
     t = uproot.open(filename)['LDMX_Events']
-    # This is just for printing the # of pre-preselection events
+    # (This part is just for printing the # of pre-preselection events:)
     tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
     nTotalEvents = len(tmp)
     print("Before preselection:  found {} events".format(nTotalEvents))
 
+    # t.arrays() returns a dict-like object:
+    #    raw_data['EcalVeto_v12/nReadoutHits_'] == awkward array containing the value of 
+    #    nReadoutHits_ for each event, and so on.
     raw_data = t.arrays(branchList) #, preselection)  #, aliases=alias_dict)
+
+    # Perform the preselection:  Drop all events with more than MAX_NUM_ECAL_HITS in the ecal, 
+    # and all events with an isolated energy that exceeds MAXX_ISO_ENERGY
     el = (raw_data['EcalVeto_v12/nReadoutHits_'] < MAX_NUM_ECAL_HITS) * (raw_data['EcalVeto_v12/summedTightIso_'] < MAX_ISO_ENERGY)
     preselected_data = {}
     for branch in branchList:
@@ -121,61 +141,53 @@ def processFile(input_vars):
     nEvents = len(preselected_data['EcalVeto_v12/summedTightIso_'])
     print("Skimming from {} events".format(nEvents))
 
-    # ADDITIONALLY:  Have to compute TargetSPRecoilE_pt here instead of in train.py.  (No access to TSP data)
-    # For each event, find the recoil electron:
+    # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane
+    # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
+    # approach.)
+    # For each event, find the recoil electron (maximal recoil pz):
     pdgID_ = t['TargetScoringPlaneHits_v12.pdgID_'].array()[el]
     z_     = t['TargetScoringPlaneHits_v12.z_'].array()[el]
     px_    = t['TargetScoringPlaneHits_v12.px_'].array()[el]
     py_    = t['TargetScoringPlaneHits_v12.py_'].array()[el]
     pz_    = t['TargetScoringPlaneHits_v12.pz_'].array()[el]
     tspRecoil = []
-    # Currently trying the slow approach...
     for i in range(nEvents):
-        #if i % 1000 == 0:  print("pT, evt {}".format(i))
         max_pz = 0
-        recoil_index = 0  # Find the recoil electron
+        recoil_index = 0  # Store the index of the recoil electron
         for j in range(len(pdgID_[i])):
+            # Constraint on z ensures that the SP downstream of the target is used
             if pdgID_[i][j] == 11 and z_[i][j] > 0.176 and z_[i][j] < 0.178 and pz_[i][j] > max_pz:
                 max_pz = pz_[i][j]
                 recoil_index = j
         # Calculate the recoil SP
         tspRecoil.append(np.sqrt(px_[i][recoil_index]**2 + py_[i][recoil_index]**2))
-    #print("SP recoil pT, sample values:", tspRecoil[:5], ". total values:", len(tspRecoil))
+    # Put it in the preselected_data and treat it as an ordinary branch from here on out
     preselected_data['TargetSPRecoilE_pt'] = np.array(tspRecoil)
 
-    # Now take the loaded + preselected data, iterate through each event, and write them to a new root file:
+    # Additionally, add new branches storing the length for vector data (number of SP hits, number of ecal hits):
+    nSPHits = []
+    nRecHits = []
+    x_data = preselected_data['EcalScoringPlaneHits_v12.x_']
+    E_data = preselected_data['EcalRecHits_v12.energy_']
+    for i in range(nEvents):
+        # NOTE:  max num hits may exceed MAX_NUM...this is okay.
+        nSPHits.append(len(x_data[i]))
+        nRecHits.append(len(E_data[i]))
+    preselected_data['nSPHits'] = np.array(nSPHits)
+    preselected_data['nRecHits'] = np.array(nRecHits)
+
+
+    # Prepare the output tree+file:
     outfile = r.TFile(outfile_path, "RECREATE")
     tree = r.TTree("skimmed_events", "skimmed ldmx event data")
     # Everything in EcalSPHits is a vector; everything in EcalVetoProcessor is a scalar
 
-
-    # Additionally, add a new branch storing the length for vector data (nSPHits)
-    nSPHits = []
-    x_data = preselected_data['EcalScoringPlaneHits_v12.x_']
-    for i in range(nEvents):
-        # NOTE:  max num hits may exceed MAX_NUM...this is okay.
-        nSPHits.append(len(x_data[i]))
-    # This assignment may fail...
-    preselected_data['nSPHits'] = np.array(nSPHits)
-    #print("nSPHits created, sample:", x_data[:10])
-    nRecHits = []
-    E_data = preselected_data['EcalRecHits_v12.energy_']
-    for i in range(nEvents):
-        #print("appending len", len(E_data[i]))
-        nRecHits.append(len(E_data[i]))
-    preselected_data['nRecHits'] = np.array(nRecHits)
-
-
-    #print("Preparing vars to hold leaf data")
-    # For each branch, prepare a var to hold the corresp information
+    # For each branch, create an array to temporarily hold the data for each event:
     scalar_holders = {}  # Hold ecalVeto (scalar) information
     vector_holders = {}
     for branch in branchList:
-        # Search for item in data_to_save
-        # If found, add branch: scalar or branch: vector to dict
-        #print(branch)
-        #print(re.split(r'[./]', branch))
         leaf = re.split(r'[./]', branch)[1]  #Split at / or .
+        # Find whether the branch stores scalar or vector data:
         datatype = None
         for br, brdict in data_to_save.items():
             #print(leaf)
@@ -186,48 +198,22 @@ def processFile(input_vars):
             elif leaf in brdict['vectors']:
                 datatype = 'vector'
                 continue
-        if datatype == 'scalar':
+        assert(datatype == 'scalar' or datatype == 'vector')
+        if datatype == 'scalar':  # If scalar, temp array has a length of 1
             scalar_holders[branch] = np.zeros((1), dtype='float32')
-        elif datatype == 'vector':
-            # NOTE: EcalSPHits may contain MORE than MAX_NUM... hits.
+        else:  # If vector, temp array must have at least one element per hit
+            # (liberally picked 2k)
             vector_holders[branch] = np.zeros((2000), dtype='float32')
-        else:  print("ERROR:  datatype is neither a scalar nor a vector!")
-    #scalar_holders['nSPHits'] = np.zeros((1), 'i')
-    #scalar_holders['TargetSPRecoilE_pt'] = np.zeros((1), 'i')
-    #scalar_holders['nRecHits'] = np.zeros((1), 'i')
-
-    #print("Scalar, vector_holders:")
-    #print(scalar_holders)
-    #print(vector_holders)
-
-    """
-    # TESTING:  This code works
-    tree.Branch('nSPHits', scalar_holders['nSPHits'], 'nSPHits/I')
-    tree.Branch('x_', vector_holders['EcalScoringPlaneHits_v12.x_'], 'x_[nSPHits]/F')
-
-    scalar_holders['nSPHits'][0] = 3
-    vector_holders['EcalScoringPlaneHits_v12.x_'][0] = 1
-    vector_holders['EcalScoringPlaneHits_v12.x_'][1] = 2
-    vector_holders['EcalScoringPlaneHits_v12.x_'][2] = 4
-    tree.Fill()
-    scalar_holders['nSPHits'][0] = 2
-    vector_holders['EcalScoringPlaneHits_v12.x_'][0] = 6
-    vector_holders['EcalScoringPlaneHits_v12.x_'][1] = 7
-    tree.Fill()
-    """
-
-
     # Create new branches to store nSPHits, pT (necessary for tree creation)...
     scalar_holders['nSPHits'] = np.array([0], 'i')
-    scalar_holders['TargetSPRecoilE_pt'] = np.array([0], dtype='float32')
     scalar_holders['nRecHits'] = np.array([0], 'i')
+    scalar_holders['TargetSPRecoilE_pt'] = np.array([0], dtype='float32')
     branchList.append('nSPHits')
     branchList.append('nRecHits')
     branchList.append('TargetSPRecoilE_pt')
-    # Create a new branch for each event
-    # For all other branches:
+    # Now, go through each branch name and a corresponding branch to the tree:
     for branch, var in scalar_holders.items():
-        #print("ADDING BRANCH", branch)
+        # Need to make sure that each var is stored as the correct type (floats, ints, etc):
         if branch == 'nSPHits' or branch == 'nRecHits':
             branchname = branch
             dtype = 'I'
@@ -237,64 +223,55 @@ def processFile(input_vars):
         else:
             branchname = re.split(r'[./]', branch)[1]
             dtype = 'F'
-        #print("Adding scalar branch:", branchname, branchname+'/'+dtype)
         tree.Branch(branchname, var, branchname+"/"+dtype)
     for branch, var in vector_holders.items():
-        # NOTE:  Can't currently handle EcalVeto branches that store vectors
+        # NOTE:  Can't currently handle EcalVeto branches that store vectors.  Not necessary for PN, though.
         parent = re.split(r'[./]', branch)[0]
         branchname = re.split(r'[./]', branch)[1]
-        #print("Adding vector branch:", branchname)
-        #print(branchname)
-        #print(data_to_save['EcalScoringPlaneHits_v12']['vectors'])
-        #print(branch)
         if parent == 'EcalScoringPlaneHits_v12':
             tree.Branch(branchname, var, "{}[nSPHits]/F".format(branchname))
-            #print("Creating branch", branchname)
         else:  # else in EcalRecHits
-            #print("rec parent is", parent)
             tree.Branch(branchname+'rec_', var, "{}[nRecHits]/F".format(branchname+'rec_'))
-            #print("Creating branch", branchname+'rec_')
 
     print("All branches added.  Filling...")
 
     for i in range(nEvents):
-        #if i % 1000 == 0:  print("  Filling event {}".format(i))
+        # For each event, fill the temporary arrays with data, then write them to the tree with Fill()
         for branch in branchList:
             # Contains both vector and scalar data.  Treat them differently:
-            #print("  branch:", branch)
-            #print("  ", preselected_data[branch][i])
-            
             if branch in scalar_holders.keys():  # Scalar
                 # fill scalar data
                 scalar_holders[branch][0] = preselected_data[branch][i]
             elif branch in vector_holders.keys():  # Vector
                 # fill vector data
-                #print("Confirm equal lengths:  data={}, nHits={}".format(len(preselected_data[branch][i]), preselected_data['nSPHits'][i]))
                 for j in range(len(preselected_data[branch][i])):
                     vector_holders[branch][j] = preselected_data[branch][i][j]
             else:
-                print("ERROR:  {} not found in _holders".format(branch))
+                print("FATAL ERROR:  {} not found in *_holders".format(branch))
+                assert(False)
         tree.Fill()
 
-
+    # Finally, write the filled tree to the ouput file:
     outfile.Write()
     print("FINISHED.  File written to {}.".format(outfile_path))
+
     return (nTotalEvents, nEvents)
 
 
 if __name__ == '__main__':
     # New approach:  Use multiprocessing
-    #pool = Pool(8)  # 8 processors, factor of 8 speedup in theory...
+    #pool = Pool(16) -> Run 16 threads/process 16 files in parallel
     
     presel_eff = {}
+    # For each signal mass and for PN background:
     for mass, filepath in file_templates.items():
         print("======  m={}  ======".format(mass))
         # Assemble list of function params
+        # These get passed to processFile() when Pool requests them
         params = []
-        for filenum, f in enumerate(glob.glob(filepath)[:4]):
-            params.append([f, mass, filenum])
-        print("num params:", len(params))
-        with Pool(8) as pool:
+        for filenum, f in enumerate(glob.glob(filepath)):
+            params.append([f, mass, filenum])  # list will be passed to ProcessFile:  processFile([filepath, mass, file_number])
+        with Pool(16) as pool:  # Can increase this number if desired, although this depends on how many threads POD will let you run at once and on how much GPU is free.
             results = pool.map(processFile, params)
         print("Finished.  Result len:", len(results))
         print(results)
@@ -302,9 +279,9 @@ if __name__ == '__main__':
         nEvents = sum([r[1] for r in results])
         print("m = {} MeV:  Read {} events, {} passed preselection".format(int(mass*1000), nTotal, nEvents))
         presel_eff[int(mass * 1000)] = nEvents / nTotal
-    print("Done.  Presel_eff:")
-    print(presel_eff)
+    print("Done.  Presel_eff: {}".format(presel_eff))
 
+    # For running without multithreading (note:  will be extremely slow and is impractical unless you want to test/use 1-2 files at a time):
     """
     presel_eff = {}
     for mass, filepath in file_templates.items():
@@ -313,7 +290,7 @@ if __name__ == '__main__':
         nTotal = 0  # pre-preselection
         nEvents = 0 # post-preselection
         print("======  m={}  ======".format(mass))
-        for f in glob.glob(filepath)[15:20]:
+        for f in glob.glob(filepath):
             # Process each file separately
             nT, nE = processFile([f, mass, filenum])
             nTotal += nT

@@ -9,6 +9,13 @@ from utils.ParticleNet import *
 torch.set_default_dtype(torch.float32)
 
 class SplitNet(nn.Module):
+    # SplitNet class:
+    # Consists of 3 ordinary ParticleNets, each one only examining data fom a single reigon of the ecal.
+    # Hits from region 1 are fed to ParticleNet 1, hits from region 2 are fed to ParticleNet 2, etc.
+    # The fully connected layer of each PN is replaced by a single fully connected layer that aggregates
+    # the results of the one-to-three ParticleNets.
+    # Number of regions is set by the nRegions param
+
     def __init__(self,
                  input_dims,
                  num_classes,
@@ -23,15 +30,7 @@ class SplitNet(nn.Module):
 
         self.nRegions = nRegions
 
-        # Particle nets:
-        """
-        self.particleNets = []
-        for i in range(self.nRegions):
-            self.particleNets.append(ParticleNet(input_dims=input_dims,   num_classes=2,
-                                                 conv_params=conv_params, fc_params=fc_params,
-                                                 use_fusion=use_fusion,   return_softmax = return_softmax))
-        """
-        # PROBLEM:  load_state_dict doesn't seem to like this.  Maybe PNs need to be attrs of the class itself, instead of elements inside a list attr?
+        # Particle nets:  named pn1, pn2, etc.
         for i in range(self.nRegions):
             pn = ParticleNet(input_dims=input_dims, num_classes=2,           conv_params=conv_params,
                              fc_params=fc_params,   use_fusion=use_fusion,   return_softmax = return_softmax)
@@ -59,14 +58,17 @@ class SplitNet(nn.Module):
 
         print("FINISHED INIT")
 
+    """
+    # No longer necessary after setattr() line above was added!
     def particle_nets_to(self, dev):  # Added separately--PNs in list aren't automatically put on gpu by to()
         return
         #for i in range(self.nRegions):
         #    setattr(self, 'pn{i}'.format(i), getattr(self, 'pn{i}'.format(i)).to(dev))
         #    self.particleNets[i] = self.particleNets[i].to(dev)
+    """
 
     def forward(self, points, features):
-        # Divide up provided points+features, then hand them to the PNs
+        # Divide up provided points+features, then hand them to the PNs, then feed the outputs to the fc layer.
         # Points are [nregions] x 128  x 3 x 50 (note: nregions axis is gone for 1 region)
         # Note:  points[:,0].shape = (128, 3, 50)
 

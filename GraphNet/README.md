@@ -1,7 +1,15 @@
-# Training the ParticleNet-based model
+# ParticleNet for the LDMX ECal veto
 ------
 
-## Setup the environment
+## Introduction
+
+ParticleNet is a convolutional neural network architecture designed for jet tagging.  This repository contains an implementation of ParticleNet designed to serve as a powerful veto for the LDMX electromagnetic calorimeter (ECal).
+
+ParticleNet's workflow is straightforward.  First, ROOT files produced by the ldmx-sw software framework--typically for signal events at various masses and photonuclear background events--must be passed to a processing script that skims out most of the background and produces output ROOT files formatted specifically for easy use in ParticleNet.  Second, these output files are passed to ParticleNet, which trains on 80% of the events and uses the remaining 20% for validation.  Once finished, the trained ParticleNet model may then be evaluated on more events to check its performance.  This is faciliated by a jupyter notebook containing a number of plotting routines for checking ROC curves, pT bias, and more.
+
+## Training the ParticleNet-based model
+
+### Setup the environment
 
 You will need to set up Miniconda and install the needed packages if you start from scratch. This needs to be done only once.
 
@@ -15,7 +23,7 @@ bash Miniconda3-latest-Linux-x86_64.sh
 
 Verify the installation is successful by running `conda info`.
 
-If you cannot run `conda` command, check if the you added the conda path to your `PATH` variable in your bashrc/zshrc file, e.g., 
+If you cannot run the `conda` command, check if the you added the conda path to your `PATH` variable in your bashrc/zshrc file, e.g., 
 
 ```bash
 export PATH="$HOME/miniconda3/bin:$PATH"
@@ -23,9 +31,7 @@ export PATH="$HOME/miniconda3/bin:$PATH"
 
 #### Set up the conda environment and install necessary packages
 
-The following instruction is for training on Nvidia GPU w/ [CUDA](https://developer.nvidia.com/cuda-downloads) installed.
-
-NOTE:  A working installation of ldmx-sw is now required to facilitate data loading with ROOT.  After installing, you'll need to add `/path/to/ldmx-sw/install/lib` to `$LD_LIBRARY_PATH` (ideally in your `.bashrc`).
+The following instructions are for training on Nvidia GPU w/ [CUDA](https://developer.nvidia.com/cuda-downloads) installed.
 
 To set up the conda environment, use:
 
@@ -39,7 +45,8 @@ conda create -c conda-forge --name torchroot root
 conda activate torchroot
 
 # install the necessary python packages
-pip install numpy pandas scikit-learn scipy matplotlib tqdm psutil pyarrow
+# psutil is also recommended if monitoring GPU usage becomes necessary
+pip install numpy pandas scikit-learn scipy matplotlib tqdm pyarrow
 
 # we (sometimes) use uproot to access ROOT files
 pip install uproot
@@ -51,7 +58,7 @@ pip install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/
 
 ```
 
-## Processing input files
+### Preprocess the input files
 
 The training code requires skimmed and partially-processed root files as input.  [file\_processor.py](file_processor.py) is responsible for generating these files from ldmx-sw simulation output.  In addition to performing a simple preselection on all input events that removes ~95% of all PN background events and <5% of signal events, the processing script only writes information to the processed root files that's necessary for ParticleNet and the plotting notebook.
 
@@ -60,7 +67,7 @@ To generate input files, edit the filepaths in [file\_processor.py](file_process
 (If possible, it's easier to use exising input files, such as those in `/home/pmasterson/GraphNet_input/v12/processed`, rather than generating your own.)
 
 
-## Run the training
+### Run the training
 
 Before running the code, make sure you have activated the training environment:
 
@@ -85,7 +92,7 @@ The meaning of each command line argument in the base command can be found w/ `p
 The training is performed for 20 epochs (set by `--num-epochs`), w/ each epoch going over all the signal and background events. At the end of each epoch, a model snapshot is saved to the path set by `--save-model-path`. At the end of the training, the model snapshot w/ the best accuracy is used for evaluation -- the output will be saved to `--test-output-path`, and a number of performance metrics will be printed to the screen, e.g., the signal efficiencies at background efficiencies of 1e-3, 1e-4, 1e-5, and 1e-6 (the signal eff. at bkg=1e-6 is typically not very accurate due to low stats in the validation sample).
 
 
-## Run the prediction/evaluation
+### Run the prediction/evaluation
 
 After training, the next step for generating ROC curves and other plots is to run [train.py](train.py) in prediction mode.  This is most easily done by using the corresponding slurm script ([run\_prediction.job](run_prediction.job)).
 

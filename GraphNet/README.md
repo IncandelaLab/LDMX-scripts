@@ -75,19 +75,19 @@ Before running the code, make sure you have activated the training environment:
 conda activate pytorch
 ```
 
-The [train.py](train.py) is the main script to run the training. If you're running ParticleNet directly on a machine with GPUs, such as pod-gpu, you can use it in the command line like:
+The [train.py](train.py) is the main script to run the training. If you're running ParticleNet directly on a machine with GPUs, such as pod-gpu, you can run a demo version in the command line with:
 
 ```bash
-python -u train.py --coord-ref none --optimizer ranger --start-lr 5e-3 --focal-loss-gamma 2 --network particle-net-lite --batch-size 128 --save-model-path models/ecal_coord-ref-none_particlenet-lite_focal2_ranger_lr5e-3/model --test-output-path test-output/ecal_coord-ref-none_particlenet-lite_focal2_ranger_lr5e-3/output --num-epochs 20 --num-workers 16 --device 'cuda:0' | tee ecal_coord-ref-none_particlenet-lite_focal2_ranger_lr5e-3.log
+python -u train.py --coord-ref none --optimizer ranger --start-lr 5e-3 --focal-loss-gamma 2 --network particle-net-lite --batch-size 128 --save-model-path models/ecal_coord-ref-none_particlenet-lite_focal2_ranger_lr5e-3/model --test-output-path test-output/ecal_coord-ref-none_particlenet-lite_focal2_ranger_lr5e-3/output --num-epochs 20 --num-workers 16 --device 'cuda:0' --demo | tee ecal_coord-ref-none_particlenet-lite_focal2_ranger_lr5e-3.log
 ```
 
-Since it takes a few hours to run the full training, `nohup` may be necessary again.  If you're working on POD, it's easier to submit the job to the batch system instead.  To do this, modify the model names/paths in [run\_training.job](run_training.job) to something descriptive and run:
+Note that the `--demo` option runs the training on a very small sample of events instead of the full ~400k per category.  Since it takes much longer to run the full training, full training jobs should be submitted to the batch system instead.  To do this, modify the model names/paths in [run\_training.job](run_training.job) to something descriptive and run:
 
 ```bash
 sbatch run_training.job
 ```
 
-The meaning of each command line argument in the base command can be found w/ `python train.py -h` or inside the [train.py](train.py) file. The input signal and background files are set in the beginning of the [train.py](train.py) file, together w/ the number of events that will be taken from each process. We use the same number of events from each signal points (200k), and the same number of background events as the sum of all signal points (200k\*4 = 800k) for the training, to avoid bias to a specific signal point. By default, we only use 80% of all available events for the training -- the rest ("validation sample") will be used for evaluating the performance of the trained model. 
+The meaning of each command line argument in the base command can be found w/ `python train.py -h` or inside the [train.py](train.py) file. The input signal and background files are set in the beginning of the [train.py](train.py) file, together w/ the number of events that will be taken from each process. We use the same number of events from each signal points (was 200k, now 400k), and the same number of background events as the sum of all signal points (400k\*4 = 1600k) for the training, to avoid bias to a specific signal point. By default, we only use 80% of all available events for the training -- the rest ("validation sample") will be used for evaluating the performance of the trained model. 
 
 The training is performed for 20 epochs (set by `--num-epochs`), w/ each epoch going over all the signal and background events. At the end of each epoch, a model snapshot is saved to the path set by `--save-model-path`. At the end of the training, the model snapshot w/ the best accuracy is used for evaluation -- the output will be saved to `--test-output-path`, and a number of performance metrics will be printed to the screen, e.g., the signal efficiencies at background efficiencies of 1e-3, 1e-4, 1e-5, and 1e-6 (the signal eff. at bkg=1e-6 is typically not very accurate due to low stats in the validation sample).
 

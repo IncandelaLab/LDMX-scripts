@@ -35,37 +35,45 @@ Outline:
 
 """
 
+# Base:
 
-# Standard preselection values (-> 95% sig/5% bkg)
-MAX_NUM_ECAL_HITS = 60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
-MAX_ISO_ENERGY = 500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
-# Results:  >0.994 vs 0.055
+#output_dir = '/home/pmasterson/GraphNet_input/v12/processed'
 
-# Branches to save:
-# Quantities labeled with 'scalars' have a single value per event.  Quantities labeled with 'vectors' have
-# one value for every hit (e.g. number of ecal hits vs x position of each hit).
-# (Everything else can be safely ignored)
-# data[branch_name][scalars/vectors][leaf_name]
-data_to_save = {
-    'EcalScoringPlaneHits_v12': {
-        'scalars':[],
-        'vectors':['pdgID_', 'layerID_', 'x_', 'y_', 'z_',
-                   'px_', 'py_', 'pz_', 'energy_']
-    },
-    'EcalVeto_v12': {
-        'scalars':['passesVeto_', 'nReadoutHits_', 'summedDet_',
-                   'summedTightIso_', 'discValue_',
-                   'recoilX_', 'recoilY_',
-                   'recoilPx_', 'recoilPy_', 'recoilPz_'],
-        'vectors':[]
-    },
-    'EcalRecHits_v12': {
-        'scalars':[],
-        'vectors':['id_', 'energy_']
-    }
+# Directory to write output files to:
+output_dir = 'test_output_files'
+# Locations of the 2.3.0 ldmx-sw ROOT files to process+train on:
+"""
+file_templates = {
+    0.001: '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.001*.root',  # 0.001 GeV, etc.
+    0.01:  '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.01*.root',
+    0.1:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.1*.root',
+    1.0:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*1.0*.root',
+    # Note:  m=0 here refers to PN background events
+    0:     '/home/pmasterson/GraphNet_input/v12/background_230_trunk/*.root'
+}
+"""
+# 3.0.0:
+file_templates = {
+    0.001: '/home/pmasterson/events/v3.0.0_trigger/signal/*0.001*.root',  # 0.001 GeV, etc.
+    0.01:  '/home/pmasterson/events/v3.0.0_trigger/signal/*0.01*.root',
+    0.1:   '/home/pmasterson/events/v3.0.0_trigger/signal/*0.1*.root',
+    1.0:   '/home/pmasterson/events/v3.0.0_trigger/signal/*1.0*.root',
+    # Note:  m=0 here refers to PN background events
+    0:     '/home/pmasterson/events/v3.0.0_trigger/background/*.root'
 }
 
-# Base:
+
+"""
+# Additional sample for evaluation:
+output_dir = '/home/pmasterson/GraphNet_input/v12/processed_eval'
+file_templates = {
+    0.001: '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.001*.root',
+    0.01:  '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.01*.root',
+    0.1:   '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.1*.root',
+    1.0:   '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*1.0*.root',
+    0:     '/home/pmasterson/GraphNet_input/v12/bkg_12M/evaluation/*.root'
+}
+""" Base:
 
 #output_dir = '/home/pmasterson/GraphNet_input/v12/processed'
 
@@ -102,6 +110,37 @@ file_templates = {
     0:     '/home/pmasterson/GraphNet_input/v12/bkg_12M/evaluation/*.root'
 }
 """
+
+
+
+# Standard preselection values (-> 95% sig/5% bkg)
+MAX_NUM_ECAL_HITS = 60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
+MAX_ISO_ENERGY = 500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
+# Results:  >0.994 vs 0.055
+
+# Branches to save:
+# Quantities labeled with 'scalars' have a single value per event.  Quantities labeled with 'vectors' have
+# one value for every hit (e.g. number of ecal hits vs x position of each hit).
+# (Everything else can be safely ignored)
+# data[branch_name][scalars/vectors][leaf_name]
+data_to_save = {
+    'EcalScoringPlaneHits_v12': {
+        'scalars':[],
+        'vectors':['pdgID_', 'layerID_', 'x_', 'y_', 'z_',
+                   'px_', 'py_', 'pz_', 'energy_']
+    },
+    'EcalVeto_v12': {
+        'scalars':['passesVeto_', 'nReadoutHits_', 'summedDet_',
+                   'summedTightIso_', 'discValue_',
+                   'recoilX_', 'recoilY_',
+                   'recoilPx_', 'recoilPy_', 'recoilPz_'],
+        'vectors':[]
+    },
+    'EcalRecHits_v12': {
+        'scalars':[],
+        'vectors':['id_', 'energy_']
+    }
+}
 
 
 def processFile(input_vars):

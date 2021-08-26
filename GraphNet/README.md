@@ -62,7 +62,7 @@ pip install --pre torch torchvision -f https://download.pytorch.org/whl/nightly/
 
 The training code requires skimmed and partially-processed root files as input.  [file\_processor.py](file_processor.py) is responsible for generating these files from ldmx-sw simulation output.  In addition to performing a simple preselection on all input events that removes ~95% of all PN background events and <5% of signal events, the processing script only writes information to the processed root files that's necessary for ParticleNet and the plotting notebook.
 
-To generate input files, edit the filepaths in [file\_processor.py](file_processor.py) to point to your signal and background ldmx-sw root files and run the script.  This will take some time, so it's recommended to either run it with `nohup`, or, if you're working on POD, use [run\_file\_processor](run_file_processor.py) to submit the script to the batch system (much faster).
+To generate input files, edit the filepaths in [file\_processor.py](file_processor.py) to point to your signal and background ldmx-sw root files and run the script.  If you're working on POD, you can submit this to the batch system with `sbatch file_processor.py`.  With 20 processes and O(200k) v3.0.0 events for each signal and background category, it should take about an hour to run.
 
 (If possible, it's easier to use exising input files, such as those in `/home/pmasterson/GraphNet_input/v12/processed`, rather than generating your own.)
 

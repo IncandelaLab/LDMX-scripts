@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH -N 1 --partition=gpu --ntasks-per-node=1
 #SBATCH --gres=gpu:1
+#SBATCH --output=slurm_eval.out
 
 export MODEL_NAME=v12_lazy_3region_kaon
 export DATA_NAME=v12_lazy_3region_kaon

@@ -1,3 +1,10 @@
+#!/home/pmasterson/miniconda3/envs/torchroot/bin/python
+
+#SBATCH -n 20
+#SBATCH --output=slurm_file_processor.out
+
+# NOTE:  was --nodes=1, --ntasks-per-node 2
+
 import numpy as np
 import uproot
 import awkward
@@ -30,8 +37,9 @@ Outline:
 
 
 # Standard preselection values (-> 95% sig/5% bkg)
-MAX_NUM_ECAL_HITS = 110
-MAX_ISO_ENERGY = 650
+MAX_NUM_ECAL_HITS = 60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
+MAX_ISO_ENERGY = 500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
+# Results:  >0.994 vs 0.055
 
 # Branches to save:
 # Quantities labeled with 'scalars' have a single value per event.  Quantities labeled with 'vectors' have
@@ -64,6 +72,7 @@ data_to_save = {
 # Directory to write output files to:
 output_dir = 'test_output_files'
 # Locations of the ldmx-sw ROOT files to process+train on:
+"""
 file_templates = {
     0.001: '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.001*.root',  # 0.001 GeV, etc.
     0.01:  '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.01*.root',
@@ -71,6 +80,15 @@ file_templates = {
     1.0:   '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*1.0*.root',
     # Note:  m=0 here refers to PN background events
     0:     '/home/pmasterson/GraphNet_input/v12/background_230_trunk/*.root'
+}
+"""
+file_templates = {
+    0.001: '/home/pmasterson/events/v3.0.0_trigger/signal/*0.001*.root',  # 0.001 GeV, etc.
+    0.01:  '/home/pmasterson/events/v3.0.0_trigger/signal/*0.01*.root',
+    0.1:   '/home/pmasterson/events/v3.0.0_trigger/signal/*0.1*.root',
+    1.0:   '/home/pmasterson/events/v3.0.0_trigger/signal/*1.0*.root',
+    # Note:  m=0 here refers to PN background events
+    0:     '/home/pmasterson/events/v3.0.0_trigger/background/*.root'
 }
 
 """
@@ -95,9 +113,9 @@ def processFile(input_vars):
 
     print("Processing file {}".format(filename))
     if mass == 0:
-        outfile_name = "v12_pn_upkaon_{}.root".format(filenum)
+        outfile_name = "v300_pn_trigger_{}.root".format(filenum)
     else:
-        outfile_name = "v12_{}_upkaon_{}.root".format(mass, filenum)
+        outfile_name = "v300_{}_trigger_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
 
     # NOTE:  Added this to ...
@@ -271,14 +289,15 @@ if __name__ == '__main__':
         params = []
         for filenum, f in enumerate(glob.glob(filepath)):
             params.append([f, mass, filenum])  # list will be passed to ProcessFile:  processFile([filepath, mass, file_number])
-        with Pool(16) as pool:  # Can increase this number if desired, although this depends on how many threads POD will let you run at once and on how much GPU is free.
+        with Pool(20) as pool:  # Can increase this number if desired, although this depends on how many threads POD will let you run at once...
+            # this number is unclear, but 20 seems right judging from the POD webpage
             results = pool.map(processFile, params)
         print("Finished.  Result len:", len(results))
         print(results)
         nTotal  = sum([r[0] for r in results])
         nEvents = sum([r[1] for r in results])
         print("m = {} MeV:  Read {} events, {} passed preselection".format(int(mass*1000), nTotal, nEvents))
-        presel_eff[int(mass * 1000)] = nEvents / nTotal
+        presel_eff[int(mass * 1000)] = float(nEvents) / nTotal
     print("Done.  Presel_eff: {}".format(presel_eff))
 
     # For running without multithreading (note:  will be extremely slow and is impractical unless you want to test/use 1-2 files at a time):

@@ -76,12 +76,14 @@ bkglist = {
     0: ('/home/pmasterson/GraphNet_input/v12/processed/*pn*.root', -1)
     }
 
+# was processed/*pn*, *0.001*, etc.
+
 siglist = {
     # (filepath, num_events_for_training)
-    1:    ('/home/pmasterson/GraphNet_input/v12/processed/*0.001*.root', 400000),
-    10:   ('/home/pmasterson/GraphNet_input/v12/processed/*0.01*.root',  400000),
-    100:  ('/home/pmasterson/GraphNet_input/v12/processed/*0.1*.root',   400000),
-    1000: ('/home/pmasterson/GraphNet_input/v12/processed/*1.0*.root',   400000),
+    1:    ('/home/pmasterson/GraphNet_input/v12/processed/*0.001*.root', 200000),
+    10:   ('/home/pmasterson/GraphNet_input/v12/processed/*0.01*.root',  200000),
+    100:  ('/home/pmasterson/GraphNet_input/v12/processed/*0.1*.root',   200000),
+    1000: ('/home/pmasterson/GraphNet_input/v12/processed/*1.0*.root',   200000),
     }
 
 if args.demo:
@@ -99,7 +101,10 @@ if args.demo:
         }
 
 # NOTE:  Must manually type this in here from file_processor.py output
-presel_eff = {1: 0.9619039328342329, 10: 0.9906173128305598, 100: 0.9955994049017305, 1000: 0.9981730111154327, 0: 0.03439702293791625}
+# OLD:  2.3.0
+#presel_eff = {1: 0.9619039328342329, 10: 0.9906173128305598, 100: 0.9955994049017305, 1000: 0.9981730111154327, 0: 0.03439702293791625}
+# NEW:  3.0.0
+presel_eff = {1: 0.994131455399061, 10: 0.9975881667769368, 100: 0.9980669665667397, 1000: 0.9967660072125927, 0: 0.053747662244142014}
 
 #########################################################
 

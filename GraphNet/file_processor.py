@@ -235,9 +235,9 @@ def processFile(input_vars):
     
     e_cut = []
     events = len(pz)
-    hits = len(pz[i])
     for i in range(events):
         e_cut.append([])
+        hits = len(pz[i])
         for j in range(hits):
             e_cut[i].append(False)
     

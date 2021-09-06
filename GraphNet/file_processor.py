@@ -126,6 +126,9 @@ def _load_cellMap(version='v12'):
     cellMap = {}
     for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
         cellMap[i] = (x, y)
+    global cells 
+    cells = np.array(list(cellMap.values()))
+    print("Loaded detector info")
 
 def get_layer_id(cid):
     layer = (awkward.to_numpy(awkward.flatten(cid)) >> 17) & 0x3F
@@ -255,9 +258,6 @@ def processFile(input_vars):
     recoilPz = pad_array(pz[e_cut])
 
     # Apply fiducial test to recoil electron
-    _load_cellMap(version='v12')   # load detector info
-    cells = np.array(list(cellMap.values()))
-
     N = len(recoilX)
     f_cut = np.zeros(N, dtype = bool)
     
@@ -407,6 +407,7 @@ if __name__ == '__main__':
     
     presel_eff = {}
     fiducial_ratio = {}
+    _load_cellMap()
     # For each signal mass and for PN background:
     for mass, filepath in file_templates.items():
         print("======  m={}  ======".format(mass))

@@ -252,9 +252,9 @@ def processFile(input_vars):
 
     recoilX = pad_array(selected_data['EcalScoringPlaneHits_v12.x_'][e_cut])
     recoilY = pad_array(selected_data['EcalScoringPlaneHits_v12.y_'][e_cut])
-    recoilPx = pad_array(pX[e_cut])
-    recoilPy = pad_array(pY[e_cut])
-    recoilPz = pad_array(pZ[e_cut])
+    recoilPx = pad_array(px[e_cut])
+    recoilPy = pad_array(py[e_cut])
+    recoilPz = pad_array(pz[e_cut])
 
     # Apply fiducial test to recoil electron
     events = len(recoilX)

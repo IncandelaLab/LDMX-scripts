@@ -1,4 +1,4 @@
-#!/home/duncansw/miniconda3/envs/torchroot/bin/python
+#!/home/pmasterson/miniconda3/envs/torchroot/bin/python
 
 #SBATCH -n 20
 #SBATCH --output=slurm_file_processor.out

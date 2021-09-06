@@ -39,6 +39,7 @@ Outline:
 # Directory to write output files to:
 output_dir = '/home/duncansw/GraphNet_input/v12/processed'
 # Locations of the 2.3.0 ldmx-sw ROOT files to process+train on:
+"""
 file_templates = {
     0.001: '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.001*.root',
     0.01:  '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*0.01*.root',
@@ -46,6 +47,7 @@ file_templates = {
     1.0:   '/home/pmasterson/GraphNet_input/v12/sig_extended_extra/*1.0*.root',
     0:     '/home/dgj1118/LDMX-scripts/GraphNet/background_230_trunk/*.root'
 }
+"""
 """
 file_templates = {
     0.001: '/home/pmasterson/GraphNet_input/v12/signal_230_trunk/*0.001*.root',  # 0.001 GeV, etc.
@@ -56,7 +58,7 @@ file_templates = {
     0:     '/home/pmasterson/GraphNet_input/v12/background_230_trunk/*.root'
 }
 """
-"""
+
 # 3.0.0:
 file_templates = {
     0.001: '/home/pmasterson/events/v3.0.0_trigger/signal/*0.001*.root',  # 0.001 GeV, etc.
@@ -67,7 +69,6 @@ file_templates = {
     0:     '/home/pmasterson/events/v3.0.0_trigger/background/*.root'
 }
 
-"""
 """
 # Additional sample for evaluation:
 output_dir = '/home/pmasterson/GraphNet_input/v12/processed_eval'
@@ -125,9 +126,6 @@ def _load_cellMap(version='v12'):
     cellMap = {}
     for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
         cellMap[i] = (x, y)
-    global cells 
-    cells = np.array(list(cellMap.values()))
-    print("Loaded detector info")
 
 def get_layer_id(cid):
     layer = (awkward.to_numpy(awkward.flatten(cid)) >> 17) & 0x3F
@@ -152,9 +150,9 @@ def processFile(input_vars):
 
     print("Processing file {}".format(filename))
     if mass == 0:
-        outfile_name = "v230_pn_fiducial_{}.root".format(filenum)
+        outfile_name = "v300_pn_fiducial_{}.root".format(filenum)
     else:
-        outfile_name = "v230_{}_fiducial_{}.root".format(mass, filenum)
+        outfile_name = "v300_{}_fiducial_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
 
     # NOTE:  Added this to ...
@@ -257,6 +255,9 @@ def processFile(input_vars):
     recoilPz = pad_array(pz[e_cut])
 
     # Apply fiducial test to recoil electron
+    _load_cellMap(version='v12')   # load detector info
+    cells = np.array(list(cellMap.values()))
+
     N = len(recoilX)
     f_cut = np.zeros(N, dtype = bool)
     

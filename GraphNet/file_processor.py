@@ -235,9 +235,9 @@ def processFile(input_vars):
     
     e_cut = []
     for i in range(len(pz)):
-        e_cut[i].append([])
+        e_cut.append([])
         for j in range(len(pz[i])):
-            e_cut[i][j].append(False)
+            e_cut[i].append(False)
     
     for i in range(len(pz)):
         maxP = 0

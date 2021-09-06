@@ -428,7 +428,7 @@ if __name__ == '__main__':
         print("m = {} MeV:  Read {} events, {} passed preselection, {} passed trigger, {} passed fiducial cut".format(int(mass*1000), nTotal, nEvents, nPostTrigger, nFiducial))
         presel_eff[int(mass * 1000)] = float(nEvents) / nTotal
         fiducial_ratio[int(mass * 1000)] = float(nFiducial) / nPostTrigger
-    print("Done.  Presel_eff: {}, Fiducial Ratio: {}".format(presel_eff, fiducial_ratio))
+    print("Done.  Preselection efficiency: {}, Fiducial ratio: {}".format(presel_eff, fiducial_ratio))
 
     # For running without multithreading (note:  will be extremely slow and is impractical unless you want to test/use 1-2 files at a time):
     """

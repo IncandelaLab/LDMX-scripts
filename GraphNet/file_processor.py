@@ -216,6 +216,7 @@ def processFile(input_vars):
         if en < 1500.0:
             t_cut[event] = 1
 
+    selected_data = {}
     for branch in branchList:
         selected_data[branch] = preselected_data[branch][t_cut]
 

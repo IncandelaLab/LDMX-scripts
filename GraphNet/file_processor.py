@@ -405,6 +405,7 @@ if __name__ == '__main__':
     #pool = Pool(16) -> Run 16 threads/process 16 files in parallel
     
     presel_eff = {}
+    fiducial_ratio = {}
     # For each signal mass and for PN background:
     for mass, filepath in file_templates.items():
         print("======  m={}  ======".format(mass))
@@ -430,6 +431,7 @@ if __name__ == '__main__':
     # For running without multithreading (note:  will be extremely slow and is impractical unless you want to test/use 1-2 files at a time):
     """
     presel_eff = {}
+    fiducial_ratio = {}
     for mass, filepath in file_templates.items():
         #if mass != 0:  continue
         filenum = 0

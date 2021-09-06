@@ -152,9 +152,9 @@ def processFile(input_vars):
 
     print("Processing file {}".format(filename))
     if mass == 0:
-        outfile_name = "v300_pn_trigger_{}.root".format(filenum)
+        outfile_name = "v230_pn_fiducial_{}.root".format(filenum)
     else:
-        outfile_name = "v300_{}_trigger_{}.root".format(mass, filenum)
+        outfile_name = "v230_{}_fiducial_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
 
     # NOTE:  Added this to ...

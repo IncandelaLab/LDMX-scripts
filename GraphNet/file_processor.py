@@ -259,10 +259,10 @@ def processFile(input_vars):
     recoilPz = pad_array(pz[e_cut])
 
     # Apply fiducial test to recoil electron
-    events = len(recoilX)
-    f_cut = np.zeros(events, dtype = bool)
+    N = len(recoilX)
+    f_cut = np.zeros(N, dtype = bool)
     
-    for i in range(events):
+    for i in range(N):
         fiducial = False
         fXY = projection(recoilX[i], recoilY[i], scoringPlaneZ, recoilPx[i], recoilPy[i], recoilPz[i], ecalFaceZ)
 

@@ -439,6 +439,8 @@ if __name__ == '__main__':
         filenum = 0
         nTotal = 0  # pre-preselection
         nEvents = 0 # post-preselection
+        nPostTrigger = 0 # post-trigger
+        nFiducial = 0 # post-fiducial-cut
         print("======  m={}  ======".format(mass))
         for f in glob.glob(filepath):
             # Process each file separately

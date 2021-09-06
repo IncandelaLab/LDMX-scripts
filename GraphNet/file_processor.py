@@ -234,15 +234,17 @@ def processFile(input_vars):
     trackID = selected_data['EcalScoringPlaneHits_v12.trackID_']
     
     e_cut = []
-    for i in range(len(pz)):
+    events = len(pz)
+    hits = len(pz[i])
+    for i in range(events):
         e_cut.append([])
-        for j in range(len(pz[i])):
+        for j in range(hits):
             e_cut[i].append(False)
     
-    for i in range(len(pz)):
+    for i in range(events):
         maxP = 0
         e_index = 0
-        for j in range(len(pz[i])):
+        for j in range(hits):
             P = np.sqrt(px[i][j]**2 + py[i][j]**2 + pz[i][j]**2)
             if (pdgID[i][j] == 11 and trackID[i][j] == 1 and recoilZ[i][j] > 240 and recoilZ[i][j] < 241 and P > maxP):
                 maxP = P
@@ -258,7 +260,7 @@ def processFile(input_vars):
 
     # Apply fiducial test to recoil electron
     events = len(recoilX)
-    f_cut = np.zeros(N, dtype = bool)
+    f_cut = np.zeros(events, dtype = bool)
     
     for i in range(events):
         fiducial = False

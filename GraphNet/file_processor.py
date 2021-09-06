@@ -234,17 +234,15 @@ def processFile(input_vars):
     trackID = selected_data['EcalScoringPlaneHits_v12.trackID_']
     
     e_cut = []
-    events = len(pz)
-    for i in range(events):
+    for i in range(len(px)):
         e_cut.append([])
-        hits = len(pz[i])
-        for j in range(hits):
+        for j in range(len(px[i])):
             e_cut[i].append(False)
     
-    for i in range(events):
+    for i in range(len(px)):
         maxP = 0
         e_index = 0
-        for j in range(hits):
+        for j in range(len(px[i])):
             P = np.sqrt(px[i][j]**2 + py[i][j]**2 + pz[i][j]**2)
             if (pdgID[i][j] == 11 and trackID[i][j] == 1 and recoilZ[i][j] > 240 and recoilZ[i][j] < 241 and P > maxP):
                 maxP = P

@@ -128,7 +128,7 @@ def _load_cellMap(version='v12'):
         cellMap[i] = (x, y)
     global cells 
     cells = np.array(list(cellMap.values()))
-    print("Loaded detector info")
+    print("Loaded {} detector info".format(version))
 
 def get_layer_id(cid):
     layer = (awkward.to_numpy(awkward.flatten(cid)) >> 17) & 0x3F
@@ -151,17 +151,21 @@ def processFile(input_vars):
     mass = input_vars[1]
     filenum = input_vars[2]
 
-    print("Processing file {}".format(filename))
-    if mass == 0:
-        outfile_name = "v300_pn_fiducial_{}.root".format(filenum)
-    else:
-        outfile_name = "v300_{}_fiducial_{}.root".format(mass, filenum)
-    outfile_path = os.sep.join([output_dir, outfile_name])
+    if os.path.getsize(filename) > 0:
+        print("Processing file {}".format(filename))
+        if mass == 0:
+            outfile_name = "v300_pn_fiducial_{}.root".format(filenum)
+        else:
+            outfile_name = "v300_{}_fiducial_{}.root".format(mass, filenum)
+        outfile_path = os.sep.join([output_dir, outfile_name])
 
-    # NOTE:  Added this to ...
-    if os.path.exists(outfile_path):
-        print("FILE {} ALREADY EXISTS.  SKIPPING...".format(outfile_name))
-        return 0, 0
+        # NOTE:  Added this to ...
+        if os.path.exists(outfile_path):
+            print("FILE {} ALREADY EXISTS.  SKIPPING...".format(outfile_name))
+            return 0, 0, 0, 0
+    else:
+        print("FOUND EMPTY FILE.  SKIPPING...")
+        return 0, 0, 0, 0
 
     # Fix branch names:  uproot refers to EcalVeto branches with a / ('EcalVeto_v12/nReadoutHits_', etc), while
     # all other branches are referred to with a . ('EcalRecHits_v12.energy_', etc).  This is because ldmx-sw
@@ -199,7 +203,7 @@ def processFile(input_vars):
     nEvents = len(preselected_data['EcalVeto_v12/summedTightIso_'])
     print("After preselection: skimming from {} events".format(nEvents))
 
-    # Trigger cut
+    # Trigger
     eid = preselected_data['EcalRecHits_v12.id_']
     energy = preselected_data['EcalRecHits_v12.energy_']
     pos = energy > 0

@@ -151,20 +151,16 @@ def processFile(input_vars):
     mass = input_vars[1]
     filenum = input_vars[2]
 
-    if os.path.getsize(filename) > 0:
-        print("Processing file {}".format(filename))
-        if mass == 0:
-            outfile_name = "v300_pn_fiducial_{}.root".format(filenum)
-        else:
-            outfile_name = "v300_{}_fiducial_{}.root".format(mass, filenum)
-        outfile_path = os.sep.join([output_dir, outfile_name])
-
-        # NOTE:  Added this to ...
-        if os.path.exists(outfile_path):
-            print("FILE {} ALREADY EXISTS.  SKIPPING...".format(outfile_name))
-            return 0, 0, 0, 0
+    print("Processing file {}".format(filename))
+    if mass == 0:
+        outfile_name = "v300_pn_fiducial_{}.root".format(filenum)
     else:
-        print("FOUND EMPTY FILE.  SKIPPING...")
+        outfile_name = "v300_{}_fiducial_{}.root".format(mass, filenum)
+    outfile_path = os.sep.join([output_dir, outfile_name])
+
+    # NOTE:  Added this to ...
+    if os.path.exists(outfile_path):
+        print("FILE {} ALREADY EXISTS.  SKIPPING...".format(outfile_name))
         return 0, 0, 0, 0
 
     # Fix branch names:  uproot refers to EcalVeto branches with a / ('EcalVeto_v12/nReadoutHits_', etc), while
@@ -182,7 +178,12 @@ def processFile(input_vars):
 
 
     # Open the file and read all necessary data from it:
-    t = uproot.open(filename)['LDMX_Events']
+    file = uproot.open(filename)
+    if len(file.keys()) > 0:
+        t = uproot.open(filename)['LDMX_Events']
+    else:
+        print("FOUND ZOMBIE. SKIPPING...")
+        return 0, 0, 0, 0
     # (This part is just for printing the # of pre-preselection events:)
     tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
     nTotalEvents = len(tmp)

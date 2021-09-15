@@ -85,6 +85,7 @@ def processFile(input_vars):
 
     file = uproot.open(filename)
     if len(file.keys()) == 0:
+        print("FOUND ZOMBIE: {} SKIPPING...".format(filename))
         return 0, 0, 0, 0
     t = uproot.open(filename)['LDMX_Events']
     tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])

@@ -180,7 +180,7 @@ def processFile(input_vars):
     # Open the file and read all necessary data from it:
     file = uproot.open(filename)
     if len(file.keys()) == 0:
-        print("FOUND ZOMBIE. SKIPPING...")
+        print("FOUND ZOMBIE: {} SKIPPING...".format(filename))
         return 0, 0, 0, 0
     t = uproot.open(filename)['LDMX_Events']
     # (This part is just for printing the # of pre-preselection events:)

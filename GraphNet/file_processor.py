@@ -379,7 +379,7 @@ def processFile(input_vars):
 
     for i in range(nFiducial):
         # For each event, fill the temporary arrays with data, then write them to the tree with Fill()
-        if selected_data[nRecHits][i] == 0:  
+        if selected_data['nRecHits'][i] == 0:  
             continue                           # ignore events with no ecal hits
         for branch in branchList:
             # Contains both vector and scalar data.  Treat them differently:

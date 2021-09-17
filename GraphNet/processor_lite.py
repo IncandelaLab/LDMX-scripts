@@ -47,13 +47,15 @@ def projection(Recoilx, Recoily, Recoilz, RPx, RPy, RPz, HitZ):
     y_final = Recoily + RPy/RPz*(HitZ - Recoilz) if RPy != 0 else 0
     return (x_final, y_final)
 
-def _load_cellMap(version='v12'):
+def _load_cellMap(version):
+    print("Enter detector version:")
+    version = input()
     cellMap = {}
     for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
         cellMap[i] = (x, y)
     global cells 
     cells = np.array(list(cellMap.values()))
-    print("Loaded detector info")
+    print("Loaded {} detector info".format(version))
 
 def get_layer_id(cid):
     layer = (awkward.to_numpy(awkward.flatten(cid)) >> 17) & 0x3F

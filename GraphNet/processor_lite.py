@@ -48,8 +48,6 @@ def projection(Recoilx, Recoily, Recoilz, RPx, RPy, RPz, HitZ):
     return (x_final, y_final)
 
 def _load_cellMap(version):
-    print("Enter detector version:")
-    version = input()
     cellMap = {}
     for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
         cellMap[i] = (x, y)
@@ -180,7 +178,9 @@ def processFile(input_vars):
 if __name__ == '__main__':
     presel_eff = {}
     fiducial_ratio = {}
-    _load_cellMap()
+    print("Enter detector version:")
+    version = input()
+    _load_cellMap(version)
     for mass, filepath in file_templates.items():
         print("======  m={}  ======".format(mass))
         params = []

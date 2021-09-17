@@ -212,7 +212,6 @@ def processFile(input_vars):
     layer_id = get_layer_id(eid)
 
     t_cut = np.zeros(len(eid), dtype = bool)
-
     for event in range(len(eid)):
         en = 0.0
         for hit in range(len(eid[event])):
@@ -224,7 +223,6 @@ def processFile(input_vars):
     selected_data = {}
     for branch in branchList:
         selected_data[branch] = preselected_data[branch][t_cut]
-
     nPostTrigger = len(selected_data['EcalScoringPlaneHits_v12.x_'])
     print("After trigger: skimming from {} events".format(nPostTrigger))
 
@@ -243,7 +241,6 @@ def processFile(input_vars):
         e_cut.append([])
         for j in range(len(px[i])):
             e_cut[i].append(False)
-    
     for i in range(len(px)):
         maxP = 0
         e_index = 0
@@ -264,27 +261,22 @@ def processFile(input_vars):
     # Apply fiducial test to recoil electron
     N = len(recoilX)
     f_cut = np.zeros(N, dtype = bool)
-    
     for i in range(N):
         fiducial = False
         fXY = projection(recoilX[i], recoilY[i], scoringPlaneZ, recoilPx[i], recoilPy[i], recoilPz[i], ecalFaceZ)
-
         if not recoilX[i] == 0 and not recoilY[i] == 0 and not recoilPx[i] == 0 and not recoilPy[i] == 0 and not recoilPz[i] == 0:
             for j in range(len(cells)):
                 celldis = dist(cells[j], fXY)
                 if celldis <= cell_radius:
                     fiducial = True
                     break
-        
         if recoilX[i] == 0 and recoilY[i] == 0 and recoilPx[i] == 0 and recoilPy[i] == 0 and recoilPz[i] == 0:
             fiducial = False
-
         if fiducial == True:
             f_cut[i] = 1
 
     for branch in branchList:
         selected_data[branch] = selected_data[branch][f_cut]
-
     nFiducial = len(selected_data['EcalScoringPlaneHits_v12.x_'])
     print("After fiducial cut: found {} events".format(nFiducial))
 
@@ -307,19 +299,22 @@ def processFile(input_vars):
                 max_pz = pz_[i][j]
                 recoil_index = j
         # Calculate the recoil SP
-        tspRecoil.append(np.sqrt(px_[i][recoil_index]**2 + py_[i][recoil_index]**2))
+        if max_pz > 0: # ignore events with no hits
+            tspRecoil.append(np.sqrt(px_[i][recoil_index]**2 + py_[i][recoil_index]**2))
     # Put it in the selected_data and treat it as an ordinary branch from here on out
     selected_data['TargetSPRecoilE_pt'] = np.array(tspRecoil)
 
     # Additionally, add new branches storing the length for vector data (number of SP hits, number of ecal hits):
-    nSPHits = []
-    nRecHits = []
+    nSPHits = np.zeros(nFiducial) # []
+    nRecHits = np.zeros(nFiducial) # []
     x_data = selected_data['EcalScoringPlaneHits_v12.x_']
     E_data = selected_data['EcalRecHits_v12.energy_']
     for i in range(nFiducial):
         # NOTE:  max num hits may exceed MAX_NUM...this is okay.
-        nSPHits.append(len(x_data[i]))
-        nRecHits.append(len(E_data[i]))
+        nSPHits[i] = len(x_data[i])      # nSPHits.append(len(x_data[i]))  
+        nRecHits[i] = sum(E_data[i] > 0) # nRecHits.append(len(E_data[i]))
+        if len(E_data[i]) == 0:
+            nRecHits[i] = 0
     selected_data['nSPHits'] = np.array(nSPHits)
     selected_data['nRecHits'] = np.array(nRecHits)
 
@@ -384,6 +379,8 @@ def processFile(input_vars):
 
     for i in range(nFiducial):
         # For each event, fill the temporary arrays with data, then write them to the tree with Fill()
+        if selected_data[nRecHits][i] == 0:  
+            continue                           # ignore events with no ecal hits
         for branch in branchList:
             # Contains both vector and scalar data.  Treat them differently:
             if branch in scalar_holders.keys():  # Scalar

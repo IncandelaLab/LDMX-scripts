@@ -3,9 +3,9 @@
 #SBATCH --gres=gpu:1
 #SBATCH --output=slurm_prediction.out
 
-export MODEL_NAME=v12_lazy_1region_kaon
-export DATA_NAME=v12_lazy_1region_kaon
-export BASE_DIRECTORY=/home/pmasterson/ParticleNet/LDMX-scripts/GraphNet
+export MODEL_NAME=v12_lazy_1region
+export DATA_NAME=v12_lazy_1region
+export BASE_DIRECTORY=/home/duncansw/ParticleNet/LDMX-scripts/GraphNet
 
 cd $SLURM_SUBMIT_DIR
 

@@ -186,6 +186,9 @@ def processFile(input_vars):
     # (This part is just for printing the # of pre-preselection events:)
     tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
     nTotalEvents = len(tmp)
+    if nTotal events == 0:
+        print("FILE {} CONTAINS ZERO EVENTS. SKIPPING...".format(filename))
+        return 0, 0, 0, 0
     print("Before preselection: found {} events".format(nTotalEvents))
 
     # t.arrays() returns a dict-like object:
@@ -305,14 +308,14 @@ def processFile(input_vars):
     selected_data['TargetSPRecoilE_pt'] = np.array(tspRecoil)
 
     # Additionally, add new branches storing the length for vector data (number of SP hits, number of ecal hits):
-    nSPHits = np.zeros(nFiducial) # []
-    nRecHits = np.zeros(nFiducial) # []
+    nSPHits = np.zeros(nFiducial) # was: []
+    nRecHits = np.zeros(nFiducial) # was: []
     x_data = selected_data['EcalScoringPlaneHits_v12.x_']
     E_data = selected_data['EcalRecHits_v12.energy_']
     for i in range(nFiducial):
         # NOTE:  max num hits may exceed MAX_NUM...this is okay.
-        nSPHits[i] = len(x_data[i])      # nSPHits.append(len(x_data[i]))  
-        nRecHits[i] = sum(E_data[i] > 0) # nRecHits.append(len(E_data[i]))
+        nSPHits[i] = len(x_data[i])      # was: nSPHits.append(len(x_data[i]))  
+        nRecHits[i] = sum(E_data[i] > 0) # was: nRecHits.append(len(E_data[i]))
         if len(E_data[i]) == 0:
             nRecHits[i] = 0
     selected_data['nSPHits'] = np.array(nSPHits)
@@ -379,8 +382,9 @@ def processFile(input_vars):
 
     for i in range(nFiducial):
         # For each event, fill the temporary arrays with data, then write them to the tree with Fill()
+        # Also: ignore events with zero ecal hits 
         if selected_data['nRecHits'][i] == 0:  
-            continue                           # ignore events with no ecal hits
+            continue                           
         for branch in branchList:
             # Contains both vector and scalar data.  Treat them differently:
             if branch in scalar_holders.keys():  # Scalar

@@ -186,7 +186,7 @@ def processFile(input_vars):
     # (This part is just for printing the # of pre-preselection events:)
     tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
     nTotalEvents = len(tmp)
-    if nTotal events == 0:
+    if nTotalEvents == 0:
         print("FILE {} CONTAINS ZERO EVENTS. SKIPPING...".format(filename))
         return 0, 0, 0, 0
     print("Before preselection: found {} events".format(nTotalEvents))

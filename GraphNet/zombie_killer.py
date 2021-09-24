@@ -5,7 +5,8 @@ from multiprocessing import Pool
 
 pathname = '/home/duncansw/GraphNet_input/v12/processed/*.root'
 
-def killZombie(filename):
+kills = 0
+for filename in glob.glob(pathname):
 	with uproot.open(filename) as file:
 		IsZombie = False
 		if len(file.keys()) == 0:
@@ -13,14 +14,7 @@ def killZombie(filename):
 		if IsZombie:
 			print("Found zombie: {} KILLING...".format(filename))
 			os.remove(filename)
+			kills += 1
 			print("KILLED ZOMBIE")
-			return 1
-		else:
-			return 0 
-
-if __name__ == '__main__':
-	with Pool(20) as p:
-		for f in glob.glob(pathname):
-			zombies = p.map(killZombie, f)
-	kills = sum(zombies)
-	print("Done. {} zombies killed".format(kills))
+			
+print("Done. {} zombies killed".format(kills))

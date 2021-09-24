@@ -5,7 +5,7 @@
 
 export MODEL_NAME=v12_fiducial_1region
 export DATA_NAME=v12_fiducial_1region
-export BASE_DIRECTORY=/home/duncansw/ParticleNet/LDMX-scripts/GraphNet
+export BASE_DIRECTORY=/home/duncansw/LDMX-scripts/GraphNet
 
 cd $SLURM_SUBMIT_DIR
 

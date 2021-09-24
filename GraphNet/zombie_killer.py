@@ -20,6 +20,7 @@ def killZombie(filename):
 
 if __name__ == '__main__':
 	with Pool(20) as p:
-		zombies = p.map(killZombie, f) for f in glob.glob(pathname)
+		for f in glob.glob(pathname):
+			zombies = p.map(killZombie, f)
 	kills = sum(zombies)
 	print("Done. {} zombies killed".format(kills))

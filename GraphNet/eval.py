@@ -109,7 +109,7 @@ model = SplitNet(input_dims=input_dims, num_classes=2,
                  use_fusion=True,
                  nRegions=args.num_regions)
 model = model.to(dev)
-model.particle_nets_to(dev)
+#model.particle_nets_to(dev) # NOTE: no longer necessary, removed from SplitNet.py 
 
 
 def evaluate(model, test_loader, dev, return_scores=False):

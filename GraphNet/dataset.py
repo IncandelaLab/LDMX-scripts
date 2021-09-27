@@ -247,7 +247,7 @@ class ECalHitsDataset(Dataset):
         layer_id_   = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
 
 
-        for j in range(eid_leaf.GetLen()):  # For every hit...
+        for j in range(len(layer_id)):  # For every hit... # range(eid_leaf.GetLen())
 
             layer_index = int(layer_id[j])
             # Calculate xy coord of point on projected trajectory in same layer

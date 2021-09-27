@@ -1,19 +1,19 @@
 #!/bin/bash
 #SBATCH -N 1 --partition=gpu --ntasks-per-node=1
 #SBATCH --gres=gpu:1
-#SBATCH --output=slurm_eval.out
+#SBATCH --output=slurm_eval2.out
 
-export MODEL_NAME=v12_lazy_3region_kaon
-export DATA_NAME=v12_lazy_3region_kaon
-export BASE_DIRECTORY=/home/pmasterson/ParticleNet/LDMX-scripts/GraphNet
+export MODEL_NAME=v12_v300_fiducial_1region
+export DATA_NAME=v12_v300_fiducial_1region
+export BASE_DIRECTORY=/home/duncansw/LDMX-scripts/GraphNet
 
 cd $SLURM_SUBMIT_DIR
 
 /bin/hostname
-#srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/pmasterson/GraphNet_input/v12/processed_eval/background/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 1
+srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/duncansw/GraphNet_input/v12/processed/bkg_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 1
 # Kaons:
-srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-18_acc-*.pt --test-bkg '/home/pmasterson/GraphNet_input/v12/processed/*kaon*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 3
+#srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-18_acc-*.pt --test-bkg '/home/pmasterson/GraphNet_input/v12/processed/*kaon*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 3
 
-# --test-sig '/home/pmasterson/GraphNet_input/v12/processed_eval/signal/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 8 --device 'cuda:0'
+# --test-sig '/home/duncansw/GraphNet_input/v12/processed/sig_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 8 --device 'cuda:0'
 
 

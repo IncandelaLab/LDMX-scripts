@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -N 1 --partition=gpu --ntasks-per-node=1
 #SBATCH --gres=gpu:1
-#SBATCH --output=slurm_training.out
+#SBATCH --output=slurm_training2.out
 
-export MODEL_NAME=v12_fiducial_1region
+export MODEL_NAME=v12_v300_fiducial_1region
 export BASE_DIRECTORY=/home/duncansw/LDMX-scripts/GraphNet
 
 cd $SLURM_SUBMIT_DIR

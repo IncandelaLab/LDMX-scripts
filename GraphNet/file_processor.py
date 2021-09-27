@@ -302,7 +302,7 @@ def processFile(input_vars):
                 max_pz = pz_[i][j]
                 recoil_index = j
         # Calculate the recoil SP
-        if max_pz > 0: # ignore events with no hits
+        if len(px_[i]) > 0:   # was: if max_pz > 0: # ignore events with no hits, but now accepts events with no recoil electron   
             tspRecoil.append(np.sqrt(px_[i][recoil_index]**2 + py_[i][recoil_index]**2))
     # Put it in the selected_data and treat it as an ordinary branch from here on out
     selected_data['TargetSPRecoilE_pt'] = np.array(tspRecoil)

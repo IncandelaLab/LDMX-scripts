@@ -1,20 +1,28 @@
 import math
 import numpy as np
+
+
 # All space values in mm unless otherwise noted
 
-# Gdml values
-#Ecal
-ecal_front_z = 240.5
-sp_thickness = 0.001
+# GDML constants
 clearance = 0.001
+sp_thickness = 0.001
+
+# Target GDML
+target_z = 0.
+target_thickness = 0.3504
+sp_target_down_z = target_z + target_thickness/2 + sp_thickness/2 + clearance
+
+# ECal GDML
+module_gap = 1.5
+module_radius = 85.
+ecal_front_z = 240.
 ECal_dz = 449.2
-ecal_envelope_z = ECal_dz + 1
+ecal_envelope_z = ECal_dz + 1.
 sp_ecal_front_z = ecal_front_z + (ecal_envelope_z - ECal_dz)/2 - sp_thickness/2 + clearance
 
 sin60 = np.sin(np.radians(60))
-module_radius = 85. # Dist form center to midpoint of side
 module_side = module_radius/sin60
-module_gap = 1.5 # Space between sides of side-by-side mods
 cell_radius = 5 # Real circle
 cellWidth = 8.7
 
@@ -64,13 +72,13 @@ hcal_LAYER_SHIFT = 10
 hcal_STRIP_MASK = 0xFF  # space for 255 strips/layer
 hcal_STRIP_SHIFT = 0
 
-ecal_layerZs = ecal_front_z + np.array([7.850,   13.300,  26.400,  33.500,  47.950,
-                                        56.550,  72.250,  81.350,  97.050,  106.150,
-                                        121.850, 130.950, 146.650, 155.750, 171.450,
-                                        180.550, 196.250, 205.350, 221.050, 230.150,
-                                        245.850, 254.950, 270.650, 279.750, 298.950,
-                                        311.550, 330.750, 343.350, 362.550, 375.150,
-                                        394.350, 406.950, 426.150, 438.750        ])
+ecal_layerZs = ecal_front_z + (ecal_envelope_z - ECal_dz)/2 + np.array([7.850,   13.300,  26.400,  33.500,  47.950,
+                                                                        56.550,  72.250,  81.350,  97.050,  106.150,
+                                                                        121.850, 130.950, 146.650, 155.750, 171.450,
+                                                                        180.550, 196.250, 205.350, 221.050, 230.150,
+                                                                        245.850, 254.950, 270.650, 279.750, 298.950,
+                                                                        311.550, 330.750, 343.350, 362.550, 375.150,
+                                                                        394.350, 406.950, 426.150, 438.750        ])
 
 ecal_zs_round = [round(z) for z in ecal_layerZs]
 ecal_rz2layer = {}
@@ -224,7 +232,7 @@ def electronTargetSPHit(targetSPHits):
     pmax = 0
     for hit in targetSPHits:
 
-        if hit.getPosition()[2] > sp_thickness + sp_thickness + 0.5 or\
+        if abs(hit.getPosition()[2] - sp_target_down_z) > sp_thickness/2 or\
                 hit.getMomentum()[2] <= 0 or\
                 hit.getTrackID() != 1 or\
                 hit.getPdgID() != 11:
@@ -243,7 +251,7 @@ def electronEcalSPHit(ecalSPHits):
     pmax = 0
     for hit in ecalSPHits:
 
-        if hit.getPosition()[2] > sp_ecal_front_z + sp_thickness/2 or\
+        if abs(hit.getPosition()[2] - sp_ecal_front_z) > sp_thickness/2 or\
                 hit.getMomentum()[2] <= 0 or\
                 hit.getTrackID() != 1 or\
                 hit.getPdgID() != 11:
@@ -277,7 +285,7 @@ def gammaEcalSPHit(ecalSPHits):
     pmax = 0
     for hit in ecalSPHits:
 
-        if hit.getPosition()[2] > sp_ecal_front_z + sp_thickness/2 or\
+        if abs(hit.getPosition()[2] - sp_ecal_front_z) > sp_thickness/2 or\
                 hit.getMomentum()[2] <= 0 or\
                 not (hit.getPdgID() in [-22,22]):
             continue

@@ -134,7 +134,8 @@ ECal_dx = module_radius*10./sqrt3 + sqrt3*module_gap
 ECal_dy = module_radius*6. + module_gap*2.
 
 # Distance from target to the ECal parent volume
-# The calorimeter is an additional .5mm downstream at 240.5mm
+# The calorimeter is an additional .5mm downstream at 220.5mm
+# GDML comment indicates that this is 220.5mm, but the actual value is clearly 240.5mm!
 ecal_front_z = 240.
 
 side_Ecal_dx = 800.

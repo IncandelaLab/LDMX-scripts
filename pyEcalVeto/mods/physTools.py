@@ -125,7 +125,7 @@ ECal_dz = preshower_Thickness
 sqrt3 = np.sqrt(3)
 
 module_gap = 1.5  # Flat-to-flat gap between modules
-module_radius = 85.  # Center-to-flat radius of one module in mm
+module_radius = 85.  # Center-to-flat radius of one module
 
 # ECal width and height
 ECal_dx = module_radius*10./sqrt3 + sqrt3*module_gap

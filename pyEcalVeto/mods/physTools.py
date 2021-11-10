@@ -89,6 +89,7 @@ layer_A_Thickness = Wthick_A_dz + FrontTolerance + PCB_dz + PCB_Motherboard_Gap\
                     + BackTolerance
 
 # Layer B thickness is 22.35mm
+# GDML comment indicates that this is 22.35mm, but the actual value is 23.35mm!
 layer_B_Thickness = Wthick_B_dz + FrontTolerance + PCB_dz + PCB_Motherboard_Gap\
                     + PCB_dz + CFMix_dz + Si_dz + CFMixThick_dz + W_B_dz + C_dz\
                     + CoolingAirGap + C_dz + W_B_dz + CFMixThick_dz + Si_dz\
@@ -116,6 +117,7 @@ ecal_C_layers = 9
 ecal_D_layers = 5
 
 # ECal thickness is 449.2mm
+# GDML comment indicates that this is 449.2mm, but the actual value is 450.2mm!
 ECal_dz = preshower_Thickness\
           + layer_A_Thickness*ecal_A_layers\
           + layer_B_Thickness*ecal_B_layers\

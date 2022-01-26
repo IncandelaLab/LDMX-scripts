@@ -73,17 +73,17 @@ args = parser.parse_args()
 # NOTE:  These must be output files produced by file_processor.py, not unprocessed ldmx-sw ROOT files.
 bkglist = {
     # (filepath, num_events_for_training)
-    0: ('/home/duncansw/GraphNet_input/v12/processed/*pn*.root', -1)
+    0: ('/home/duncansw/GraphNet_input/v12/v3.0.0_trigger/fiducial/*pn*.root', -1)
     }
 
 # was processed/*pn*, *0.001*, etc.
 
 siglist = {
     # (filepath, num_events_for_training)
-    1:    ('/home/duncansw/GraphNet_input/v12/processed/*0.001*.root', 200000),
-    10:   ('/home/duncansw/GraphNet_input/v12/processed/*0.01*.root',  200000),
-    100:  ('/home/duncansw/GraphNet_input/v12/processed/*0.1*.root',   200000),
-    1000: ('/home/duncansw/GraphNet_input/v12/processed/*1.0*.root',   200000),
+    1:    ('/home/duncansw/GraphNet_input/v12/v3.0.0_trigger/fiducial/*0.001*.root', 200000),
+    10:   ('/home/duncansw/GraphNet_input/v12/v3.0.0_trigger/fiducial/*0.01*.root',  200000),
+    100:  ('/home/duncansw/GraphNet_input/v12/v3.0.0_trigger/fiducial/*0.1*.root',   200000),
+    1000: ('/home/duncansw/GraphNet_input/v12/v3.0.0_trigger/fiducial/*1.0*.root',   200000),
     }
 
 if args.demo:
@@ -104,7 +104,8 @@ if args.demo:
 # OLD:  2.3.0
 #presel_eff = {1: 0.9619039328342329, 10: 0.9906173128305598, 100: 0.9955994049017305, 1000: 0.9981730111154327, 0: 0.03439702293791625}
 # NEW:  3.0.0
-presel_eff = {1: 0.994131455399061, 10: 0.9975881667769368, 100: 0.9980669665667397, 1000: 0.9967660072125927, 0: 0.053747662244142014}
+#presel_eff = {1: 0.994131455399061, 10: 0.9975881667769368, 100: 0.9980669665667397, 1000: 0.9967660072125927, 0: 0.053747662244142014}
+presel_eff = {1: 0.9827394704896031, 10: 0.994069800288674, 100: 0.9954494433152322, 1000: 0.9952696700988878, 0: 0.04038671770809463}
 
 #########################################################
 

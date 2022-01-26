@@ -37,7 +37,7 @@ Outline:
 """
 
 # Directory to write output files to:
-output_dir = '/home/duncansw/GraphNet_input/v12/processed'
+output_dir = '/home/duncansw/GraphNet_input/v12/v3.0.0_trigger/fiducial'
 # Locations of the 2.3.0 ldmx-sw ROOT files to process+train on:
 """
 file_templates = {
@@ -60,6 +60,7 @@ file_templates = {
 """
 
 # 3.0.0:
+"""
 file_templates = {
     0.001: '/home/pmasterson/events/v3.0.0_trigger/signal/*0.001*.root',  # 0.001 GeV, etc.
     0.01:  '/home/pmasterson/events/v3.0.0_trigger/signal/*0.01*.root',
@@ -68,7 +69,15 @@ file_templates = {
     # Note:  m=0 here refers to PN background events
     0:     '/home/pmasterson/events/v3.0.0_trigger/background/*.root'
 }
-
+"""
+file_templates = {
+    0.001: '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/signal/*0.001*.root',  # 0.001 GeV, etc.
+    0.01:  '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/signal/*0.01*.root',
+    0.1:   '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/signal/*0.1*.root',
+    1.0:   '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/signal/*1.0*.root',
+    # Note:  m=0 here refers to PN background events
+    0:     '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/photonuclear/*.root'
+}
 """
 # Additional sample for evaluation:
 output_dir = '/home/pmasterson/GraphNet_input/v12/processed_eval'
@@ -82,7 +91,7 @@ file_templates = {
 """
 
 # Standard preselection values (-> 95% sig/5% bkg)
-MAX_NUM_ECAL_HITS = 60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
+MAX_NUM_ECAL_HITS = 50 #60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
 MAX_ISO_ENERGY = 500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
 # Results:  >0.994 vs 0.055
 
@@ -302,7 +311,7 @@ def processFile(input_vars):
                 max_pz = pz_[i][j]
                 recoil_index = j
         # Calculate the recoil SP
-        if len(px_[i]) > 0:   # was: if max_pz > 0: # ignore events with no hits, but now accepts events with no recoil electron   
+        if len(px_[i]) > 0:   # if max_pz > 0:
             tspRecoil.append(np.sqrt(px_[i][recoil_index]**2 + py_[i][recoil_index]**2))
     # Put it in the selected_data and treat it as an ordinary branch from here on out
     selected_data['TargetSPRecoilE_pt'] = np.array(tspRecoil)

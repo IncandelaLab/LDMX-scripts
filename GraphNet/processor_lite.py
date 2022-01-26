@@ -6,15 +6,15 @@ import math
 from multiprocessing import Pool
 
 file_templates = {
-    0.001: '/home/pmasterson/events/v3.0.0_trigger/signal/*0.001*.root', 
-    0.01:  '/home/pmasterson/events/v3.0.0_trigger/signal/*0.01*.root',
-    0.1:   '/home/pmasterson/events/v3.0.0_trigger/signal/*0.1*.root',
-    1.0:   '/home/pmasterson/events/v3.0.0_trigger/signal/*1.0*.root',
-    0:     '/home/pmasterson/events/v3.0.0_trigger/background/*.root'
+    0.001: '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/signal/*0.001*.root',  
+    0.01:  '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/signal/*0.01*.root',
+    0.1:   '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/signal/*0.1*.root',
+    1.0:   '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/signal/*1.0*.root',
+    0:     '/home/pmasterson/events/v3.0.0_tag_standard_skimmed/photonuclear/*.root'
 }
 
 # preselection values
-MAX_NUM_ECAL_HITS = 60  #110 for ldmx-sw v2.3.0
+MAX_NUM_ECAL_HITS = 50 #60  #110 for ldmx-sw v2.3.0
 MAX_ISO_ENERGY = 500  #650 for ldmx-sw v2.3.0
 # Results:  >0.994 vs 0.055
 

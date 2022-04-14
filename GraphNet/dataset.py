@@ -16,12 +16,12 @@ import ROOT as r
 
 # Create ThreadPoolExecutor to accelerate loading with uproot
 # Note:  Number of threads has not been optimized for lazy-loading; it may be worth experimenting w/ lower values.
-executor = concurrent.futures.ThreadPoolExecutor(12)
+#executor = concurrent.futures.ThreadPoolExecutor(12)
 
 torch.set_default_dtype(torch.float32)
 
 # Should match value in the preselection.  Determines size of ParticleNet position arrays.
-MAX_NUM_ECAL_HITS = 60  #110  # NOW REDUCED!
+MAX_NUM_ECAL_HITS = 50 #60  #110  # NOW REDUCED!
 
 # NEW: Radius of containment data
 # Note:  Should still be valid for 2e ParticleNet unless the shower shape has changed
@@ -58,16 +58,20 @@ def _concat(arrays, axis=0):
 
 class ECalHitsDataset(Dataset):
 
-    def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v12', nRegions=1):
+    def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v13', nRegions=1, regSizes=None):
         super(ECalHitsDataset, self).__init__()
         print("Initializing EcalHitsDataset")
         # load cell map (for calculating xyz+layer from hit IDs)
         self._load_cellMap(version=detector_version)
-
+        self.detector_version = detector_version
         # Specify the two branches necessary for all ParticleNet features:  (xyz+layer+energy)
         self._id_branch = 'id_rec_'  # load from 'EcalRecHits_v12.id_'
+        self._pos_branch = '{}pos_rec_'
         self._energy_branch = 'energy_rec_'  # load from 'EcalRecHits_v12.energy_'
-        self._branches = [self._id_branch, self._energy_branch]
+        if detector_version == 'v12':
+            self._branches = [self._id_branch, self._energy_branch]
+        else:
+            self._branches = [self._id_branch] + [self._pos_branch.format(v) for v in ['x', 'y', 'z']]
 
         self.obs_branches = obs_branches
         # NOTE:  Need to explicitly keep track of and save all obs_dict data!  Fortunately, order doesn't matter.
@@ -77,7 +81,7 @@ class ECalHitsDataset(Dataset):
         self.loaded_events = []
 
         self.coord_ref = coord_ref
-        assert(detector_version == 'v12')  # v9 compatibility would be nontrivial to add, and is probably unnecessary
+        assert(detector_version != 'v9')  # v9 compatibility would be nontrivial to add, and is probably unnecessary
 
         self.nRegions = nRegions
 
@@ -97,15 +101,17 @@ class ECalHitsDataset(Dataset):
             filelist[label] = fname
         for label, fname in siglist.items():
             filelist[label] = fname
+        print("Using filelist=", filelist)
 
         for extra_label in filelist:  # For each mass:
             filepath, max_events = filelist[extra_label]
             if max_events == -1:
                 max_events = 1e8  # Unrealistically large so it never constrains the results
             num_loaded_events = 0  # Number of events so far for this mass
-            print("   Filling for m={}".format(extra_label))
+            #print("   Filling for m={}".format(extra_label))
             for fp in glob.glob(filepath):
                 # For each file, check the number of events, then add to event_list accordingly
+                if num_loaded_events == max_events:  break
                 tfile = r.TFile(fp)
                 ttree = tfile.Get('skimmed_events')
                 f_events = ttree.GetEntries()  # Num events in file
@@ -118,11 +124,14 @@ class ECalHitsDataset(Dataset):
                     self.extra_labels.append(extra_label)
                     num_loaded_events += 1
                     f_event += 1
-                print("      {} events in file, {} total for current mass".format(f_event, num_loaded_events))
-            print("   Finished m={}:  using {} events".format(extra_label, num_loaded_events))
+                 #print("      {} events in file, {} total for current mass".format(f_event, num_loaded_events))
+            print("   Loaded m={}:  using {} events".format(extra_label, num_loaded_events))
 
         self.extra_labels = np.array(self.extra_labels)
         self.label = np.array([1 if l > 0 else 0 for l in self.extra_labels])  # 1 if sig, 0 if bkg
+
+        if regSizes:  assert(nRegions == len(regSizes))
+        self.regSizes = regSizes
 
         print("Initialization finished.")
 
@@ -182,25 +191,48 @@ class ECalHitsDataset(Dataset):
         pdgID_ = [int(pdgID_leaf.GetValue(i)) for i in range(pdgID_leaf.GetLen())]
         z_     = [z_leaf.GetValue(i)          for i in range(z_leaf.GetLen())    ]
         pz_    = [pz_leaf.GetValue(i)         for i in range(pz_leaf.GetLen())   ]
-        el_ = 0  # SP index of recoil electron
-        pmax = 0  # Max pz
-        max_index = 0
+        pdgID_leaf_tsp = self.ttree.GetLeaf('pdgID_tsp_')
+        z_leaf_tsp     = self.ttree.GetLeaf('z_tsp_')
+        pz_leaf_tsp    = self.ttree.GetLeaf('pz_tsp_')
+        #print(pdgID_leaf, pdgID_leaf_tsp)
+        #print(pdgID_leaf_tsp.GetLen())
+        pdgID_tsp_ = [int(pdgID_leaf_tsp.GetValue(i)) for i in range(pdgID_leaf_tsp.GetLen())]
+        z_tsp_     = [z_leaf_tsp.GetValue(i)          for i in range(z_leaf_tsp.GetLen())    ]
+        pz_tsp_    = [pz_leaf_tsp.GetValue(i)         for i in range(pz_leaf_tsp.GetLen())   ]
+        #el_ = 0  # SP index of recoil electron
+        #pmax = 0  # Max pz
+        #max_index = 0
 
-        # Find the SP electron (first layer, maximum pZ)
+        # TODO WIP WIP:  Must revise this!
+        #assert(False)
+
+        # first, find the recoil electron at the target (for computing photon momentum):
+        r_tsp = 0
+        pmax_tsp = 0
+        for j in range(pdgID_leaf_tsp.GetLen()):
+            if pdgID_tsp_[j] == 11 and z_tsp_[j] > 4.4 and z_tsp_[j] < 4.6 and pz_tsp_[j] > pmax_tsp:
+                r_tsp = j
+                pmax_tsp = pz_tsp_[j]
+
+        # Find the recoil electron at the ecal SP:
+        r_ecal = 0
+        pmax_ecal = 0
         for j in range(pdgID_leaf.GetLen()):
             if pdgID_[j] == 11 and z_[j] > 240 and z_[j] < 241 and pz_[j] > pmax:
-                pmax = pz_[j]
-                el_ = j
-        has_e = pmax != 0  # Check whether event has a SP electron
+                pmax_ecal = pz_[j]
+                r_ecal = j
+        has_e = pmax_ecal != 0  # Check whether event has a SP electron
         
-        etraj_x_sp  = self.ttree.GetLeaf('x_').GetValue(el_)
-        etraj_y_sp  = self.ttree.GetLeaf('y_').GetValue(el_)
-        etraj_z_sp  = self.ttree.GetLeaf('z_').GetValue(el_)
-        etraj_px_sp = self.ttree.GetLeaf('px_').GetValue(el_)
-        etraj_py_sp = self.ttree.GetLeaf('py_').GetValue(el_)
-        etraj_pz_sp = self.ttree.GetLeaf('pz_').GetValue(el_)
+        etraj_ecal = {v+'_':  self.ttree.GetLeaf(v+'_').GetValue(r_ecal)     for v in ['x', 'y', 'z', 'px', 'py', 'pz']}
+        etraj_tsp  = {v+'_':  self.ttree.GetLeaf(v+'_tsp_').GetValue(r_ecal) for v in ['x', 'y', 'z', 'px', 'py', 'pz']}
+        #etraj_x_sp  = self.ttree.GetLeaf('x_').GetValue(el_)
+        #etraj_y_sp  = self.ttree.GetLeaf('y_').GetValue(el_)
+        #etraj_z_sp  = self.ttree.GetLeaf('z_').GetValue(el_)
+        #etraj_px_sp = self.ttree.GetLeaf('px_').GetValue(el_)
+        #etraj_py_sp = self.ttree.GetLeaf('py_').GetValue(el_)
+        #etraj_pz_sp = self.ttree.GetLeaf('pz_').GetValue(el_)
 
-        self.etraj_sp = np.array((etraj_x_sp, etraj_y_sp, etraj_z_sp))
+        #self.etraj_sp = np.array((etraj_x_sp, etraj_y_sp, etraj_z_sp))
 
         # Create vectors holding the electron/photon momenta so the trajectory projections can be found later
         # Set xtraj_p_norm relative to z=1 to make projecting easier:
@@ -208,16 +240,21 @@ class ECalHitsDataset(Dataset):
         target_dist = 241.5 # distance from ecal to target, mm
         
         # Compute and store trajectories:
-        if etraj_pz_sp != 0 and has_e:
-            self.enorm_sp = np.array((etraj_px_sp/etraj_pz_sp, etraj_py_sp/etraj_pz_sp, 1.0))
-            self.pnorm_sp = np.array((-etraj_px_sp/(E_beam - etraj_pz_sp), -etraj_py_sp/(E_beam - etraj_pz_sp), 1.0))
-            self.ptraj_sp = np.array((etraj_x_sp + target_dist*(self.pnorm_sp[0] - self.enorm_sp[0]),
-                                      etraj_y_sp + target_dist*(self.pnorm_sp[1] - self.enorm_sp[1]),
-                                      etraj_z_sp))
+        if has_e:
+            self.etraj_sp = np.array((etraj_ecal['x_'], etraj_ecal['y_'], etraj_ecal['z_']))
+            self.enorm_sp = np.array((etraj_ecal['px_']/etraj_ecal['pz_'], etraj_ecal['py_']/etraj_ecal['pz_'], 1.0))
+            self.pnorm_sp = np.array((-etraj_tsp['px_']/(E_beam - etraj_tsp['pz_']), 
+                                      -etraj_tsp['py_']/(E_beam - etraj_tsp['pz_']),
+                                      1.0))
+            self.ptraj_sp = np.array((etraj_tsp['x_'] + target_dist*self.pnorm_sp[0],
+                                      etraj_tsp['y_'] + target_dist*self.pnorm_sp[1],
+                                      etraj_tsp['z_'] + target_dist))
+
         else:
-            self.enorm_sp = np.array((0,0,0))
-            self.pnorm_sp = np.array((0,0,0))
-            self.ptraj_sp = np.array((0,0,0))
+            self.etraj_sp = np.array((-999,-999,-999))
+            self.enorm_sp = np.array((-999,-999,-999))
+            self.pnorm_sp = np.array((-999,-999,-999))
+            self.ptraj_sp = np.array((-999,-999,-999))
 
 
 
@@ -225,15 +262,24 @@ class ECalHitsDataset(Dataset):
         # Read data from event and fill var_dict and obs_dict:
         # obs_dict contains obs_branches info (branches specified in train.py); saved for plotting
         # var_dict contains info necessary for PN:  x, y, z, layer, log(E); more if other regions included
+        if self.detector_version == 'v12':
+            eid_leaf    = self.ttree.GetLeaf(self._id_branch)
+            energy_leaf = self.ttree.GetLeaf(self._energy_branch)
+            eid    = np.array([eid_leaf.GetValue(i)    for i in range(eid_leaf.GetLen())   ], dtype='int')  #table[self._id_branch]
+            energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float32')  #table[self._energy_branch]
+            #print("TEMP: energy len 1=", len(energy))
+            pos = (energy > 0)
+            eid = eid[pos]  # Gets rid of all (AND ONLY) hits with 0 energy
+            energy = energy[pos]
 
-        eid_leaf    = self.ttree.GetLeaf(self._id_branch)
-        energy_leaf = self.ttree.GetLeaf(self._energy_branch)
-        eid    = np.array([eid_leaf.GetValue(i)    for i in range(eid_leaf.GetLen())   ], dtype='int')  #table[self._id_branch]
-        energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float32')  #table[self._energy_branch]
-        pos = (energy > 0)
-        eid = eid[pos]  # Gets rid of all (AND ONLY) hits with 0 energy
-        energy = energy[pos]
-        (x, y, z), layer_id = self._parse_cid(eid)  # layer_id > 0, so can use layer_id-1 to index e/ptraj_ref
+            (x, y, z), layer_id = self._parse_cid(eid)  # layer_id > 0, so can use layer_id-1 to index e/ptraj_ref
+        else:
+            xyz_leaves = [self.ttree.GetLeaf(self._pos_branch.format(v)) for v in ['x', 'y', 'z']]
+            (x, y, z) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float32') for lf in xyz_leaves]
+            energy_leaf = self.ttree.GetLeaf(self._energy_branch)
+            energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float32')
+            layer_id = self._getlayer(z)
+
 
         # Now, work with table['etraj_ref'] and table['ptraj_ref'].
         # Create lists:  x/y/z_e, p
@@ -246,17 +292,24 @@ class ECalHitsDataset(Dataset):
         log_energy_ = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
         layer_id_   = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
 
+        regionIndices = [0, 0, 0]  # Indices of last hit added to feature arrays
 
-        for j in range(len(layer_id)):  # For every hit... # range(eid_leaf.GetLen())
 
-            layer_index = int(layer_id[j])
+        for j in range(len(layer_id)):  #eid_leaf.GetLen()):  # For every hit...
             # Calculate xy coord of point on projected trajectory in same layer
-            delta_z = self._layerZs[layer_index] - self.etraj_sp[2]
-            etraj_point = (self.etraj_sp[0] + self.enorm_sp[0]*delta_z, self.etraj_sp[1] + self.enorm_sp[1]*delta_z)
-            ptraj_point = (self.ptraj_sp[0] + self.pnorm_sp[0]*delta_z, self.ptraj_sp[1] + self.pnorm_sp[1]*delta_z)
-            # Additionally, calculate recoil angle (angle of pnorm_sp):
-            recoilangle = self.enorm_sp[2] / np.sqrt(self.enorm_sp[0]**2 + self.enorm_sp[1]**2 + self.enorm_sp[2]**2) if self.enorm_sp[2] > 0 else 0
-            recoil_p = np.sqrt(self.enorm_sp[0]**2 + self.enorm_sp[1]**2 + self.enorm_sp[2]**2)
+            delta_z = z[j] - self.etraj_sp[2]
+            if self.etraj_sp[2] != -999:  # If fiducial
+                etraj_point = (self.etraj_sp[0] + self.enorm_sp[0]*delta_z, self.etraj_sp[1] + self.enorm_sp[1]*delta_z)
+                ptraj_point = (self.ptraj_sp[0] + self.pnorm_sp[0]*delta_z, self.ptraj_sp[1] + self.pnorm_sp[1]*delta_z)
+                # Additionally, calculate recoil angle (angle of pnorm_sp):
+                recoilangle = self.enorm_sp[2] / np.sqrt(self.enorm_sp[0]**2 + self.enorm_sp[1]**2 + self.enorm_sp[2]**2)
+                recoil_p = np.sqrt(self.enorm_sp[0]**2 + self.enorm_sp[1]**2 + self.enorm_sp[2]**2) 
+            else:
+                etraj_point = self.etraj_sp  # (-999, -999, -999)
+                ptraj_point = self.ptraj_sp
+
+                recoilangle = -999
+                recoil_p    = -999
             ir = -1
             #if recoilangle==-1 or recoil_p==-1:  ir = 1  # Not used for now
             # Select the class of containment radii based on trajectory angle/energy:
@@ -270,14 +323,14 @@ class ECalHitsDataset(Dataset):
                 ir = 4
             # Determine what regions the hit falls into:
             insideElectronRadius = np.sqrt((etraj_point[0] - x[j])**2 + \
-                    (etraj_point[1] - y[j])**2) < 1.0 * radius_68[ir][layer_index]
+                    (etraj_point[1] - y[j])**2) < 2.0 * radius_68[ir][layer_id[j]]
             insidePhotonRadius   = np.sqrt((ptraj_point[0] - x[j])**2 + \
-                    (ptraj_point[1] - y[j])**2) < 1.0 * radius_68[ir][layer_index]
+                    (ptraj_point[1] - y[j])**2) < 2.0 * radius_68[ir][layer_id[j]]
             # NEW:  If an SP electron hit is missing, place all hits in the event into the "other" region
             # 3-region:
-            if self.enorm_sp[0] == 0 and self.enorm_sp[1] == 0:
+            if self.enorm_sp[2] == -999:
                 insideElectronRadius = False
-                insidePhotonRadius   = False
+                insidePhotonRadius   = True
             
             regions = []  # Regions hit falls inside
             if self.nRegions == 1:
@@ -297,9 +350,9 @@ class ECalHitsDataset(Dataset):
             # Add to each region (need multiple in case inside electron and photon in 3-region)
             for r in range(self.nRegions):
                 if r in regions:
-                    x_[r][j] = x[j] - etraj_point[0]  # Store relative ot xy distance from trajectory
+                    x_[r][j] = x[j] - etraj_point[0]  # Store relative to xy distance from trajectory
                     y_[r][j] = y[j] - etraj_point[1]
-                    z_[r][j] = z[j] - self._layerZs[0]  # Defined relative to the ecal face
+                    z_[r][j] = z[j]  # - self._layerZs[0]  # Used to be defined relative to the ecal face; changed to absolute bc of Huilin's old results
                     layer_id_[r][j] = layer_id[j]
                     log_energy_[r][j] = np.log(energy[j]) if energy[j] > 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
 
@@ -331,17 +384,30 @@ class ECalHitsDataset(Dataset):
         return self.obs_dict
 
 
-    def _load_cellMap(self, version='v12'):
-        self._cellMap = {}
-        for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
-            self._cellMap[i] = (x, y)
-        self._layerZs = np.loadtxt('data/%s/layer.txt' % version)
-        print("Loaded detector info")
+     def _load_cellMap(self, version='v13'):
+        self._cellMap = {}  # cellMap used for v12 only
+        if version=='v12':
+            for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
+                self._cellMap[i] = (x, y)
+            self._layerZs = np.loadtxt('data/%s/layer.txt' % version)
+        if version=='v13':
+            zd = np.loadtxt('data/%s/layer.txt' % version)
+            self._layerZs = {round(zd[i]):i for i in range(len(zd))}
+        print("Loaded geometry info")
+
+    def _getlayer(self, zarr):
+        # Pass in multidim array of z positions, return array of layer numbers
+        #print(self._layerZs)
+        #print(zarr[:10])
+        def roundreturn(val):
+            return self._layerZs[round(val)]
+        return list(map(roundreturn, zarr))  #self._layerZs.__getitem__, zarr))
 
 
     def _parse_cid(self, cid):  # Retooled for v12
         # Translate hit IDs into xyz+layer data
         # For id details, see (?):  ldmx-sw/DetDescr/src/EcalID.cxx
+        
         cell   = (cid >> 0)  & 0xFFF #(awkward.to_numpy(awkward.flatten(cid)) >> 0)  & 0xFFF
         module = (cid >> 12) & 0x1F  #(awkward.to_numpy(awkward.flatten(cid)) >> 12) & 0x1F
         layer  = (cid >> 17) & 0x3F  #(awkward.to_numpy(awkward.flatten(cid)) >> 17) & 0x3F

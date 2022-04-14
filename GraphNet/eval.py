@@ -180,7 +180,9 @@ def run_one_file(filepath, extra_label=0):
     test_preds = evaluate(model, test_loader, dev, return_scores=True)
     #print("First 10 pred values:", test_preds[:10])
     test_labels = test_data.label
-#     test_extra_labels = test_data.extra_labels
+    print("EXTRA LABELS:", test_data.extra_labels[:10])
+
+    test_extra_labels = test_data.extra_labels
 
     for i in range(len(test_data)):
         if i % 1000 == 0:  print("Getting event", i)
@@ -188,7 +190,7 @@ def run_one_file(filepath, extra_label=0):
 
     import awkward
     out_data = test_data.get_obs_data()
-#    out_data['ParticleNet_extra_label'] = test_extra_labels
+    out_data['ParticleNet_extra_label'] = test_extra_labels
     #print("PRINTING BRANCHES")
     #for branch in out_data:
     #    print(out_data[branch][:10])
@@ -225,7 +227,14 @@ for idx, f in enumerate(bkg_filelist):
     print("Running file", f)
     run_one_file(f, 0)
 
+masses = {str(m):m for m in [0.001, 0.01, 0.1, 1.0]}
 for f in sorted(glob.glob(args.test_sig)):
-    run_one_file(f, -1)
+    mass = None
+    for m in masses.keys():
+        if m in f:  mass = masses[m]
+    if mass:
+        run_one_file(f, int(mass*1000))  #-1)
+    else:
+        print("ERROR: unrecognized mass in filename {}".format(f))
 
 print("PROGRAM FINISHED")

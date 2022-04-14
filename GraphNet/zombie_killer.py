@@ -2,7 +2,7 @@ import uproot
 import glob
 import os
 
-filepath = '/home/duncansw/GraphNet_input/v12/processed/*.root'
+filepath = '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/fiducial/*.root'
 
 kills = 0
 for filename in glob.glob(filepath):

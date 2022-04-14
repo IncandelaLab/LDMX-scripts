@@ -24,6 +24,7 @@ class SplitNet(nn.Module):
                  use_fusion=False,
                  return_softmax=False,
                  nRegions=1,
+                 regSizes = None, # List w/ len==nRegions
                  **kwargs):
         super(SplitNet, self).__init__(**kwargs)
         print("INITIALIZING SPLITNET")
@@ -56,6 +57,12 @@ class SplitNet(nn.Module):
 
         self.return_softmax = return_softmax
 
+        self.regSizes = None
+        if regSizes:
+            print("WARNING:  regSizes have not yet been enabled, but the parameter was passed!")
+            assert(nRegions == len(regSizes))
+            self.regSizes = regSizes
+
         print("FINISHED INIT")
 
     """
@@ -72,7 +79,13 @@ class SplitNet(nn.Module):
         # Points are [nregions] x 128  x 3 x 50 (note: nregions axis is gone for 1 region)
         # Note:  points[:,0].shape = (128, 3, 50)
 
-        xi = [getattr(self, 'pn{}'.format(i))(points[:,i], features[:,i]) for i in range(self.nRegions)]
+        if not self.regSizes:
+            xi = [getattr(self, 'pn{}'.format(i))(points[:,i], features[:,i]) for i in range(self.nRegions)]
+        else:
+            # NEW:  Each region now has a different size, defined in init
+            # To avoid awkwardness, each region is sliced down to the correct size (number of hits) here.  The first regSizes[i] hits are the actual data.
+            xi = [getattr(self, 'pn{}'.format(i))(points[:,i,:self.regSizes[i]], features[:,i,:self.regSizes[i]]) for i in range(self.nRegions)]
+            print("ERROR - should not see this - regSizes enabled")
 
         output = self.fc(torch.cat(xi, dim=1))
         

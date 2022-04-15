@@ -207,8 +207,8 @@ def processFile(input_vars):
             else:
                 branchList.append(branchname + '/' + branchname + '.' + leaf)
 
-    print("Branches to load:")
-    print(branchList)
+    #print("Branches to load:")
+    #print(branchList)
 
     # Open the file and read all necessary data from it:
     file = uproot.open(filename)
@@ -220,8 +220,8 @@ def processFile(input_vars):
     #tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
     #nTotalEvents = len(tmp)
     raw_data = t.arrays(branchList) #, preselection)  #, aliases=alias_dict)
-    print("Check raw_data:")
-    print(raw_data[blname('EcalScoringPlaneHits_v3_v13','pdgID_')])
+    #print("Check raw_data:")
+    #print(raw_data[blname('EcalScoringPlaneHits_v3_v13','pdgID_')])
     nTotalEvents = len(raw_data[blname('EcalRecHits_v3_v13', 'xpos_')])
     if nTotalEvents == 0:
         print("FILE {} CONTAINS ZERO EVENTS. SKIPPING...".format(filename))
@@ -394,9 +394,9 @@ def processFile(input_vars):
         else:  # If vector, temp array must have at least one element per hit
             # (liberally picked 2k)
             vector_holders[branch] = np.zeros((200000), dtype='float32')
-    print("TEMP:  Scalar, vector holders keys:")
-    print(scalar_holders.keys())
-    print(vector_holders.keys())
+    #print("TEMP:  Scalar, vector holders keys:")
+    #print(scalar_holders.keys())
+    #print(vector_holders.keys())
     # Create new branches to store nSPHits, pT (necessary for tree creation)...
     scalar_holders['nSPHits'] = np.array([0], 'i')
     scalar_holders['nTSPHits'] = np.array([0], 'i')
@@ -423,17 +423,17 @@ def processFile(input_vars):
         # NOTE:  Can't currently handle EcalVeto branches that store vectors.  Not necessary for PN, though.
         parent = re.split(r'[./]', branch)[0]
         branchname = re.split(r'[./]', branch)[-1]
-        print("Found parent={}, branchname={}".format(parent, branchname))
+        #print("Found parent={}, branchname={}".format(parent, branchname))
         if parent == 'EcalScoringPlaneHits_v3_v13':
             tree.Branch(branchname, var, "{}[nSPHits]/F".format(branchname))
         elif parent == 'TargetScoringPlaneHits_v3_v13':
             tree.Branch(branchname+'tsp_', var, "{}[nTSPHits]/F".format(branchname+'tsp_'))
         else:  # else in EcalRecHits
             tree.Branch(branchname+'rec_', var, "{}[nRecHits]/F".format(branchname+'rec_'))
-    print("TEMP:  Branches added to tree:")
+    #print("TEMP:  Branches added to tree:")
     for b in tree.GetListOfBranches():  print(b.GetFullName())
     print("TEMP:  Leaves added ot tree:")
-    for b in tree.GetListOfLeaves():   print(b.GetFullName())
+    #for b in tree.GetListOfLeaves():   print(b.GetFullName())
 
     print("All branches added.  Filling...")
 

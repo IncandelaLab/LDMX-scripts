@@ -352,9 +352,9 @@ def processFile(input_vars):
     nSPHits = np.zeros(nFiducial) # was: []
     nTSPHits = np.zeros(nFiducial)
     nRecHits = np.zeros(nFiducial) # was: []
-    x_data = preselected_data[blname('EcalScoringPlaneHits_v3_v13','x_')]
-    xsp_data = preselected_data[blname('TargetScoringPlaneHits_v3_v13','x_')]
-    E_data = preselected_data[blname('EcalRecHits_v3_v13','energy_')]
+    x_data = selected_data[blname('EcalScoringPlaneHits_v3_v13','x_')]
+    xsp_data = selected_data[blname('TargetScoringPlaneHits_v3_v13','x_')]
+    E_data = selected_data[blname('EcalRecHits_v3_v13','energy_')]
     for i in range(nFiducial):
         # NOTE:  max num hits may exceed MAX_NUM...this is okay.
         nSPHits[i] = len(x_data[i])      # was: nSPHits.append(len(x_data[i])) 

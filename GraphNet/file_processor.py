@@ -318,6 +318,7 @@ def processFile(input_vars):
         if fiducial == True:
             f_cut[i] = 1
 
+    slected_data = {}
     for branch in branchList:
         selected_data[branch] = preselected_data[branch][f_cut]
     nFiducial = len(selected_data[blname('EcalScoringPlaneHits_v3_v13','x_')])

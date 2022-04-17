@@ -254,7 +254,7 @@ def processFile(input_vars):
     selected_data = {}
     for branch in branchList:
         selected_data[branch] = preselected_data[branch][h_cut]
-    nPunchThrough = len(selected_data[blname('HcalVeto_v3_v13','maxPEHit_.pe_')])
+    nPunchThrough = len(selected_data[blname('HcalVeto_v3_v13/maxPEHit_','maxPEHit_.pe_')])
     print("After PE cut: found {} events".format(nPunchThrough))
 
     # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane

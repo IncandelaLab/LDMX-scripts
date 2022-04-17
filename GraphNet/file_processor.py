@@ -446,11 +446,11 @@ def processFile(input_vars):
             # Contains both vector and scalar data.  Treat them differently:
             if branch in scalar_holders.keys():  # Scalar
                 # fill scalar data
-                if i==0:  print("filling scalar", branch)
+                #if i==0:  print("filling scalar", branch)
                 scalar_holders[branch][0] = selected_data[branch][i]
             elif branch in vector_holders.keys():  # Vector
                 # fill vector data
-                if i==0:  print("filling vector", branch)
+                #if i==0:  print("filling vector", branch)
                 for j in range(len(selected_data[branch][i])):
                     vector_holders[branch][j] = selected_data[branch][i][j]
             else:

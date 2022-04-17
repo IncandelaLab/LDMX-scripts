@@ -133,8 +133,8 @@ data_to_save = {
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']  # OLD: ['id_', 'energy_']
     },
-    'HcalVeto_v3_v13':{
-        'scalars':['maxPEHit_.pe'],
+    'HcalVeto_v3_v13/maxPEHit_':{
+        'scalars':['maxPEHit_.pe_'],
         'vectors':[]
     }
 }
@@ -206,7 +206,7 @@ def processFile(input_vars):
     for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
             # EcalVeto needs slightly different syntax:   . -> /
-            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
+            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13/maxPEHit_":
                 branchList.append(branchname + '/' + leaf)
             else:
                 branchList.append(branchname + '/' + branchname + '.' + leaf)
@@ -249,7 +249,7 @@ def processFile(input_vars):
 
     # Find punch through signal
 
-    h_cut = (preselected_data[blname('HcalVeto_v3_v13', 'maxPEHit_.pe_')] >= 5)
+    h_cut = (preselected_data[blname('HcalVeto_v3_v13/maxPEHit_', 'maxPEHit_.pe_')] >= 5)
 
     selected_data = {}
     for branch in branchList:

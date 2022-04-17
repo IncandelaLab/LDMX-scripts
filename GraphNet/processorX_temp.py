@@ -37,7 +37,7 @@ Outline:
 """
 
 # Directory to write output files to:
-output_dir = '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/fiducial'
+output_dir = '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/punch_through'
 # Locations of the 2.3.0 ldmx-sw ROOT files to process+train on:
 """
 file_templates = {

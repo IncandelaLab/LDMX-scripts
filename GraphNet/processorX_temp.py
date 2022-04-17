@@ -174,8 +174,10 @@ def pad_array(arr):
     return awkward.flatten(arr)
 
 def blname(branch, leaf):
-    if branch.startswith('EcalVeto') or branch.startswith('HcalVeto'):
+    if branch.startswith('EcalVeto'):
         return '{}/{}'.format(branch, leaf)
+    elif branch.startswith('HcalVeto'):
+        return '{}.{}'.format(branch,leaf)
     else:
         return '{}/{}.{}'.format(branch, branch, leaf)
 
@@ -206,8 +208,10 @@ def processFile(input_vars):
     for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
             # EcalVeto needs slightly different syntax:   . -> /
-            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
+            if branchname == "EcalVeto_v3_v13":
                 branchList.append(branchname + '/' + leaf)
+            elif branchname == "HcalVeto_v3_v13":
+                branchList.append(branchname + '.' + leaf)
             else:
                 branchList.append(branchname + '/' + branchname + '.' + leaf)
 

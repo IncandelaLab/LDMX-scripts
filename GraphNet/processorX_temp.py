@@ -133,8 +133,8 @@ data_to_save = {
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']  # OLD: ['id_', 'energy_']
     },
-    'HcalVeto_v3_v13':{
-        'scalars':['maxPEHit_.pe_'],
+    'HcalVeto_v3_v13/maxPEHit_':{
+        'scalars':['maxPEHit_.pe'],
         'vectors':[]
     }
 }
@@ -206,7 +206,7 @@ def processFile(input_vars):
     for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
             # EcalVeto needs slightly different syntax:   . -> /
-            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
+            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13/maxPEHit_":
                 branchList.append(branchname + '/' + leaf)
             else:
                 branchList.append(branchname + '/' + branchname + '.' + leaf)

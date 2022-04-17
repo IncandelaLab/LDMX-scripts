@@ -351,7 +351,7 @@ def processFile(input_vars):
         elif branch == 'TargetSPRecoilE_pt':
             branchname = branch
             dtype = 'F'
-        elif branch == 'HcalVeto_v3_v13/maxPEHit_/maxPEHit_.pe_'
+        elif branch == 'HcalVeto_v3_v13/maxPEHit_/maxPEHit_.pe_':
             branchnme = 'HcalVeto_v3_v13/maxPEHit_'
             dtype = 'I'
         else:

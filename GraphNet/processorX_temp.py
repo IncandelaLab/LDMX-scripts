@@ -249,7 +249,7 @@ def processFile(input_vars):
 
     # Find punch through signal
 
-    h_cut = (preselected_data[blname('HcalVeto_v3_v13', 'passesVeto_')] = 0)
+    h_cut = (preselected_data[blname('HcalVeto_v3_v13', 'passesVeto_')] == 0)
 
     selected_data = {}
     for branch in branchList:

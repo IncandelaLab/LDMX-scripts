@@ -133,8 +133,8 @@ data_to_save = {
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']  # OLD: ['id_', 'energy_']
     },
-    'HcalVeto_v3_v13/maxPEHit_':{
-        'scalars':['maxPEHit_.pe_'],
+    'HcalVeto_v3_v13':{
+        'scalars':['passesVeto_'],
         'vectors':[]
     }
 }
@@ -206,7 +206,7 @@ def processFile(input_vars):
     for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
             # EcalVeto needs slightly different syntax:   . -> /
-            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13/maxPEHit_":
+            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
                 branchList.append(branchname + '/' + leaf)
             else:
                 branchList.append(branchname + '/' + branchname + '.' + leaf)
@@ -249,13 +249,13 @@ def processFile(input_vars):
 
     # Find punch through signal
 
-    h_cut = (preselected_data[blname('HcalVeto_v3_v13/maxPEHit_', 'maxPEHit_.pe_')] >= 5)
+    h_cut = (preselected_data[blname('HcalVeto_v3_v13', 'passesVeto_')] = 0)
 
     selected_data = {}
     for branch in branchList:
         selected_data[branch] = preselected_data[branch][h_cut]
-    nPunchThrough = len(selected_data[blname('HcalVeto_v3_v13/maxPEHit_', 'maxPEHit_.pe_')])
-    print("After PE cut: found {} events".format(nPunchThrough))
+    nPunchThrough = len(selected_data[blname('HcalVeto_v3_v13', 'passesVeto_')])
+    print("After inverse hcal veto: found {} events".format(nPunchThrough))
 
     # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane
     # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
@@ -309,8 +309,6 @@ def processFile(input_vars):
     scalar_holders = {}  # Hold ecalVeto (scalar) information
     vector_holders = {}
     for branch in branchList:
-        if branch == 'HcalVeto_v3_v13/maxPEHit_/maxPEHit_.pe_':
-            leaf = 'maxPEHit_.pe_'
         else:
             leaf = re.split(r'[./]', branch)[-1]  #Split at / or .
         # Find whether the branch stores scalar or vector data:
@@ -351,9 +349,6 @@ def processFile(input_vars):
         elif branch == 'TargetSPRecoilE_pt':
             branchname = branch
             dtype = 'F'
-        elif branch == 'HcalVeto_v3_v13/maxPEHit_/maxPEHit_.pe_':
-            branchnme = 'HcalVeto_v3_v13/maxPEHit_'
-            dtype = 'I'
         else:
             branchname = re.split(r'[./]', branch)[1]
             dtype = 'F'

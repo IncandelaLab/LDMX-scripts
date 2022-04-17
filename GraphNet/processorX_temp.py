@@ -309,8 +309,7 @@ def processFile(input_vars):
     scalar_holders = {}  # Hold ecalVeto (scalar) information
     vector_holders = {}
     for branch in branchList:
-        else:
-            leaf = re.split(r'[./]', branch)[-1]  #Split at / or .
+        leaf = re.split(r'[./]', branch)[-1]  #Split at / or .
         # Find whether the branch stores scalar or vector data:
         datatype = None
         for br, brdict in data_to_save.items():

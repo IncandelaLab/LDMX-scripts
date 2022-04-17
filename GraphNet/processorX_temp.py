@@ -254,7 +254,7 @@ def processFile(input_vars):
     selected_data = {}
     for branch in branchList:
         selected_data[branch] = preselected_data[branch][h_cut]
-    nPunchThrough = len(selected_data[blname('HcalVeto_v3_v13/maxPEHit_','maxPEHit_.pe_')])
+    nPunchThrough = len(selected_data[blname('HcalVeto_v3_v13/maxPEHit_', 'maxPEHit_.pe_')])
     print("After PE cut: found {} events".format(nPunchThrough))
 
     # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane
@@ -309,7 +309,10 @@ def processFile(input_vars):
     scalar_holders = {}  # Hold ecalVeto (scalar) information
     vector_holders = {}
     for branch in branchList:
-        leaf = re.split(r'[./]', branch)[-1]  #Split at / or .
+        if branch == 'HcalVeto_v3_v13/maxPEHit_/maxPEHit_.pe_':
+            leaf = 'maxPEHit_.pe_'
+        else:
+            leaf = re.split(r'[./]', branch)[-1]  #Split at / or .
         # Find whether the branch stores scalar or vector data:
         datatype = None
         for br, brdict in data_to_save.items():
@@ -348,6 +351,9 @@ def processFile(input_vars):
         elif branch == 'TargetSPRecoilE_pt':
             branchname = branch
             dtype = 'F'
+        elif branch == 'HcalVeto_v3_v13/maxPEHit_/maxPEHit_.pe_'
+            branchnme = 'HcalVeto_v3_v13/maxPEHit_'
+            dtype = 'I'
         else:
             branchname = re.split(r'[./]', branch)[1]
             dtype = 'F'
@@ -379,11 +385,11 @@ def processFile(input_vars):
             # Contains both vector and scalar data.  Treat them differently:
             if branch in scalar_holders.keys():  # Scalar
                 # fill scalar data
-                if i==0:  print("filling scalar", branch)
+                #if i==0:  print("filling scalar", branch)
                 scalar_holders[branch][0] = selected_data[branch][i]
             elif branch in vector_holders.keys():  # Vector
                 # fill vector data
-                if i==0:  print("filling vector", branch)
+                #if i==0:  print("filling vector", branch)
                 for j in range(len(selected_data[branch][i])):
                     vector_holders[branch][j] = selected_data[branch][i][j]
             else:

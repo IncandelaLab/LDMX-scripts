@@ -249,8 +249,13 @@ def processFile(input_vars):
 
     # Find punch through signal
 
+    h_cut = np.zeros(nEvents, dtype = bool)
     minPE = 5
-    h_cut = (preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]) >= minPE 
+    PE = (preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]) 
+
+    for i in range len(PE):
+        if PE[i] >= minPE:
+            h_cut[i] = 1
 
     selected_data = {}
     for branch in branchList:
@@ -262,11 +267,11 @@ def processFile(input_vars):
     # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
     # approach.)
     # For each event, find the recoil electron (maximal recoil pz):
-    pdgID_ = t[blname('TargetScoringPlaneHits_v3_v13', 'pdgID_')].array()[el]
-    z_     = t[blname('TargetScoringPlaneHits_v3_v13', 'z_')].array()[el]
-    px_    = t[blname('TargetScoringPlaneHits_v3_v13', 'px_')].array()[el]
-    py_    = t[blname('TargetScoringPlaneHits_v3_v13', 'py_')].array()[el]
-    pz_    = t[blname('TargetScoringPlaneHits_v3_v13', 'pz_')].array()[el]
+    pdgID_ = t[blname('TargetScoringPlaneHits_v3_v13', 'pdgID_')].array()[el][h_cut]
+    z_     = t[blname('TargetScoringPlaneHits_v3_v13', 'z_')].array()[el][h_cut]
+    px_    = t[blname('TargetScoringPlaneHits_v3_v13', 'px_')].array()[el][h_cut]
+    py_    = t[blname('TargetScoringPlaneHits_v3_v13', 'py_')].array()[el][h_cut]
+    pz_    = t[blname('TargetScoringPlaneHits_v3_v13', 'pz_')].array()[el][h_cut]
     tspRecoil = []
     for i in range(nFiducial):
         max_pz = 0

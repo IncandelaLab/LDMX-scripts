@@ -328,11 +328,11 @@ def processFile(input_vars):
     # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
     # approach.)
     # For each event, find the recoil electron (maximal recoil pz):
-    pdgID_ = t[blname('TargetScoringPlaneHits_v3_v13', 'pdgID_')].array()[el]
-    z_     = t[blname('TargetScoringPlaneHits_v3_v13', 'z_')].array()[el]
-    px_    = t[blname('TargetScoringPlaneHits_v3_v13', 'px_')].array()[el]
-    py_    = t[blname('TargetScoringPlaneHits_v3_v13', 'py_')].array()[el]
-    pz_    = t[blname('TargetScoringPlaneHits_v3_v13', 'pz_')].array()[el]
+    pdgID_ = t[blname('TargetScoringPlaneHits_v3_v13', 'pdgID_')].array()[el][f_cut]
+    z_     = t[blname('TargetScoringPlaneHits_v3_v13', 'z_')].array()[el][f_cut]
+    px_    = t[blname('TargetScoringPlaneHits_v3_v13', 'px_')].array()[el][f_cut]
+    py_    = t[blname('TargetScoringPlaneHits_v3_v13', 'py_')].array()[el][f_cut]
+    pz_    = t[blname('TargetScoringPlaneHits_v3_v13', 'pz_')].array()[el][f_cut]
     tspRecoil = []
     for i in range(nFiducial):
         max_pz = 0

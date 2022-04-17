@@ -253,7 +253,7 @@ def processFile(input_vars):
     minPE = 5
     PE = (preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]) 
 
-    for i in range len(PE):
+    for i in range(len(PE)):
         if PE[i] >= minPE:
             h_cut[i] = 1
 

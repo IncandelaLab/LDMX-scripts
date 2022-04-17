@@ -384,7 +384,7 @@ class ECalHitsDataset(Dataset):
         return self.obs_dict
 
 
-     def _load_cellMap(self, version='v13'):
+    def _load_cellMap(self, version='v13'):
         self._cellMap = {}  # cellMap used for v12 only
         if version=='v12':
             for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):

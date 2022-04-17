@@ -132,6 +132,10 @@ data_to_save = {
     'EcalRecHits_v3_v13': {
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']  # OLD: ['id_', 'energy_']
+    },
+    'HcalRecHits_v3_v13':{
+        'scalars':[],
+        'vectors':['pe_']
     }
 }
 
@@ -243,86 +247,16 @@ def processFile(input_vars):
     nEvents = len(preselected_data[blname('EcalVeto_v3_v13', 'summedTightIso_')])
     print("After preselection: skimming from {} events".format(nEvents))
 
-    """
-    # Trigger # OLD (v12)
-    eid = preselected_data['EcalRecHits_v12.id_']
-    energy = preselected_data['EcalRecHits_v12.energy_']
-    pos = energy > 0
-    eid = eid[pos]
-    energy = energy[pos]
-    layer_id = get_layer_id(eid)
+    # Find punch through signal
 
-    t_cut = np.zeros(len(eid), dtype = bool)
-    for event in range(len(eid)):
-        en = 0.0
-        for hit in range(len(eid[event])):
-            if layer_id[event][hit] < 20.0:
-                en += energy[event][hit]
-        if en < 1500.0:
-            t_cut[event] = 1
-    
+    minPE = 5
+    h_cut = (preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]) >= minPE 
 
     selected_data = {}
     for branch in branchList:
-        selected_data[branch] = preselected_data[branch][t_cut]
-    nPostTrigger = len(selected_data['EcalScoringPlaneHits_v12.x_'])
-    print("After trigger: skimming from {} events".format(nPostTrigger))
-    """
-
-    #Fiducial cut 
-
-    # Find Ecal SP recoil electron (with maximum momentum)
-    recoilZ = preselected_data[blname('EcalScoringPlaneHits_v3_v13','z_')]
-    px = preselected_data[blname('EcalScoringPlaneHits_v3_v13','px_')]
-    py = preselected_data[blname('EcalScoringPlaneHits_v3_v13','py_')]
-    pz = preselected_data[blname('EcalScoringPlaneHits_v3_v13','pz_')]
-    pdgID = preselected_data[blname('EcalScoringPlaneHits_v3_v13','pdgID_')]
-    trackID = preselected_data[blname('EcalScoringPlaneHits_v3_v13','trackID_')]
-    
-    e_cut = []
-    for i in range(len(px)):
-        e_cut.append([])
-        for j in range(len(px[i])):
-            e_cut[i].append(False)
-    for i in range(len(px)):
-        maxP = 0
-        e_index = 0
-        for j in range(len(px[i])):
-            P = np.sqrt(px[i][j]**2 + py[i][j]**2 + pz[i][j]**2)
-            if (pdgID[i][j] == 11 and trackID[i][j] == 1 and recoilZ[i][j] > 240 and recoilZ[i][j] < 241 and P > maxP):
-                maxP = P
-                e_index = j
-        if maxP > 0:
-            e_cut[i][e_index] = True
-
-    recoilX = pad_array(preselected_data[blname('EcalScoringPlaneHits_v3_v13','x_')][e_cut])
-    recoilY = pad_array(preselected_data[blname('EcalScoringPlaneHits_v3_v13','y_')][e_cut])
-    recoilPx = pad_array(px[e_cut])
-    recoilPy = pad_array(py[e_cut])
-    recoilPz = pad_array(pz[e_cut])
-
-    # Apply fiducial test to recoil electron
-    N = len(recoilX)
-    f_cut = np.zeros(N, dtype = bool)
-    for i in range(N):
-        fiducial = False
-        fXY = projection(recoilX[i], recoilY[i], scoringPlaneZ, recoilPx[i], recoilPy[i], recoilPz[i], ecalFaceZ)
-        if not recoilX[i] == 0 and not recoilY[i] == 0 and not recoilPx[i] == 0 and not recoilPy[i] == 0 and not recoilPz[i] == 0:
-            for j in range(len(cells)):
-                celldis = dist(cells[j], fXY)
-                if celldis <= cell_radius:
-                    fiducial = True
-                    break
-        if recoilX[i] == 0 and recoilY[i] == 0 and recoilPx[i] == 0 and recoilPy[i] == 0 and recoilPz[i] == 0:
-            fiducial = False
-        if fiducial == True:
-            f_cut[i] = 1
-
-    selected_data = {}
-    for branch in branchList:
-        selected_data[branch] = preselected_data[branch][f_cut]
-    nFiducial = len(selected_data[blname('EcalScoringPlaneHits_v3_v13','x_')])
-    print("After fiducial cut: found {} events".format(nFiducial))
+        selected_data[branch] = preselected_data[branch][h_cut]
+    nPunchThrough = len(selected_data[blname('HcalRecHits_v3_v13','pe_')])
+    print("After minPE cut: found {} events".format(nFiducial))
 
     # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane
     # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
@@ -462,7 +396,7 @@ def processFile(input_vars):
     outfile.Write()
     print("FINISHED.  File written to {}.".format(outfile_path))
 
-    return (nTotalEvents, nEvents, nFiducial)
+    return (nTotalEvents, nEvents, nPunchThrough)
 
 
 if __name__ == '__main__':
@@ -487,17 +421,17 @@ if __name__ == '__main__':
         print(results)
         nTotal  = sum([r[0] for r in results])
         nEvents = sum([r[1] for r in results])
-        nFiducial = sum([r[2] for r in results])
-        print("m = {} MeV:  Read {} events, {} passed preselection, {} passed fiducial cut".format(int(mass*1000), nTotal, nEvents, nFiducial))
+        nPunch = sum([r[2] for r in results])
+        print("m = {} MeV:  Read {} events, {} passed preselection, {} passed fiducial cut".format(int(mass*1000), nTotal, nEvents, nPunch))
         if nTotal > 0:
             presel_eff[int(mass * 1000)] = float(nEvents) / nTotal
         else:
             presel_eff[int(mass * 1000)] = 'no events!'
         if nEvents > 0:
-            fiducial_ratio[int(mass * 1000)] = float(nFiducial) / nEvents
+            punch_through_ratio[int(mass * 1000)] = float(nPunch) / nEvents
         else:
-            fiducial_ratio[int(mass*1000)] = 'no events!'
-    print("Done.  Preselection efficiency: {}, Fiducial ratio: {}".format(presel_eff, fiducial_ratio))
+            punch_through_ratio[int(mass*1000)] = 'no events!'
+    print("Done.  Preselection efficiency: {}, Punch through ratio: {}".format(presel_eff, punch_through_ratio))
 
     # For running without multithreading (note:  will be extremely slow and is impractical unless you want to test/use 1-2 files at a time):
     """

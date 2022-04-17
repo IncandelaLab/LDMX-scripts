@@ -1,16 +1,16 @@
 #!/bin/bash
 #SBATCH -N 1 --partition=gpu --ntasks-per-node=1
 #SBATCH --gres=gpu:1
-#SBATCH --output=slurm_eval2.out
+#SBATCH --output=slurm_eval3.out
 
-export MODEL_NAME=v12_v300_fiducial_1region
-export DATA_NAME=v12_v300_fiducial_1region
+export MODEL_NAME=v13_f1r
+export DATA_NAME=v13_f1r
 export BASE_DIRECTORY=/home/duncansw/LDMX-scripts/GraphNet
 
 cd $SLURM_SUBMIT_DIR
 
 /bin/hostname
-srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/duncansw/GraphNet_input/v12/processed/bkg_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 1
+srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/fiducial/bkg_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 1
 # Kaons:
 #srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-18_acc-*.pt --test-bkg '/home/pmasterson/GraphNet_input/v12/processed/*kaon*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 3
 

@@ -421,7 +421,7 @@ if __name__ == '__main__':
         nTotal  = sum([r[0] for r in results])
         nEvents = sum([r[1] for r in results])
         nPunch = sum([r[2] for r in results])
-        print("m = {} MeV:  Read {} events, {} passed preselection, {} passed minPE cut".format(int(mass*1000), nTotal, nEvents, nPunch))
+        print("m = {} MeV:  Read {} events, {} passed preselection, {} induced hcal veto".format(int(mass*1000), nTotal, nEvents, nPunch))
         if nTotal > 0:
             presel_eff[int(mass * 1000)] = float(nEvents) / nTotal
         else:

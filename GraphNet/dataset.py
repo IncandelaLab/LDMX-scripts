@@ -218,7 +218,7 @@ class ECalHitsDataset(Dataset):
         r_ecal = 0
         pmax_ecal = 0
         for j in range(pdgID_leaf.GetLen()):
-            if pdgID_[j] == 11 and z_[j] > 240 and z_[j] < 241 and pz_[j] > pmax:
+            if pdgID_[j] == 11 and z_[j] > 240 and z_[j] < 241 and pz_[j] > pmax_ecal:
                 pmax_ecal = pz_[j]
                 r_ecal = j
         has_e = pmax_ecal != 0  # Check whether event has a SP electron

@@ -133,9 +133,9 @@ data_to_save = {
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']  # OLD: ['id_', 'energy_']
     },
-    'HcalRecHits_v3_v13':{
-        'scalars':[],
-        'vectors':['pe_']
+    'HcalVeto_v3_v13':{
+        'scalars':['maxPEHit_.pe_'],
+        'vectors':[]
     }
 }
 
@@ -174,7 +174,7 @@ def pad_array(arr):
     return awkward.flatten(arr)
 
 def blname(branch, leaf):
-    if branch.startswith('EcalVeto'):
+    if branch.startswith('EcalVeto') or branch.startswith('HcalVeto'):
         return '{}/{}'.format(branch, leaf)
     else:
         return '{}/{}.{}'.format(branch, branch, leaf)
@@ -188,9 +188,9 @@ def processFile(input_vars):
 
     print("Processing file {}".format(filename))
     if mass == 0:
-        outfile_name = "v13_pn_fiducial_{}.root".format(filenum)
+        outfile_name = "v13_pn_punch_{}.root".format(filenum)
     else:
-        outfile_name = "v13_{}_fiducial_{}.root".format(mass, filenum)
+        outfile_name = "v13_{}_punch_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
 
     # NOTE:  Added this to ...
@@ -206,7 +206,7 @@ def processFile(input_vars):
     for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
             # EcalVeto needs slightly different syntax:   . -> /
-            if branchname == "EcalVeto_v3_v13":
+            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
                 branchList.append(branchname + '/' + leaf)
             else:
                 branchList.append(branchname + '/' + branchname + '.' + leaf)
@@ -249,19 +249,13 @@ def processFile(input_vars):
 
     # Find punch through signal
 
-    h_cut = np.zeros(nEvents, dtype = bool)
-    minPE = 5
-    PE = (preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]) 
-
-    for i in range(len(PE)):
-        if PE[i] >= minPE:
-            h_cut[i] = 1
+    h_cut = (preselected_data[blname('HcalVeto_v3_v13', 'maxPEHit_.pe_')] >= 5)
 
     selected_data = {}
     for branch in branchList:
         selected_data[branch] = preselected_data[branch][h_cut]
-    nPunchThrough = len(selected_data[blname('HcalRecHits_v3_v13','pe_')])
-    print("After minPE cut: found {} events".format(nFiducial))
+    nPunchThrough = len(selected_data[blname('HcalVeto_v3_v13','maxPEHit_.pe_')])
+    print("After PE cut: found {} events".format(nPunchThrough))
 
     # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane
     # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
@@ -273,7 +267,7 @@ def processFile(input_vars):
     py_    = t[blname('TargetScoringPlaneHits_v3_v13', 'py_')].array()[el][h_cut]
     pz_    = t[blname('TargetScoringPlaneHits_v3_v13', 'pz_')].array()[el][h_cut]
     tspRecoil = []
-    for i in range(nFiducial):
+    for i in range(nPunchThrough):
         max_pz = 0
         recoil_index = 0  # Store the index of the recoil electron
         for j in range(len(pdgID_[i])):
@@ -288,13 +282,13 @@ def processFile(input_vars):
     selected_data['TargetSPRecoilE_pt'] = np.array(tspRecoil)
 
     # Additionally, add new branches storing the length for vector data (number of SP hits, number of ecal hits):
-    nSPHits = np.zeros(nFiducial) # was: []
-    nTSPHits = np.zeros(nFiducial)
-    nRecHits = np.zeros(nFiducial) # was: []
+    nSPHits = np.zeros(nPunchThrough) # was: []
+    nTSPHits = np.zeros(nPunchThrough)
+    nRecHits = np.zeros(nPunchThrough) # was: []
     x_data = selected_data[blname('EcalScoringPlaneHits_v3_v13','x_')]
     xsp_data = selected_data[blname('TargetScoringPlaneHits_v3_v13','x_')]
     E_data = selected_data[blname('EcalRecHits_v3_v13','energy_')]
-    for i in range(nFiducial):
+    for i in range(nPunchThrough):
         # NOTE:  max num hits may exceed MAX_NUM...this is okay.
         nSPHits[i] = len(x_data[i])      # was: nSPHits.append(len(x_data[i])) 
         nTSPHits[i] = len(xsp_data[i]) 
@@ -376,7 +370,7 @@ def processFile(input_vars):
 
     print("All branches added.  Filling...")
 
-    for i in range(nFiducial):
+    for i in range(nPunchThrough):
         # For each event, fill the temporary arrays with data, then write them to the tree with Fill()
         # Also: ignore events with zero ecal hits 
         if selected_data['nRecHits'][i] == 0:  
@@ -409,7 +403,7 @@ if __name__ == '__main__':
     #pool = Pool(16) -> Run 16 threads/process 16 files in parallel
     
     presel_eff = {}
-    fiducial_ratio = {}
+    punch_through_ratio = {}
     _load_cellMap()
     # For each signal mass and for PN background:
     for mass, filepath in file_templates.items():
@@ -427,7 +421,7 @@ if __name__ == '__main__':
         nTotal  = sum([r[0] for r in results])
         nEvents = sum([r[1] for r in results])
         nPunch = sum([r[2] for r in results])
-        print("m = {} MeV:  Read {} events, {} passed preselection, {} passed fiducial cut".format(int(mass*1000), nTotal, nEvents, nPunch))
+        print("m = {} MeV:  Read {} events, {} passed preselection, {} passed minPE cut".format(int(mass*1000), nTotal, nEvents, nPunch))
         if nTotal > 0:
             presel_eff[int(mass * 1000)] = float(nEvents) / nTotal
         else:

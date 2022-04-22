@@ -10,10 +10,8 @@ export BASE_DIRECTORY=/home/duncansw/LDMX-scripts/GraphNet
 cd $SLURM_SUBMIT_DIR
 
 /bin/hostname
-srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/fiducial/bkg_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 1
+srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/fiducial/bkg_eval/*.root' --test-sig '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/fiducial/sig_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 1
 # Kaons:
 #srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-18_acc-*.pt --test-bkg '/home/pmasterson/GraphNet_input/v12/processed/*kaon*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 3
 
-# --test-sig '/home/duncansw/GraphNet_input/v12/processed/sig_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 8 --device 'cuda:0'
-
-
+# --test-sig '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/fiducial/sig_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 8 --device 'cuda:0'

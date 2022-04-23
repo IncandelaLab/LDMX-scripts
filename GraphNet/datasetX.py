@@ -363,7 +363,7 @@ class XCalHitsDataset(Dataset):
                     layer_id_[r][j] = layer_id[j]
                     log_energy_[r][j] = np.log(energy[j]) if energy[j] > 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
                 
-        for k in range(len(h_layer_id)):
+        for k in range(len(h_energy)):
             
             hcal_region = []
             hcal_region.append(self.nRegions - 1)

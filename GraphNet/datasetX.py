@@ -56,11 +56,11 @@ def _concat(arrays, axis=0):
 
 
 
-class CalHitsDataset(Dataset):
+class XCalHitsDataset(Dataset):
 
     def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v13', nRegions=1, regSizes=None):
-        super(CalHitsDataset, self).__init__()
-        print("Initializing CalHitsDataset")
+        super(XCalHitsDataset, self).__init__()
+        print("Initializing XCalHitsDataset")
         # load cell map (for calculating xyz+layer from hit IDs)
         self._load_cellMap(version=detector_version)
         self.detector_version = detector_version

@@ -219,7 +219,7 @@ input_dims = test_data.num_features
 # model
 print("Initializing model")
 # Create the SplitNet model here.  This is the "real" ParticleNet.
-model = SplitNet(input_dims=input_dims, num_classes=2,
+model = SplitNetX(input_dims=input_dims, num_classes=2,
                  conv_params=conv_params,
                  fc_params=fc_params,
                  use_fusion=True,

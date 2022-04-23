@@ -37,7 +37,7 @@ Outline:
 """
 
 # Directory to write output files to:
-output_dir = '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/punch_through'
+output_dir = '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal'
 # Locations of the 2.3.0 ldmx-sw ROOT files to process+train on:
 """
 file_templates = {
@@ -188,9 +188,9 @@ def processFile(input_vars):
 
     print("Processing file {}".format(filename))
     if mass == 0:
-        outfile_name = "v13_pn_punch_{}.root".format(filenum)
+        outfile_name = "v13_pn_XCal_{}.root".format(filenum)
     else:
-        outfile_name = "v13_{}_punch_{}.root".format(mass, filenum)
+        outfile_name = "v13_{}_XCal_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
 
     # NOTE:  Added this to ...

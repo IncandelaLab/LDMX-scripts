@@ -133,9 +133,9 @@ data_to_save = {
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']  # OLD: ['id_', 'energy_']
     },
-    'HcalVeto_v3_v13':{
-        'scalars':['passesVeto_'],
-        'vectors':[]
+    'HcalRecHits_v3_v13':{
+        'scalars':[],
+        'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']
     }
 }
 
@@ -174,7 +174,7 @@ def pad_array(arr):
     return awkward.flatten(arr)
 
 def blname(branch, leaf):
-    if branch.startswith('EcalVeto') or branch.startswith('HcalVeto'):
+    if branch.startswith('EcalVeto'):
         return '{}/{}'.format(branch, leaf)
     else:
         return '{}/{}.{}'.format(branch, branch, leaf)
@@ -206,7 +206,7 @@ def processFile(input_vars):
     for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
             # EcalVeto needs slightly different syntax:   . -> /
-            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
+            if branchname == "EcalVeto_v3_v13":
                 branchList.append(branchname + '/' + leaf)
             else:
                 branchList.append(branchname + '/' + branchname + '.' + leaf)
@@ -247,27 +247,17 @@ def processFile(input_vars):
     nEvents = len(preselected_data[blname('EcalVeto_v3_v13', 'summedTightIso_')])
     print("After preselection: skimming from {} events".format(nEvents))
 
-    # Find punch through signal
-
-    h_cut = (preselected_data[blname('HcalVeto_v3_v13', 'passesVeto_')] == 0)
-
-    selected_data = {}
-    for branch in branchList:
-        selected_data[branch] = preselected_data[branch][h_cut]
-    nPunchThrough = len(selected_data[blname('HcalVeto_v3_v13', 'passesVeto_')])
-    print("After inverse hcal veto: found {} events".format(nPunchThrough))
-
     # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane
     # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
     # approach.)
     # For each event, find the recoil electron (maximal recoil pz):
-    pdgID_ = t[blname('TargetScoringPlaneHits_v3_v13', 'pdgID_')].array()[el][h_cut]
-    z_     = t[blname('TargetScoringPlaneHits_v3_v13', 'z_')].array()[el][h_cut]
-    px_    = t[blname('TargetScoringPlaneHits_v3_v13', 'px_')].array()[el][h_cut]
-    py_    = t[blname('TargetScoringPlaneHits_v3_v13', 'py_')].array()[el][h_cut]
-    pz_    = t[blname('TargetScoringPlaneHits_v3_v13', 'pz_')].array()[el][h_cut]
+    pdgID_ = t[blname('TargetScoringPlaneHits_v3_v13', 'pdgID_')].array()[el]
+    z_     = t[blname('TargetScoringPlaneHits_v3_v13', 'z_')].array()[el]
+    px_    = t[blname('TargetScoringPlaneHits_v3_v13', 'px_')].array()[el]
+    py_    = t[blname('TargetScoringPlaneHits_v3_v13', 'py_')].array()[el]
+    pz_    = t[blname('TargetScoringPlaneHits_v3_v13', 'pz_')].array()[el]
     tspRecoil = []
-    for i in range(nPunchThrough):
+    for i in range(nEvents):
         max_pz = 0
         recoil_index = 0  # Store the index of the recoil electron
         for j in range(len(pdgID_[i])):
@@ -278,26 +268,32 @@ def processFile(input_vars):
         # Calculate the recoil SP
         if len(px_[i]) > 0:   # if max_pz > 0:
             tspRecoil.append(np.sqrt(px_[i][recoil_index]**2 + py_[i][recoil_index]**2))
-    # Put it in the selected_data and treat it as an ordinary branch from here on out
-    selected_data['TargetSPRecoilE_pt'] = np.array(tspRecoil)
+    # Put it in the preselected_data and treat it as an ordinary branch from here on out
+    preselected_data['TargetSPRecoilE_pt'] = np.array(tspRecoil)
 
     # Additionally, add new branches storing the length for vector data (number of SP hits, number of ecal hits):
-    nSPHits = np.zeros(nPunchThrough) # was: []
-    nTSPHits = np.zeros(nPunchThrough)
-    nRecHits = np.zeros(nPunchThrough) # was: []
-    x_data = selected_data[blname('EcalScoringPlaneHits_v3_v13','x_')]
-    xsp_data = selected_data[blname('TargetScoringPlaneHits_v3_v13','x_')]
-    E_data = selected_data[blname('EcalRecHits_v3_v13','energy_')]
-    for i in range(nPunchThrough):
+    nSPHits = np.zeros(nEvents) # was: []
+    nTSPHits = np.zeros(nEvents)
+    nRecHits = np.zeros(nEvents) # was: []
+    nHRecHits = np.zeros(nEvents)
+    x_data = preselected_data[blname('EcalScoringPlaneHits_v3_v13','x_')]
+    xsp_data = preselected_data[blname('TargetScoringPlaneHits_v3_v13','x_')]
+    E_data = preselected_data[blname('EcalRecHits_v3_v13','energy_')]
+    HE_data = preselected_data[blname('HcalRecHits_v3_v13', 'energy_')]
+    for i in range(nEvents):
         # NOTE:  max num hits may exceed MAX_NUM...this is okay.
         nSPHits[i] = len(x_data[i])      # was: nSPHits.append(len(x_data[i])) 
         nTSPHits[i] = len(xsp_data[i]) 
         nRecHits[i] = sum(E_data[i] > 0) # was: nRecHits.append(len(E_data[i]))
         if len(E_data[i]) == 0:
             nRecHits[i] = 0
-    selected_data['nSPHits'] = np.array(nSPHits)
-    selected_data['nTSPHits'] = np.array(nTSPHits)
-    selected_data['nRecHits'] = np.array(nRecHits)
+        nHRecHits[i] = sum(HE_data[i] > 0)
+        if len(HE_data[i]) == 0:
+            nHRecHits[i] = 0
+    preselected_data['nSPHits'] = np.array(nSPHits)
+    preselected_data['nTSPHits'] = np.array(nTSPHits)
+    preselected_data['nRecHits'] = np.array(nRecHits)
+    preselected_data['nHRecHits'] = np.array(nHRecHits)
 
 
     # Prepare the output tree+file:
@@ -334,15 +330,17 @@ def processFile(input_vars):
     scalar_holders['nSPHits'] = np.array([0], 'i')
     scalar_holders['nTSPHits'] = np.array([0], 'i')
     scalar_holders['nRecHits'] = np.array([0], 'i')
+    scalar_holders['nHRecHits'] = np.array([0], 'i')
     scalar_holders['TargetSPRecoilE_pt'] = np.array([0], dtype='float32')
     branchList.append('nSPHits')
     branchList.append('nTSPHits')
     branchList.append('nRecHits')
+    branchList.append('nHRecHits')
     branchList.append('TargetSPRecoilE_pt')
     # Now, go through each branch name and a corresponding branch to the tree:
     for branch, var in scalar_holders.items():
         # Need to make sure that each var is stored as the correct type (floats, ints, etc):
-        if branch == 'nSPHits' or branch == 'nTSPHits' or branch == 'nRecHits':
+        if branch == 'nSPHits' or branch == 'nTSPHits' or branch == 'nRecHits' or branch == 'nHRecHits':
             branchname = branch
             dtype = 'I'
         elif branch == 'TargetSPRecoilE_pt':
@@ -361,8 +359,10 @@ def processFile(input_vars):
             tree.Branch(branchname, var, "{}[nSPHits]/F".format(branchname))
         elif parent == 'TargetScoringPlaneHits_v3_v13':
             tree.Branch(branchname+'tsp_', var, "{}[nTSPHits]/F".format(branchname+'tsp_'))
-        else:  # else in EcalRecHits
+        elif parent == 'EcalRecHits_v3_v13': 
             tree.Branch(branchname+'rec_', var, "{}[nRecHits]/F".format(branchname+'rec_'))
+        else: # else in HcalRecHits
+            tree.Branch(branchname+'hrec_', var, "{}[nHRecHits]/F".format(branchname+'hrec_'))
     #print("TEMP:  Branches added to tree:")
     #for b in tree.GetListOfBranches():  print(b.GetFullName())
     #print("TEMP:  Leaves added ot tree:")
@@ -370,22 +370,22 @@ def processFile(input_vars):
 
     print("All branches added.  Filling...")
 
-    for i in range(nPunchThrough):
+    for i in range(nEvents):
         # For each event, fill the temporary arrays with data, then write them to the tree with Fill()
         # Also: ignore events with zero ecal hits 
-        if selected_data['nRecHits'][i] == 0:  
+        if preselected_data['nRecHits'][i] == 0 or preselected_data['nHRecHits'][i] == 0:  
             continue                           
         for branch in branchList:
             # Contains both vector and scalar data.  Treat them differently:
             if branch in scalar_holders.keys():  # Scalar
                 # fill scalar data
                 #if i==0:  print("filling scalar", branch)
-                scalar_holders[branch][0] = selected_data[branch][i]
+                scalar_holders[branch][0] = preselected_data[branch][i]
             elif branch in vector_holders.keys():  # Vector
                 # fill vector data
                 #if i==0:  print("filling vector", branch)
-                for j in range(len(selected_data[branch][i])):
-                    vector_holders[branch][j] = selected_data[branch][i][j]
+                for j in range(len(preselected_data[branch][i])):
+                    vector_holders[branch][j] = preselected_data[branch][i][j]
             else:
                 print("FATAL ERROR:  {} not found in *_holders".format(branch))
                 assert(False)
@@ -395,7 +395,7 @@ def processFile(input_vars):
     outfile.Write()
     print("FINISHED.  File written to {}.".format(outfile_path))
 
-    return (nTotalEvents, nEvents, nPunchThrough)
+    return (nTotalEvents, nEvents)
 
 
 if __name__ == '__main__':
@@ -420,17 +420,12 @@ if __name__ == '__main__':
         print(results)
         nTotal  = sum([r[0] for r in results])
         nEvents = sum([r[1] for r in results])
-        nPunch = sum([r[2] for r in results])
-        print("m = {} MeV:  Read {} events, {} passed preselection, {} induced hcal veto".format(int(mass*1000), nTotal, nEvents, nPunch))
+        print("m = {} MeV:  Read {} events, {} passed preselection".format(int(mass*1000), nTotal, nEvents))
         if nTotal > 0:
             presel_eff[int(mass * 1000)] = float(nEvents) / nTotal
         else:
             presel_eff[int(mass * 1000)] = 'no events!'
-        if nEvents > 0:
-            punch_through_ratio[int(mass * 1000)] = float(nPunch) / nEvents
-        else:
-            punch_through_ratio[int(mass*1000)] = 'no events!'
-    print("Done.  Preselection efficiency: {}, Punch through ratio: {}".format(presel_eff, punch_through_ratio))
+    print("Done.  Preselection efficiency: {}".format(presel_eff))
 
     # For running without multithreading (note:  will be extremely slow and is impractical unless you want to test/use 1-2 files at a time):
     """

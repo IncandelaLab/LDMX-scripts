@@ -69,7 +69,7 @@ class CalHitsDataset(Dataset):
         self._pos_branch = '{}pos_rec_'
         self._energy_branch = 'energy_rec_'  # load from 'EcalRecHits_v12.energy_'
         self._h_pos_branch = '{}pos_hrec_'
-        self._h_energy_branch = 'energy_hrec'
+        self._h_energy_branch = 'energy_hrec_'
         if detector_version == 'v12':
             self._branches = [self._id_branch, self._energy_branch]
         else:

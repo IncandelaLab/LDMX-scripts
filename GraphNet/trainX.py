@@ -23,7 +23,7 @@ import datetime
 import argparse
 
 from utils.ParticleNet import ParticleNet
-from datasetX import CalHitsDataset
+from datasetX import XCalHitsDataset
 from datasetX import collate_wrapper as collate_fn
 from utils.SplitNetX import SplitNetX
 
@@ -194,9 +194,9 @@ dev = torch.device(args.device)
 if training_mode:
     # for training: we use the first 0-20% for testing, and 20-80% for training
     # Create one EcalHitsDatset storing the testing/validation sample...
-    train_data = CalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), nRegions=args.num_regions)
+    train_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), nRegions=args.num_regions)
     # ...and one storing the training sample.
-    val_data = CalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), nRegions=args.num_regions)
+    val_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), nRegions=args.num_regions)
     train_loader = DataLoader(train_data, num_workers=args.num_workers, batch_size=args.batch_size,
                               collate_fn=collate_fn, shuffle=True, drop_last=True, pin_memory=True)
     val_loader = DataLoader(val_data, num_workers=args.num_workers, batch_size=args.batch_size,
@@ -209,7 +209,7 @@ if training_mode:
 else:
     # If not in training mode, don't need to bother with the second training dataset.
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
-    test_data = CalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, 
+    test_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, 
                                 obs_branches=obs_branches, nRegions=args.num_regions)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                              collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)

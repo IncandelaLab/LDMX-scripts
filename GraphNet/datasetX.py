@@ -283,7 +283,7 @@ class XCalHitsDataset(Dataset):
             (hx, hy, hz) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float32') for lf in h_xyz_leaves]
             energy_leaf = self.ttree.GetLeaf(self._energy_branch)
             energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float32')
-            h_energy_leaf = self.ttree.GetLead(self._h_energy_branch)
+            h_energy_leaf = self.ttree.GetLeaf(self._h_energy_branch)
             h_energy = np.array([h_energy_leaf.GetValue(i) for i in range(h_energy_leaf.GetLen())], dtype='float32')
             layer_id = self._getlayer(z)
 

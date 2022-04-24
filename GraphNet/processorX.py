@@ -137,10 +137,6 @@ data_to_save = {
     'HcalRecHits_v3_v13':{
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']
-    },
-    'HcalVeto_v3_v13': {
-        'scalars':['passesVeto_'],
-        'vectors':[]
     }
 }
 
@@ -179,7 +175,7 @@ def pad_array(arr):
     return awkward.flatten(arr)
 
 def blname(branch, leaf):
-    if branch.startswith('EcalVeto') or branch.startswith('HcalVeto'):
+    if branch.startswith('EcalVeto'):
         return '{}/{}'.format(branch, leaf)
     else:
         return '{}/{}.{}'.format(branch, branch, leaf)
@@ -211,7 +207,7 @@ def processFile(input_vars):
     for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
             # EcalVeto needs slightly different syntax:   . -> /
-            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
+            if branchname == "EcalVeto_v3_v13":
                 branchList.append(branchname + '/' + leaf)
             else:
                 branchList.append(branchname + '/' + branchname + '.' + leaf)
@@ -245,7 +241,6 @@ def processFile(input_vars):
     # Perform the preselection:  Drop all events with more than MAX_NUM_ECAL_HITS in the ecal, 
     # and all events with an isolated energy that exceeds MAXX_ISO_ENERGY
     el = (raw_data[blname('EcalVeto_v3_v13', 'nReadoutHits_')] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto_v3_v13', 'summedTightIso_')] < MAX_ISO_ENERGY) \
-        * (len(raw_data[blname('HcalVeto_v3_v13', 'passesVeto_')]) < MAX_NUM_HCAL_HITS)
 
     preselected_data = {}
     for branch in branchList:
@@ -302,6 +297,11 @@ def processFile(input_vars):
     preselected_data['nRecHits'] = np.array(nRecHits)
     preselected_data['nHRecHits'] = np.array(nHRecHits)
 
+    hc = preselected_data['nHRecHits'] < MAX_NUM_HCAL_HITS
+
+    for branch in branchList:
+        preselected_data[branch] = preselected_data[branch][hc]
+    nEvents = len(preselected_data['nRecHits'])
 
     # Prepare the output tree+file:
     outfile = r.TFile(outfile_path, "RECREATE")

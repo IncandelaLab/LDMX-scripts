@@ -104,6 +104,7 @@ file_templates = {
 MAX_NUM_ECAL_HITS = 50 #60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
 MAX_ISO_ENERGY = 500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
 # Results:  >0.994 vs 0.055
+MAX_NUM_HCAL_HITS = 30
 
 # Branches to save:
 # Quantities labeled with 'scalars' have a single value per event.  Quantities labeled with 'vectors' have
@@ -136,6 +137,10 @@ data_to_save = {
     'HcalRecHits_v3_v13':{
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']
+    },
+    'HcalVeto_v3_v13': {
+        'scalars':['passesVeto_'],
+        'vectors':[]
     }
 }
 
@@ -174,7 +179,7 @@ def pad_array(arr):
     return awkward.flatten(arr)
 
 def blname(branch, leaf):
-    if branch.startswith('EcalVeto'):
+    if branch.startswith('EcalVeto') or branch.startswith('HcalVeto'):
         return '{}/{}'.format(branch, leaf)
     else:
         return '{}/{}.{}'.format(branch, branch, leaf)
@@ -206,7 +211,7 @@ def processFile(input_vars):
     for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
             # EcalVeto needs slightly different syntax:   . -> /
-            if branchname == "EcalVeto_v3_v13":
+            if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
                 branchList.append(branchname + '/' + leaf)
             else:
                 branchList.append(branchname + '/' + branchname + '.' + leaf)
@@ -239,7 +244,9 @@ def processFile(input_vars):
 
     # Perform the preselection:  Drop all events with more than MAX_NUM_ECAL_HITS in the ecal, 
     # and all events with an isolated energy that exceeds MAXX_ISO_ENERGY
-    el = (raw_data[blname('EcalVeto_v3_v13', 'nReadoutHits_')] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto_v3_v13', 'summedTightIso_')] < MAX_ISO_ENERGY)
+    el = (raw_data[blname('EcalVeto_v3_v13', 'nReadoutHits_')] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto_v3_v13', 'summedTightIso_')] < MAX_ISO_ENERGY) \
+        * (len(raw_data[blname('HcalVeto_v3_v13', 'passesVeto_')]) < MAX_NUM_HCAL_HITS)
+
     preselected_data = {}
     for branch in branchList:
         preselected_data[branch] = raw_data[branch][el]

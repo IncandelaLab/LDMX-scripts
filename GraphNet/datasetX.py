@@ -143,7 +143,8 @@ class XCalHitsDataset(Dataset):
     @property
     def num_features(self):
         # Hard-coded; not worried about generalizing atm
-        return 5
+        #return 5
+        return 4
 
     def __len__(self):
         return len(self.event_list)
@@ -182,7 +183,7 @@ class XCalHitsDataset(Dataset):
         # NOTE:  Always 3-dimensional!  [[a, b...]] for 1-region PN
         coordinates = np.stack((var_data['x_'], var_data['y_'], var_data['z_']), axis=1)
         features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
-                                var_data['layer_id_'], var_data['log_energy_']), axis=1)
+                                var_data['log_energy_']), axis=1)                   # removed var_dict['layer_id_']
         return coordinates, features, label
 
 
@@ -297,7 +298,7 @@ class XCalHitsDataset(Dataset):
         y_          = np.zeros((self.nRegions, 100), dtype='float32')
         z_          = np.zeros((self.nRegions, 100), dtype='float32')
         log_energy_ = np.zeros((self.nRegions, 100), dtype='float32')
-        layer_id_   = np.zeros((self.nRegions, 100), dtype='float32')
+        #layer_id_   = np.zeros((self.nRegions, 100), dtype='float32')
 
         regionIndices = [0, 0, 0]  # Indices of last hit added to feature arrays
 
@@ -360,7 +361,7 @@ class XCalHitsDataset(Dataset):
                     x_[r][j] = x[j] - etraj_point[0]  # Store relative to xy distance from trajectory
                     y_[r][j] = y[j] - etraj_point[1]
                     z_[r][j] = z[j]  # - self._layerZs[0]  # Used to be defined relative to the ecal face; changed to absolute bc of Huilin's old results
-                    layer_id_[r][j] = layer_id[j]
+                    #layer_id_[r][j] = layer_id[j]
                     log_energy_[r][j] = np.log(energy[j]) if energy[j] > 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
                 
         for k in range(len(h_energy)):
@@ -373,13 +374,12 @@ class XCalHitsDataset(Dataset):
                     x_[r][k] = hx[k]
                     y_[r][k] = hy[k]
                     z_[r][k] = hz[k]  
-                    layer_id_[r][k] = 0
+                    #layer_id_[r][k] = 0
                     log_energy_[r][k] = np.log(h_energy[k]) if h_energy[k] > 0 else -1
 
         # Create and fill var_dict w/ feature information:
-        var_dict = {'x_':x_, 'y_':y_, 'z_':z_,
-                    'layer_id_':layer_id_,
-                    'log_energy_':log_energy_,
+        var_dict = {'x_':x_, 'y_':y_, 'z_':z_,        
+                    'log_energy_':log_energy_ # removed 'layer_id_': layer_id
                    }
 
         # Lastly, create and fill obs_dict w/ branches specified in train.py:

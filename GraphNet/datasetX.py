@@ -293,11 +293,11 @@ class XCalHitsDataset(Dataset):
         # For each event, look through all hits.
         # - Determine whether hit falls inside either the e or p RoCs
         # - If so, fill corresp xyzlayer, energy, eid lists...
-        x_          = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
-        y_          = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
-        z_          = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
-        log_energy_ = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
-        layer_id_   = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
+        x_          = np.zeros((self.nRegions, 100), dtype='float32')
+        y_          = np.zeros((self.nRegions, 100), dtype='float32')
+        z_          = np.zeros((self.nRegions, 100), dtype='float32')
+        log_energy_ = np.zeros((self.nRegions, 100), dtype='float32')
+        layer_id_   = np.zeros((self.nRegions, 100), dtype='float32')
 
         regionIndices = [0, 0, 0]  # Indices of last hit added to feature arrays
 

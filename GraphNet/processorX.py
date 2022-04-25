@@ -246,8 +246,8 @@ def processFile(input_vars):
     for branch in branchList:
         preselected_data[branch] = raw_data[branch][el]
     #print("Preselected data")
-    nEvents = len(preselected_data[blname('EcalVeto_v3_v13', 'summedTightIso_')])
-    print("After preselection: skimming from {} events".format(nEvents))
+    #nEvents = len(preselected_data[blname('EcalVeto_v3_v13', 'summedTightIso_')])
+    #print("After preselection: skimming from {} events".format(nEvents))
 
     # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane
     # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
@@ -302,6 +302,7 @@ def processFile(input_vars):
     for branch in branchList:
         preselected_data[branch] = preselected_data[branch][hc]
     nEvents = len(preselected_data['nRecHits'])
+    print("After preselection: skimming from {} events".format(nEvents))
 
     # Prepare the output tree+file:
     outfile = r.TFile(outfile_path, "RECREATE")

@@ -303,7 +303,7 @@ class XCalHitsDataset(Dataset):
         regionIndices = [0, 0, 0]  # Indices of last hit added to feature arrays
 
 
-        for j in range(len(layer_id)):  #eid_leaf.GetLen()):  # For every hit...
+        for j in range(len(energy)):  #eid_leaf.GetLen()):  # For every hit...
             # Calculate xy coord of point on projected trajectory in same layer
             delta_z = z[j] - self.etraj_sp[2]
             if self.etraj_sp[2] != -999:  # If fiducial

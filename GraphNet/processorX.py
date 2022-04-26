@@ -197,7 +197,7 @@ def processFile(input_vars):
     # NOTE:  Added this to ...
     if os.path.exists(outfile_path):
         print("FILE {} ALREADY EXISTS.  SKIPPING...".format(outfile_name))
-        return 0, 0, 0
+        return 0, 0
 
     # Fix branch names:  uproot refers to EcalVeto branches with a / ('EcalVeto_v12/nReadoutHits_', etc), while
     # all other branches are referred to with a . ('EcalRecHits_v12.energy_', etc).  This is because ldmx-sw

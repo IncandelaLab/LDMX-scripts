@@ -219,7 +219,7 @@ def processFile(input_vars):
     file = uproot.open(filename)
     if len(file.keys()) == 0:
         print("FOUND ZOMBIE: {} SKIPPING...".format(filename))
-        return 0, 0, 0
+        return 0, 0
     t = uproot.open(filename)['LDMX_Events']
     # (This part is just for printing the # of pre-preselection events:)
     #tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
@@ -230,7 +230,7 @@ def processFile(input_vars):
     nTotalEvents = len(raw_data[blname('EcalRecHits_v3_v13', 'xpos_')])
     if nTotalEvents == 0:
         print("FILE {} CONTAINS ZERO EVENTS. SKIPPING...".format(filename))
-        return 0, 0, 0
+        return 0, 0
     print("Before preselection: found {} events".format(nTotalEvents))
 
     # t.arrays() returns a dict-like object:

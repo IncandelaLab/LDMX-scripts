@@ -246,7 +246,7 @@ def processFile(input_vars):
     for branch in branchList:
         preselected_data[branch] = raw_data[branch][el]
     #print("Preselected data")
-    #nEvents = len(preselected_data[blname('EcalVeto_v3_v13', 'summedTightIso_')])
+    nEvents = len(preselected_data[blname('EcalVeto_v3_v13', 'summedTightIso_')])
     #print("After preselection: skimming from {} events".format(nEvents))
 
     # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane

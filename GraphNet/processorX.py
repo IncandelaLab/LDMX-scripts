@@ -189,9 +189,9 @@ def processFile(input_vars):
 
     print("Processing file {}".format(filename))
     if mass == 0:
-        outfile_name = "v13_pn_XCal_{}.root".format(filenum)
+        outfile_name = "v13_pn_XCal_total_{}.root".format(filenum)
     else:
-        outfile_name = "v13_{}_XCal_{}.root".format(mass, filenum)
+        outfile_name = "v13_{}_XCal_total_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
 
     # NOTE:  Added this to ...

@@ -247,7 +247,7 @@ def processFile(input_vars):
         preselected_data[branch] = raw_data[branch][el]
     #print("Preselected data")
     nEvents = len(preselected_data[blname('EcalVeto_v3_v13', 'summedTightIso_')])
-    #print("After preselection: skimming from {} events".format(nEvents))
+    print("After preselection: skimming from {} events".format(nEvents))
 
     # Next, we have to compute TargetSPRecoilE_pt here instead of in train.py.  (This involves TargetScoringPlane
     # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
@@ -297,12 +297,16 @@ def processFile(input_vars):
     preselected_data['nRecHits'] = np.array(nRecHits)
     preselected_data['nHRecHits'] = np.array(nHRecHits)
 
+    '''
+    # Apply cut on nHRecHits for improved background rejection 
+
     hc = preselected_data['nHRecHits'] < MAX_NUM_HCAL_HITS
 
     for branch in branchList:
         preselected_data[branch] = preselected_data[branch][hc]
     nEvents = len(preselected_data['nRecHits'])
     print("After preselection: skimming from {} events".format(nEvents))
+    '''
 
     # Prepare the output tree+file:
     outfile = r.TFile(outfile_path, "RECREATE")
@@ -381,8 +385,8 @@ def processFile(input_vars):
     for i in range(nEvents):
         # For each event, fill the temporary arrays with data, then write them to the tree with Fill()
         # Also: ignore events with zero ecal hits 
-        if preselected_data['nRecHits'][i] == 0 or preselected_data['nHRecHits'][i] == 0:  
-            continue                           
+        #if preselected_data['nRecHits'][i] == 0:  
+            #continue                           
         for branch in branchList:
             # Contains both vector and scalar data.  Treat them differently:
             if branch in scalar_holders.keys():  # Scalar

@@ -140,40 +140,6 @@ data_to_save = {
     }
 }
 
-scoringPlaneZ = 240.5005
-ecalFaceZ = 248.35
-cell_radius = 5.0
-
-def dist(p1, p2):
-    return math.sqrt(np.sum( ( np.array(p1) - np.array(p2) )**2 ))
-
-def projection(Recoilx, Recoily, Recoilz, RPx, RPy, RPz, HitZ):
-    x_final = Recoilx + RPx/RPz*(HitZ - Recoilz) if RPz != 0 else 0
-    y_final = Recoily + RPy/RPz*(HitZ - Recoilz) if RPy != 0 else 0
-    return (x_final, y_final)
-
-def _load_cellMap(version='v13'):
-    cellMap = {}
-    for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
-        cellMap[i] = (x, y)
-    global cells 
-    cells = np.array(list(cellMap.values()))
-    print("Loaded {} detector info".format(version))
-
-def get_layer_id(cid):
-    layer = (awkward.to_numpy(awkward.flatten(cid)) >> 17) & 0x3F
-
-    def unflatten_array(x, base_array):
-        return awkward.Array(awkward.layout.ListOffsetArray32(awkward.layout.Index32(base_array.layout.offsets),awkward.layout.NumpyArray(np.array(x, dtype='float32'))))
-
-    layer_id = unflatten_array(layer,cid)
-    return layer_id
-
-def pad_array(arr):
-    arr = awkward.pad_none(arr, 1, clip=True)
-    arr = awkward.fill_none(arr, 0)
-    return awkward.flatten(arr)
-
 def blname(branch, leaf):
     if branch.startswith('EcalVeto'):
         return '{}/{}'.format(branch, leaf)
@@ -236,11 +202,11 @@ def processFile(input_vars):
     # t.arrays() returns a dict-like object:
     #    raw_data['EcalVeto_v12/nReadoutHits_'] == awkward array containing the value of 
     #    nReadoutHits_ for each event, and so on.
-    raw_data = t.arrays(branchList) #, preselection)  #, aliases=alias_dict)
+    #raw_data = t.arrays(branchList) #, preselection)  #, aliases=alias_dict)
 
     # Perform the preselection:  Drop all events with more than MAX_NUM_ECAL_HITS in the ecal, 
     # and all events with an isolated energy that exceeds MAXX_ISO_ENERGY
-    el = (raw_data[blname('EcalVeto_v3_v13', 'nReadoutHits_')] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto_v3_v13', 'summedTightIso_')] < MAX_ISO_ENERGY) \
+    el = (raw_data[blname('EcalVeto_v3_v13', 'nReadoutHits_')] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto_v3_v13', 'summedTightIso_')] < MAX_ISO_ENERGY) 
 
     preselected_data = {}
     for branch in branchList:
@@ -415,8 +381,6 @@ if __name__ == '__main__':
     #pool = Pool(16) -> Run 16 threads/process 16 files in parallel
     
     presel_eff = {}
-    punch_through_ratio = {}
-    _load_cellMap()
     # For each signal mass and for PN background:
     for mass, filepath in file_templates.items():
         print("======  m={}  ======".format(mass))

@@ -43,11 +43,11 @@ data_to_save = {
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']  # OLD: ['id_', 'energy_']
     },
-    'HcalRecHits_v3_v13':{
+    'HcalRecHits_v3_v13': {
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_']
     },
-    'HcalVeto_v3_v13':{
+    'HcalVeto_v3_v13': {
         'scalars':['passesVeto_'],
         'vectors':[]
     }
@@ -71,7 +71,7 @@ def processFile(input_vars):
             if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
                 branchList.append(branchname + '/' + leaf)
             else:
-                branchList.append(branchname + '.' + leaf)
+                branchList.append(branchname + '/' + branchname + '.' + leaf)
 
     # count total events
     file = uproot.open(filename)

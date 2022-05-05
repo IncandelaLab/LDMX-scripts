@@ -106,6 +106,7 @@ def processFile(input_vars):
         if len(HE_data[i]) == 0:
             nHRecHits[i] = 0
     preselected_data['nHRecHits'] = np.array(nHRecHits)
+    branchList.append('nHRecHits')
 
     hc2 = preselected_data['nHRecHits'] < MAX_NUM_ECAL_HITS
 

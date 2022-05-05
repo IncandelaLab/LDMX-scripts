@@ -362,7 +362,12 @@ class XCalHitsDataset(Dataset):
                     y_[r][j] = y[j] - etraj_point[1]
                     z_[r][j] = z[j]  # - self._layerZs[0]  # Used to be defined relative to the ecal face; changed to absolute bc of Huilin's old results
                     #layer_id_[r][j] = layer_id[j]
-                    log_energy_[r][j] = np.log(energy[j]) if energy[j] >= 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
+                    if energy[j] > 0:
+                        log_energy_[r][j] = np.log(energy[j]) 
+                    elif energy[j] = 0:
+                        log_energy_[r][j] = 1e-8
+                    else: # else E<0
+                        log_energy_[r][j] = -1  # Note:  E<0 is very uncommon, so -1 is okay to round to.
                 
         for k in range(len(h_energy)):
             
@@ -375,7 +380,12 @@ class XCalHitsDataset(Dataset):
                     y_[r][k] = hy[k]
                     z_[r][k] = hz[k]  
                     #layer_id_[r][k] = 0
-                    log_energy_[r][k] = np.log(h_energy[k]) if h_energy[k] >= 0 else -1
+                    if h_energy[k] > 0:
+                        log_energy_[r][k] = np.log(h_energy[k])
+                    elif h_energy[k] = 0
+                        log_energy_[r][k] = 1e-8
+                    else: # else E<0
+                        log_energy_[r][k] = -1 
 
         # Create and fill var_dict w/ feature information:
         var_dict = {'x_':x_, 'y_':y_, 'z_':z_,        

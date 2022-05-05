@@ -66,7 +66,7 @@ def processFile(input_vars):
     filenum = input_vars[2]
 
     branchList = []
-    for branchname, leafdict in data.items():
+    for branchname, leafdict in data_to_save.items():
         for leaf in leafdict['scalars'] + leafdict['vectors']:
             if branchname == "EcalVeto_v3_v13" or branchname == "HcalVeto_v3_v13":
                 branchList.append(branchname + '/' + leaf)

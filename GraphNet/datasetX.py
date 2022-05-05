@@ -365,7 +365,7 @@ class XCalHitsDataset(Dataset):
                     if energy[j] > 0:
                         log_energy_[r][j] = np.log(energy[j]) 
                     elif energy[j] == 0:
-                        log_energy_[r][j] = -1e8
+                        log_energy_[r][j] = -2
                     else: # else E<0
                         log_energy_[r][j] = -1  # Note:  E<0 is very uncommon, so -1 is okay to round to.
                 
@@ -383,7 +383,7 @@ class XCalHitsDataset(Dataset):
                     if h_energy[k] > 0:
                         log_energy_[r][k] = np.log(h_energy[k])
                     elif h_energy[k] == 0:
-                        log_energy_[r][k] = -1e8
+                        log_energy_[r][k] = -2
                     else: # else E<0
                         log_energy_[r][k] = -1 
 

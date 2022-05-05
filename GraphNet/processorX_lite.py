@@ -77,7 +77,7 @@ def processFile(input_vars):
     file = uproot.open(filename)
     if len(file.keys()) == 0:
         print("FOUND ZOMBIE: {} SKIPPING...".format(filename))
-        return 0, 0
+        return 0, 0, 0 ,0
     t = uproot.open(filename)['LDMX_Events']
     raw_data = t.arrays(branchList)
     nTotalEvents = len(raw_data[blname('EcalRecHits_v3_v13', 'xpos_')])
@@ -121,9 +121,6 @@ if __name__ == '__main__':
     presel_eff = {}
     hcalveto_eff = {}
     presel_eff_2 = {}
-    print("Enter detector version:")
-    version = input()
-    _load_cellMap(version)
     for mass, filepath in file_templates.items():
         print("======  m={}  ======".format(mass))
         params = []

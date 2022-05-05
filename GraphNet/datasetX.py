@@ -364,7 +364,7 @@ class XCalHitsDataset(Dataset):
                     #layer_id_[r][j] = layer_id[j]
                     if energy[j] > 0:
                         log_energy_[r][j] = np.log(energy[j]) 
-                    elif energy[j] = 0:
+                    elif energy[j] == 0:
                         log_energy_[r][j] = 1e-8
                     else: # else E<0
                         log_energy_[r][j] = -1  # Note:  E<0 is very uncommon, so -1 is okay to round to.
@@ -382,7 +382,7 @@ class XCalHitsDataset(Dataset):
                     #layer_id_[r][k] = 0
                     if h_energy[k] > 0:
                         log_energy_[r][k] = np.log(h_energy[k])
-                    elif h_energy[k] = 0
+                    elif h_energy[k] == 0:
                         log_energy_[r][k] = 1e-8
                     else: # else E<0
                         log_energy_[r][k] = -1 

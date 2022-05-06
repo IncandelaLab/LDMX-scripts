@@ -354,7 +354,12 @@ class ECalHitsDataset(Dataset):
                     y_[r][j] = y[j] - etraj_point[1]
                     z_[r][j] = z[j]  # - self._layerZs[0]  # Used to be defined relative to the ecal face; changed to absolute bc of Huilin's old results
                     layer_id_[r][j] = layer_id[j]
-                    log_energy_[r][j] = np.log(energy[j]) if energy[j] > 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
+                    if energy[j] > 0:
+                        log_energy_[r][j] = np.log(energy[j]) 
+                    elif energy[j] == 0:
+                        log_energy_[r][j] = -2
+                    else: # else E<0
+                        log_energy_[r][j] = -1   # Note:  E<0 is very uncommon, so -1 is okay to round to.
 
         # Create and fill var_dict w/ feature information:
         var_dict = {'x_':x_, 'y_':y_, 'z_':z_,

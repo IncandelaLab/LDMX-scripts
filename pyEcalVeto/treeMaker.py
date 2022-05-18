@@ -30,9 +30,9 @@ branches_info = {
         'fullTerritoryRatio':        {'rtype': float, 'default': 1.},
         'electronTerritoryHits':     {'rtype': int,   'default': 0 },
         'photonTerritoryHits':       {'rtype': int,   'default': 0 },
-        'TerritoryRatio':            {'rtype': float, 'default': 1.}
-        #'epSep':                    {'rtype': float, 'default': 0.},
-        #'epDot':                    {'rtype': float, 'default': 0.}
+        'TerritoryRatio':            {'rtype': float, 'default': 1.},
+        'epSep':                     {'rtype': float, 'default': 0.},
+        'epDot':                     {'rtype': float, 'default': 0.}
         }
 
 for i in range(1, physTools.nSegments + 1):
@@ -219,11 +219,10 @@ def event_process(self):
         g_traj_ends = [np.array([g_traj[0][0], g_traj[0][1], physTools.ecal_layerZs[0]    ]),
                        np.array([g_traj[-1][0], g_traj[-1][1], physTools.ecal_layerZs[-1] ])]
 
-        # Unused epDot and epSep
-        #e_norm  = physTools.unit( e_traj_ends[1] - e_traj_ends[0] )
-        #g_norm  = physTools.unit( g_traj_ends[1] - g_traj_ends[0] )
-        #feats['epSep'] = physTools.dist( e_traj_ends[0], g_traj_ends[0] )
-        #feats['epDot'] = physTools.dot(e_norm,g_norm)
+        e_norm  = physTools.unit( e_traj_ends[1] - e_traj_ends[0] )
+        g_norm  = physTools.unit( g_traj_ends[1] - g_traj_ends[0] )
+        feats['epSep'] = physTools.dist( e_traj_ends[0], g_traj_ends[0] )
+        feats['epDot'] = physTools.dot(e_norm,g_norm)
 
     else:
 
@@ -233,8 +232,8 @@ def event_process(self):
         e_traj_ends   = [np.array([999 ,999 ,0   ]), np.array([999 ,999 ,999 ]) ]
         g_traj_ends   = [np.array([1000,1000,0   ]), np.array([1000,1000,1000]) ]
 
-        #feats['epSep'] = 10.0 + 1.0 # Don't cut on these in this case
-        #feats['epDot'] = 3.0 + 1.0
+        feats['epSep'] = 10.0 + 1.0 # Don't cut on these in this case
+        feats['epDot'] = 3.0 + 1.0
 
     # Territory setup (consider missing case)
     gToe    = physTools.unit( e_traj_ends[0] - g_traj_ends[0] )
@@ -242,7 +241,7 @@ def event_process(self):
 
     # Recoil electron momentum magnitude and angle with z-axis
     recoilPMag  = physTools.mag(  e_ecalP )                 if e_ecalHit != None else -1.0
-    recoilTheta = physTools.angle(e_ecalP, units='radians') if recoilPMag > 0    else -1.0
+    recoilTheta = physTools.angle(e_ecalP, units='degrees') if recoilPMag > 0    else -1.0
 
     # Set electron RoC binnings
     e_radii = physTools.radius68_thetalt10_plt500

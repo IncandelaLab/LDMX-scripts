@@ -54,6 +54,8 @@ class sampleContainer:
                     event.electronTerritoryHits     ,
                     event.photonTerritoryHits       ,
                     event.TerritoryRatio            ,
+                    event.epSep                     ,
+                    event.epDot                     ,
                     # Longitudinal segment variables
                     event.energy_s1                 ,
                     event.nHits_s1                  ,

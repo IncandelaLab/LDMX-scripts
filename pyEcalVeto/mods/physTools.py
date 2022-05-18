@@ -349,19 +349,30 @@ def dist(p1, p2):
     return math.sqrt(np.sum( ( np.array(p1) - np.array(p2) )**2 ))
 
 # Distance between a point and the nearest point on a line defined by endpoints
-def distPtToLine(h1,p1,p2):
-    return np.linalg.norm(np.cross((np.array(h1)-np.array(p1)),
-        (np.array(h1)-np.array(p2)))) / np.linalg.norm(np.array(p1)-np.array(p2))
+def distPtToLine(x, y1, y2):
+
+    norm = np.linalg.norm(y1 - y2)
+    if norm == 0: return np.sqrt(np.sum((x - y1)**2))
+
+    return np.linalg.norm(np.cross(x - y1, y1 - y2))/norm
 
 # Minimum distance between lines, each line defined by two points
-def distTwoLines(h1,h2,p1,p2):
-    e1  = unit( h1 - h2 )
-    e2  = unit( p1 - p2 )
-    crs = np.cross(e1,e2) # Vec perp to both lines
-    if mag(crs) != 0:
-        return abs( np.dot( crs,h1-p1) )
-    else: # Lines are parallel; need different method
-        return mag( np.cross(e1,h1-p1) )
+def distTwoLines(x1, x2, y1, y2):
+
+    cross = np.cross(x1 - x2, y1 - y2)
+    norm = np.linalg.norm(cross)
+
+    if norm == 0:
+
+        xnorm = np.linalg.norm(x1 - x2)
+        ynorm = np.linalg.norm(y1 - y2)
+
+        if xnorm == 0 and ynorm == 0: return np.sqrt(np.sum((x1 - y1)**2))
+        elif ynorm == 0: return np.linalg.norm(np.cross(x1 - x2, x1 - y1))/xnorm
+
+        return np.linalg.norm(np.cross(x1 - y1, y1 - y2))/ynorm
+
+    return abs(np.dot(cross, x1 - y1)/norm)
 
 # Angle between vectors (with z by default)
 def angle(vec, units, vec2=[0,0,1]):

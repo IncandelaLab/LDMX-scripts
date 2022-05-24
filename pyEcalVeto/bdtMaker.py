@@ -544,8 +544,8 @@ if __name__ == "__main__":
     }
 
     # Train the BDT model
-    evallist = [(eventContainer.dtest,'eval'), (eventContainer.dtrain,'train')]
-    gbm = xgb.train(params, eventContainer.dtrain, options.tree_number, evallist, early_stopping_rounds = 10)
+    evallist = [(eventContainer.dtrain,'train'), (eventContainer.dtest,'eval')]
+    gbm = xgb.train(params, eventContainer.dtrain, num_boost_round = options.tree_number, evals = evallist, early_stopping_rounds = 10)
 
     # Store BDT
     output = open(options.out_name+'_'+str(bdt_num)+'/' + \

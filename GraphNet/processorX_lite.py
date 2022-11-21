@@ -187,27 +187,49 @@ def processFile(input_vars):
     PE = preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]
     HcalID = preselected_data[blname('HcalRecHits_v3_v13', 'id_')]
 
+    for i in range(len(PE)):
+        for j in range(len(PE[i])):
+            if HcalSection(HcalID[i][j]) == SectionOff[i]:
+                PE[i][j] = float(0)
+
+    modmaxPE = np.max(PE, axis=1)
+   
+    hv2 = modmaxPE < 5
+
+    '''
+    modmaxPE = np.zeros(len(PE))
+    PE_temp = np.zeros(2000)
+    for i in range(len(PE)):
+        for j in range(len(PE[i]):
+            if HcalSection(HcalID[i][j]) != SectionOff[i]:
+                PE_temp[j] = PE[i][j]
+        modmaxPE[i] = np.max(PE_temp)
+
+    hv2 = modmaxPE < 5
+    '''
+    
+    '''
     mask = []
     for i in range(len(PE)):
         mask.append([])
         for j in range(len(PE[i])):
             mask[i].append(0)
-            if HcalSection(HcalID[i][j]) == SectionOff[i]:
+    if HcalSection(HcalID[i][j]) == SectionOff[i]:
                 mask[i][j] = 1
-    mask = np.array([mask])
+    mask = awkward.Array(np.array([mask], dtype=object))
 
     maskedPE = np.ma.masked_array(PE, mask=mask)
 
     modmaxPE = np.max(maskedPE, axis = 1)
 
     hv2 = modmaxPE < 5
+    '''
 
     selected_data_2 = {}
     for branch in branchList:
         selected_data_2[branch] = preselected_data[branch][hv2]
     nPassesModVeto1 = len(selected_data_2[blname('HcalVeto_v3_v13', 'passesVeto_')])
-
-
+   
 
     return (nTotalEvents, nEvents, nPassesVeto, nEvents2, nPassesModVeto1)
 

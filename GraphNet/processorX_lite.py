@@ -187,12 +187,15 @@ def processFile(input_vars):
     PE = preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]
     HcalID = preselected_data[blname('HcalRecHits_v3_v13', 'id_')]
 
-    maskedPE = PE
+    mask = []
     for i in range(len(PE)):
+        mask.append([])
         for j in range(len(PE[i])):
-            if HcalSection(HcalID[i][j]) == SectionOff[i]:
-                maskedPE[i][j] = 0
-
+            mask[i].append(True)
+            if HcalSection(HcalID[i][j]) = SectionOff[i]:
+                mask[i][j] = False
+    
+    maskedPE = PE[mask]
 
     modmaxPE = np.max(maskedPE)
 

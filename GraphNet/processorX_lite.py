@@ -186,12 +186,20 @@ def processFile(input_vars):
 
     PE = preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]
     HcalID = preselected_data[blname('HcalRecHits_v3_v13', 'id_')]
-    Section = HcalSection(HcalID)
 
-    maskedPE = PE[Section != SectionOff]
+    maskedPE = []
+    for i in range(len(PE)):
+        maskedPE.append([])
+        for j in range(len(PE[i])):
+            if HcalSection(HcalID[i][j]) = SectionOff:
+                maskedPE[i].append(0)
+            else:
+                maskedPE[i].append(PE[i][j])
+
+
     modmaxPE = np.max(maskedPE)
 
-    hv2 = (modmaxPE < 5)
+    hv2 = modmaxPE < 5
 
     selected_data_2 = {}
     for branch in branchList:

@@ -170,17 +170,19 @@ def processFile(input_vars):
     for i in range(N):
         fiducial = False
         fXY = projection(recoilX[i], recoilY[i], scoringPlaneZ, recoilPx[i], recoilPy[i], recoilPz[i], 679)  # Z = 679mm is at layer 34 of ecal (final layer)
-        for x,y in fXY:
-            if x <= -400 and y >= -300:
-                SectionOff[i] = 4             # LEFT HCAL
-            elif x >= 400 and y <= 300:
-                SectionOff[i] = 3             # RIGHT HCAL
-            elif x <= 400 and y <= -300:
-                SectionOff[i] = 2             # BOTTOM HCAL
-            elif x >= -400 and y >= 300:
-                SectionOff[i] = 1             # TOP HCAL
-            else:
-                SectionOff[i] = -1            # nonphysical placeholder (no cut)
+        fXY[0] = x
+        fXY[1] = y
+        
+        if x <= -400 and y >= -300:
+            SectionOff[i] = 4             # LEFT HCAL
+        elif x >= 400 and y <= 300:
+            SectionOff[i] = 3             # RIGHT HCAL
+        elif x <= 400 and y <= -300:
+            SectionOff[i] = 2             # BOTTOM HCAL
+        elif x >= -400 and y >= 300:
+            SectionOff[i] = 1             # TOP HCAL
+        else:
+            SectionOff[i] = -1            # nonphysical placeholder (no cut)
 
     PE = preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]
     HcalID = preselected_data[blname('HcalRecHits_v3_v13', 'id_')]

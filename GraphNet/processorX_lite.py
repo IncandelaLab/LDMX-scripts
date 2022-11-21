@@ -191,13 +191,14 @@ def processFile(input_vars):
     for i in range(len(PE)):
         mask.append([])
         for j in range(len(PE[i])):
-            mask[i].append(True)
-            if HcalSection(HcalID[i][j]) = SectionOff[i]:
-                mask[i][j] = False
-    
-    maskedPE = PE[mask]
+            mask[i].append(0)
+            if HcalSection(HcalID[i][j]) == SectionOff[i]:
+                mask[i][j] = 1
+    mask = np.array([mask])
 
-    modmaxPE = np.max(maskedPE)
+    maskedPE = np.ma.masked_array(PE, mask=mask)
+
+    modmaxPE = np.max(maskedPE, axis = 1)
 
     hv2 = modmaxPE < 5
 
@@ -214,6 +215,7 @@ if __name__ == '__main__':
     presel_eff = {}
     hcalveto_eff = {}
     presel_eff_2 = {}
+    modhcalveto1_eff = {}
     for mass, filepath in file_templates.items():
         print("======  m={}  ======".format(mass))
         params = []
@@ -225,6 +227,7 @@ if __name__ == '__main__':
         nEvents = sum([r[1] for r in results])
         nPassesVeto = sum([r[2] for r in results])
         nEvents2 = sum([r[3] for r in results])
+        nPassesModVeto1 = sum([r[4] for r in results])
         print("m = {} MeV:  Read {} events, {} passed preselection, {} passed preselection + hcal veto, {} passed double preselection, {} passed preselection + mod hcal veto 1".format(int(mass*1000), nTotal, nEvents, nPassesVeto, nEvents2, nPassesModVeto1))
         presel_eff[int(mass * 1000)] = float(nEvents) / nTotal if nTotal != 0 else 'no events'
         hcalveto_eff[int(mass * 1000)] = float(nPassesVeto) / nEvents if nEvents != 0 else 'no events'

@@ -191,7 +191,7 @@ def processFile(input_vars):
     for i in range(len(PE)):
         maskedPE.append([])
         for j in range(len(PE[i])):
-            if HcalSection(HcalID[i][j]) = SectionOff:
+            if HcalSection(HcalID[i][j]) == SectionOff[i]:
                 maskedPE[i].append(0)
             else:
                 maskedPE[i].append(PE[i][j])

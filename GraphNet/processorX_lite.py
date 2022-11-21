@@ -170,9 +170,9 @@ def processFile(input_vars):
     for i in range(N):
         fiducial = False
         fXY = projection(recoilX[i], recoilY[i], scoringPlaneZ, recoilPx[i], recoilPy[i], recoilPz[i], 679)  # Z = 679mm is at layer 34 of ecal (final layer)
-        fXY[0] = x
-        fXY[1] = y
-        
+        x = fXY[0] 
+        y = fXY[1]
+
         if x <= -400 and y >= -300:
             SectionOff[i] = 4             # LEFT HCAL
         elif x >= 400 and y <= 300:

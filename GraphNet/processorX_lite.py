@@ -199,7 +199,7 @@ def processFile(input_vars):
         counts = np.array([np.sum(section_id == n, axis=1) for n in [1, 2, 3, 4]])  # sum 4 bool arrays shape (N, n_steps) and place in counts --> result is (4, N) array 
 
         sectionOff = np.zeros(N)
-        for i in range(N)
+        for i in range(N):
             counts_col = counts[:,i]  # Rank 1 view of i'th column of counts (length 4)
             idx = np.argmax(counts_col) # index of max value 
             # Record side hcal with section_id given by idx + 1...unless the max value in counts_col is zero then set to -1

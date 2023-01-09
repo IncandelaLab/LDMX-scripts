@@ -19,7 +19,9 @@ MAX_ISO_ENERGY = 500  #650 for ldmx-sw v2.3.0
 # Results:  >0.994 vs 0.055
 MAX_NUM_HCAL_HITS = 30
 
-scoringPlaneZ = 240.5005
+ECAL_SP_Z = 240.5005
+ECAL_FACE_Z = 248.35
+SIDE_HCAL_DZ = 600
 
 # data[branch_name][scalars/vectors][leaf_name]
 data_to_save = {
@@ -35,7 +37,7 @@ data_to_save = {
                    'px_', 'py_', 'pz_', 'energy_']
     },
     'EcalVeto_v3_v13': {
-        'scalars':['passesVeto_', 'nReadoutHits_', 'deepestLayerHit_', 'summedDet_',
+        'scalars':['passesVeto_', 'nReadoutHits_', 'deepestLayerHit_',
                    'summedDet_', 'summedTightIso_', 'discValue_',
                    'recoilX_', 'recoilY_',
                    'recoilPx_', 'recoilPy_', 'recoilPz_'],
@@ -71,11 +73,11 @@ def pad_array(arr):
     arr = awkward.fill_none(arr, 0)
     return awkward.flatten(arr)
 
-def HcalSection(HcalID):
+def getSection(hid):
     SECTION_MASK = 0x7 # space for up to 7 sections                                 
     SECTION_SHIFT = 18 
-    # HcalSection BACK = 0, TOP = 1, BOTTOM = 2, RIGHT = 3, LEFT = 4
-    return (HcalID >> SECTION_SHIFT) & SECTION_MASK
+    # Hcal Section: BACK = 0, TOP = 1, BOTTOM = 2, RIGHT = 3, LEFT = 4
+    return (hid >> SECTION_SHIFT) & SECTION_MASK
 
 def processFile(input_vars):
     # input_vars is a list: [file_to_read, signal_mass, nth_file_in_mass_group]
@@ -92,143 +94,135 @@ def processFile(input_vars):
                 branchList.append(branchname + '/' + branchname + '.' + leaf)
 
     # count total events
-    file = uproot.open(filename)
-    if len(file.keys()) == 0:
-        print("FOUND ZOMBIE: {} SKIPPING...".format(filename))
-        return 0, 0, 0 ,0
-    t = uproot.open(filename)['LDMX_Events']
-    raw_data = t.arrays(branchList)
-    nTotalEvents = len(raw_data[blname('EcalRecHits_v3_v13', 'xpos_')])
+    #file = uproot.open(filename)
+    with uproot.open(filename) as file:
+        if len(file.keys()) == 0:
+            print("FOUND ZOMBIE: {} SKIPPING...".format(filename))
+            return 0, 0, 0 ,0, 0
+    with uproot.open(filename)['LDMX_Events'] as t:
+        raw_data = t.arrays(branchList)
+        nTotalEvents = len(raw_data[blname('EcalRecHits_v3_v13', 'xpos_')])
 
-    # preselection 
-    el = (raw_data[blname('EcalVeto_v3_v13', 'nReadoutHits_')] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto_v3_v13', 'summedTightIso_')] < MAX_ISO_ENERGY)
+        # preselection #
+        el = (raw_data[blname('EcalVeto_v3_v13', 'nReadoutHits_')] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto_v3_v13', 'summedTightIso_')] < MAX_ISO_ENERGY)
 
-    preselected_data = {}
-    for branch in branchList:
-        preselected_data[branch] = raw_data[branch][el]
-    nEvents = len(preselected_data[blname('EcalVeto_v3_v13', 'summedTightIso_')])
+        preselected_data = {}
+        for branch in branchList:
+            preselected_data[branch] = raw_data[branch][el]
+        nEvents = len(preselected_data[blname('EcalVeto_v3_v13', 'summedTightIso_')])
 
-    # simple hcal veto 
-    hv1 = preselected_data[blname('HcalVeto_v3_v13', 'passesVeto_')] == 1
+        # simple hcal veto #
+        hv1 = preselected_data[blname('HcalVeto_v3_v13', 'passesVeto_')] == 1
 
-    selected_data = {}
-    for branch in branchList:
-        selected_data[branch] = preselected_data[branch][hv1]
-    nPassesVeto = len(selected_data[blname('HcalVeto_v3_v13', 'passesVeto_')])
+        selected_data = {}
+        for branch in branchList:
+            selected_data[branch] = preselected_data[branch][hv1]
+        nPassesVeto = len(selected_data[blname('HcalVeto_v3_v13', 'passesVeto_')])
 
-    # hcal hits cut (boosted preselection)
-    HE_data = preselected_data[blname('HcalRecHits_v3_v13', 'energy_')]
-    nHRecHits = np.zeros(nEvents)
-    for i in range(nEvents):
-        nHRecHits[i] = sum(HE_data[i] > 0)
-        if len(HE_data[i]) == 0:
-            nHRecHits[i] = 0
-    preselected_data['nHRecHits'] = np.array(nHRecHits)
-    branchList.append('nHRecHits')
+        # hcal hits cut (boosted preselection) #
+        HE_data = preselected_data[blname('HcalRecHits_v3_v13', 'energy_')]
+        nHRecHits = np.zeros(nEvents)
+        for i in range(nEvents):
+            nHRecHits[i] = sum(HE_data[i] > 0)
+            if len(HE_data[i]) == 0:
+                nHRecHits[i] = 0
+        preselected_data['nHRecHits'] = np.array(nHRecHits)
+        branchList.append('nHRecHits')
 
-    hc = preselected_data['nHRecHits'] < MAX_NUM_ECAL_HITS
+        hc = preselected_data['nHRecHits'] < MAX_NUM_ECAL_HITS
 
-    preselected_data_2 = {}
-    for branch in branchList:
-        preselected_data_2[branch] = preselected_data[branch][hc]
-    nEvents2 = len(preselected_data_2['nHRecHits'])
+        preselected_data_2 = {}
+        for branch in branchList:
+            preselected_data_2[branch] = preselected_data[branch][hc]
+        nEvents2 = len(preselected_data_2['nHRecHits'])
 
-    # crude modified hcal veto
+        # crude modified hcal veto #
 
-    # Find Ecal SP recoil electron (with maximum momentum)
-    recoilZ = preselected_data[blname('EcalScoringPlaneHits_v3_v13','z_')]
-    px = preselected_data[blname('EcalScoringPlaneHits_v3_v13','px_')]
-    py = preselected_data[blname('EcalScoringPlaneHits_v3_v13','py_')]
-    pz = preselected_data[blname('EcalScoringPlaneHits_v3_v13','pz_')]
-    pdgID = preselected_data[blname('EcalScoringPlaneHits_v3_v13','pdgID_')]
-    trackID = preselected_data[blname('EcalScoringPlaneHits_v3_v13','trackID_')]
-    
-    e_cut = []
-    for i in range(len(px)):
-        e_cut.append([])
-        for j in range(len(px[i])):
-            e_cut[i].append(False)
-    for i in range(len(px)):
-        maxP = 0
-        e_index = 0
-        for j in range(len(px[i])):
-            P = np.sqrt(px[i][j]**2 + py[i][j]**2 + pz[i][j]**2)
-            if (pdgID[i][j] == 11 and trackID[i][j] == 1 and recoilZ[i][j] > 240 and recoilZ[i][j] < 241 and P > maxP):
-                maxP = P
-                e_index = j
-        if maxP > 0:
-            e_cut[i][e_index] = True
+        # Find Ecal SP recoil electron (with maximum momentum)
+        recoilZ = preselected_data[blname('EcalScoringPlaneHits_v3_v13','z_')]
+        px = preselected_data[blname('EcalScoringPlaneHits_v3_v13','px_')]
+        py = preselected_data[blname('EcalScoringPlaneHits_v3_v13','py_')]
+        pz = preselected_data[blname('EcalScoringPlaneHits_v3_v13','pz_')]
+        pdgID = preselected_data[blname('EcalScoringPlaneHits_v3_v13','pdgID_')]
+        trackID = preselected_data[blname('EcalScoringPlaneHits_v3_v13','trackID_')]
+        
+        e_cut = []
+        for i in range(len(px)):
+            e_cut.append([])
+            for j in range(len(px[i])):
+                e_cut[i].append(False)
+        for i in range(len(px)):
+            maxP = 0
+            e_index = 0
+            for j in range(len(px[i])):
+                P = np.sqrt(px[i][j]**2 + py[i][j]**2 + pz[i][j]**2)
+                if (pdgID[i][j] == 11 and trackID[i][j] == 1 and recoilZ[i][j] > 240 and recoilZ[i][j] < 241 and P > maxP):
+                    maxP = P
+                    e_index = j
+            if maxP > 0:
+                e_cut[i][e_index] = True
 
-    recoilX = pad_array(preselected_data[blname('EcalScoringPlaneHits_v3_v13','x_')][e_cut])
-    recoilY = pad_array(preselected_data[blname('EcalScoringPlaneHits_v3_v13','y_')][e_cut])
-    recoilPx = pad_array(px[e_cut])
-    recoilPy = pad_array(py[e_cut])
-    recoilPz = pad_array(pz[e_cut])
+        recoilX = pad_array(preselected_data[blname('EcalScoringPlaneHits_v3_v13','x_')][e_cut])
+        recoilY = pad_array(preselected_data[blname('EcalScoringPlaneHits_v3_v13','y_')][e_cut])
+        recoilPx = pad_array(px[e_cut])
+        recoilPy = pad_array(py[e_cut])
+        recoilPz = pad_array(pz[e_cut])
 
-    N = len(recoilX)
-    SectionOff = np.zeros(N)
-    for i in range(N):
-        fiducial = False
-        fXY = projection(recoilX[i], recoilY[i], scoringPlaneZ, recoilPx[i], recoilPy[i], recoilPz[i], 679)  # Z = 679mm is at layer 34 of ecal (final layer)
-        x = fXY[0] 
-        y = fXY[1]
+        # Build recoil e trajectory and follow in steps
+        # At each step, check to see if in side hcal
+        # If so, which one? (mark 1,2,3,4 for top,bot,right,left...-1 for none)
+        # "turn off" the side hcal with the most counts (i.e., treat any pe value from a hit in that side as 0 when computing maxPE)
+        # Will likely switch to a "sweeping cone" method later
+        N = len(recoilX)
+        n_steps = 101
+        steps = np.linspace(ECAL_FACE_Z, ECAL_FACE_Z + SIDE_HCAL_DZ, n_steps)
+        section_id = np.zeros((N, n_steps))
 
-        if x <= -400 and y >= -300:
-            SectionOff[i] = 4             # LEFT HCAL
-        elif x >= 400 and y <= 300:
-            SectionOff[i] = 3             # RIGHT HCAL
-        elif x <= 400 and y <= -300:
-            SectionOff[i] = 2             # BOTTOM HCAL
-        elif x >= -400 and y >= 300:
-            SectionOff[i] = 1             # TOP HCAL
-        else:
-            SectionOff[i] = -1            # nonphysical placeholder (no cut)
+        for j in range(n_steps):
+            for i in range(N):
+                fXY = projection(recoilX[i], recoilY[i], ECAL_SP_Z, recoilPx[i], recoilPy[i], recoilPz[i], steps[j]) 
+                x = fXY[0] 
+                y = fXY[1]
 
-    PE = preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]
-    HcalID = preselected_data[blname('HcalRecHits_v3_v13', 'id_')]
+                if x <= -400 and y >= -300:
+                    section_id[i][j] = 4             # LEFT HCAL
+                elif x >= 400 and y <= 300:
+                    section_id[i][j] = 3             # RIGHT HCAL
+                elif x <= 400 and y <= -300:
+                    section_id[i][j] = 2             # BOTTOM HCAL
+                elif x >= -400 and y >= 300:
+                    section_id[i][j] = 1             # TOP HCAL
+                else:
+                    section_id[i][j] = -1            # nonphysical placeholder
 
-    for i in range(len(PE)):
-        for j in range(len(PE[i])):
-            if HcalSection(HcalID[i][j]) == SectionOff[i]:
-                PE[i][j] = float(0)
 
-    modmaxPE = np.max(PE, axis=1)
-   
-    hv2 = modmaxPE < 5
+        counts = np.array([np.sum(section_id == n, axis=1) for n in [1, 2, 3, 4]])  # sum 4 bool arrays shape (N, n_steps) and place in counts --> result is (4, N) array 
 
-    '''
-    modmaxPE = np.zeros(len(PE))
-    PE_temp = np.zeros(2000)
-    for i in range(len(PE)):
-        for j in range(len(PE[i]):
-            if HcalSection(HcalID[i][j]) != SectionOff[i]:
-                PE_temp[j] = PE[i][j]
-        modmaxPE[i] = np.max(PE_temp)
+        sectionOff = np.zeros(N)
+        for i in range(N)
+            counts_col = counts[:,i]  # Rank 1 view of i'th column of counts (length 4)
+            idx = np.argmax(counts_col) # index of max value 
+            # Record side hcal with section_id given by idx + 1...unless the max value in counts_col is zero then set to -1
+            sectionOff[i] = idx + 1 if counts_col[idx] != 0 else -1
 
-    hv2 = modmaxPE < 5
-    '''
-    
-    '''
-    mask = []
-    for i in range(len(PE)):
-        mask.append([])
-        for j in range(len(PE[i])):
-            mask[i].append(0)
-    if HcalSection(HcalID[i][j]) == SectionOff[i]:
-                mask[i][j] = 1
-    mask = awkward.Array(np.array([mask], dtype=object))
+        # Omit the side hcal given by sectionOff when calculating maxPE...then apply maxPE < 5 hcal veto 
+        PE = preselected_data[blname('HcalRecHits_v3_v13', 'pe_')]
+        hcal_id = preselected_data[blname('HcalRecHits_v3_v13', 'id_')]
 
-    maskedPE = np.ma.masked_array(PE, mask=mask)
+        modmaxPE = np.zeros(len(PE))
+        for i in range(len(PE)):
+            PE_temp = np.zeros(2000)
+            for j in range(len(PE[i])):
+                if getSection(hcal_id[i][j]) != sectionOff[i]:
+                    PE_temp[j] = PE[i][j]
+            modmaxPE[i] = np.max(PE_temp)
 
-    modmaxPE = np.max(maskedPE, axis = 1)
-
-    hv2 = modmaxPE < 5
-    '''
-
-    selected_data_2 = {}
-    for branch in branchList:
-        selected_data_2[branch] = preselected_data[branch][hv2]
-    nPassesModVeto1 = len(selected_data_2[blname('HcalVeto_v3_v13', 'passesVeto_')])
+        hv2 = modmaxPE < 5
+        
+        selected_data_2 = {}
+        for branch in branchList:
+            selected_data_2[branch] = preselected_data[branch][hv2]
+        nPassesModVeto1 = len(selected_data_2[blname('HcalVeto_v3_v13', 'passesVeto_')])
    
 
     return (nTotalEvents, nEvents, nPassesVeto, nEvents2, nPassesModVeto1)

@@ -416,22 +416,54 @@ def hcal_strip(hit):
 # Get e/g SP hit info
 ###########################
 
-# Get electron target scoring plane hit
-def electronTargetSPHit(targetSPHits):
+# Get electron hit with max p at any scoring plane
+def maxPElectronSPHit(SPHits, sp_z):
+    
+    p_max = 0
+    Hit_maxP = None
+    for hit in SPHits:
 
-    targetSPHit = None
-    pmax = 0
-    for hit in targetSPHits:
-
-        if abs(hit.getPosition()[2] - sp_trigger_pad_down_l2_z) > 0.5*sp_thickness or\
+        if abs(hit.getPosition()[2] - sp_z) > 0.5*sp_thickness or\
                 hit.getMomentum()[2] <= 0 or\
                 hit.getTrackID() != 1 or\
                 hit.getPdgID() != 11:
             continue
 
-        if mag(hit.getMomentum()) > pmax:
-            targetSPHit = hit
-            pmax = mag(targetSPHit.getMomentum())
+        if mag(hit.getMomentum()) > p_max:
+            Hit_maxP = hit
+            p_max = mag(hit.getMomentum())
+    
+    return p_max, Hit_maxP
+
+# Get electron target scoring plane hit
+def electronTargetSPHit(targetSPHits):
+    
+    E_threshold = 3000    # 3 GeV threshold, may need to modify
+    targetSPHit = None
+    pmax = 0
+    
+    # 1. Interact @ Target
+    pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_target_down_z)
+    if pmax > E_threshold:
+        # 2. Interact @ Trigger scin l1
+        pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l1_z)
+        if pmax > E_threshold:
+            # 3. Interact @ Trigger scin l2
+            pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l2_z)
+
+
+    # Assume e- interacting @ Target   
+    # for hit in targetSPHits:
+
+    #     if abs(hit.getPosition()[2] - sp_target_down_z) > 0.5*sp_thickness or\
+    #             hit.getMomentum()[2] <= 0 or\
+    #             hit.getTrackID() != 1 or\
+    #             hit.getPdgID() != 11:
+    #         continue
+
+    #     if mag(hit.getMomentum()) > pmax:
+    #         targetSPHit = hit
+    #         pmax = mag(targetSPHit.getMomentum())
 
     return targetSPHit
 

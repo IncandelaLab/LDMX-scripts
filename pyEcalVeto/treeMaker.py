@@ -32,7 +32,8 @@ branches_info = {
         'photonTerritoryHits':       {'rtype': int,   'default': 0 },
         'TerritoryRatio':            {'rtype': float, 'default': 1.},
         'epSep':                     {'rtype': float, 'default': 0.},
-        'epDot':                     {'rtype': float, 'default': 0.}
+        'epDot':                     {'rtype': float, 'default': 0.},
+        'epAng':                     {'rtype': float, 'default': 0.}
         }
 
 for i in range(1, physTools.nSegments + 1):
@@ -223,6 +224,8 @@ def event_process(self):
         g_norm  = physTools.unit( g_traj_ends[1] - g_traj_ends[0] )
         feats['epSep'] = physTools.dist( e_traj_ends[0], g_traj_ends[0] )
         feats['epDot'] = physTools.dot(e_norm,g_norm)
+        # Add epAng
+        feats['epAng'] = math.acos(physTools.dot(e_norm,g_norm)) * 180.0 / math.pi
 
     else:
 
@@ -233,7 +236,8 @@ def event_process(self):
         g_traj_ends   = [np.array([1000,1000,0   ]), np.array([1000,1000,1000]) ]
 
         feats['epSep'] = 10.0 + 1.0 # Don't cut on these in this case
-        feats['epDot'] = 3.0 + 1.0
+        feats['epDot'] = 3.0 + 1.0 # ? This default value should be assigned to an angle
+        feats['epAng'] = 3.0 + 1.0
 
     # Territory setup (consider missing case)
     gToe    = physTools.unit( e_traj_ends[0] - g_traj_ends[0] )

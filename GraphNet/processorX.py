@@ -137,10 +137,6 @@ data_to_save = {
     'HcalRecHits_v3_v13':{
         'scalars':[],
         'vectors':['xpos_', 'ypos_', 'zpos_', 'energy_', 'id_', 'pe_']
-    },
-    'HcalVeto_v3_v13': {
-        'scalars':['passesVeto_'],
-        'vectors':[]
     }
 }
 

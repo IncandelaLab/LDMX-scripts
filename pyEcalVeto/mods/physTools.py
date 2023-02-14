@@ -349,19 +349,30 @@ def dist(p1, p2):
     return math.sqrt(np.sum( ( np.array(p1) - np.array(p2) )**2 ))
 
 # Distance between a point and the nearest point on a line defined by endpoints
-def distPtToLine(h1,p1,p2):
-    return np.linalg.norm(np.cross((np.array(h1)-np.array(p1)),
-        (np.array(h1)-np.array(p2)))) / np.linalg.norm(np.array(p1)-np.array(p2))
+def distPtToLine(x, y1, y2):
+
+    norm = np.linalg.norm(y1 - y2)
+    if norm == 0: return np.sqrt(np.sum((x - y1)**2))
+
+    return np.linalg.norm(np.cross(x - y1, y1 - y2))/norm
 
 # Minimum distance between lines, each line defined by two points
-def distTwoLines(h1,h2,p1,p2):
-    e1  = unit( h1 - h2 )
-    e2  = unit( p1 - p2 )
-    crs = np.cross(e1,e2) # Vec perp to both lines
-    if mag(crs) != 0:
-        return abs( np.dot( crs,h1-p1) )
-    else: # Lines are parallel; need different method
-        return mag( np.cross(e1,h1-p1) )
+def distTwoLines(x1, x2, y1, y2):
+
+    cross = np.cross(x1 - x2, y1 - y2)
+    norm = np.linalg.norm(cross)
+
+    if norm == 0:
+
+        xnorm = np.linalg.norm(x1 - x2)
+        ynorm = np.linalg.norm(y1 - y2)
+
+        if xnorm == 0 and ynorm == 0: return np.sqrt(np.sum((x1 - y1)**2))
+        elif ynorm == 0: return np.linalg.norm(np.cross(x1 - x2, x1 - y1))/xnorm
+
+        return np.linalg.norm(np.cross(x1 - y1, y1 - y2))/ynorm
+
+    return abs(np.dot(cross, x1 - y1)/norm)
 
 # Angle between vectors (with z by default)
 def angle(vec, units, vec2=[0,0,1]):
@@ -405,22 +416,54 @@ def hcal_strip(hit):
 # Get e/g SP hit info
 ###########################
 
-# Get electron target scoring plane hit
-def electronTargetSPHit(targetSPHits):
+# Get electron hit with max p at any scoring plane
+def maxPElectronSPHit(SPHits, sp_z):
+    
+    p_max = 0
+    Hit_maxP = None
+    for hit in SPHits:
 
-    targetSPHit = None
-    pmax = 0
-    for hit in targetSPHits:
-
-        if abs(hit.getPosition()[2] - sp_trigger_pad_down_l2_z) > 0.5*sp_thickness or\
+        if abs(hit.getPosition()[2] - sp_z) > 0.5*sp_thickness or\
                 hit.getMomentum()[2] <= 0 or\
                 hit.getTrackID() != 1 or\
                 hit.getPdgID() != 11:
             continue
 
-        if mag(hit.getMomentum()) > pmax:
-            targetSPHit = hit
-            pmax = mag(targetSPHit.getMomentum())
+        if mag(hit.getMomentum()) > p_max:
+            Hit_maxP = hit
+            p_max = mag(hit.getMomentum())
+    
+    return p_max, Hit_maxP
+
+# Get electron target scoring plane hit
+def electronTargetSPHit(targetSPHits):
+    
+    E_threshold = 3000    # 3 GeV threshold, may need to modify
+    targetSPHit = None
+    pmax = 0
+    
+    # 1. Interact @ Target
+    pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_target_down_z)
+    if pmax > E_threshold:
+        # 2. Interact @ Trigger scin l1
+        pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l1_z)
+        if pmax > E_threshold:
+            # 3. Interact @ Trigger scin l2
+            pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l2_z)
+
+
+    # Assume e- interacting @ Target   
+    # for hit in targetSPHits:
+
+    #     if abs(hit.getPosition()[2] - sp_target_down_z) > 0.5*sp_thickness or\
+    #             hit.getMomentum()[2] <= 0 or\
+    #             hit.getTrackID() != 1 or\
+    #             hit.getPdgID() != 11:
+    #         continue
+
+    #     if mag(hit.getMomentum()) > pmax:
+    #         targetSPHit = hit
+    #         pmax = mag(targetSPHit.getMomentum())
 
     return targetSPHit
 

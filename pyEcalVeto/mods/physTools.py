@@ -1,6 +1,6 @@
 import math
 import numpy as np
-
+import copy
 
 # Constant defining the clearance between volumes
 clearance = 0.001
@@ -148,7 +148,8 @@ ecal_envelope_y = side_Ecal_dy
 ecal_envelope_z = ECal_dz + 1
 
 # Surround the ECal with scoring planes
-sp_ecal_front_z = ecal_front_z + (ecal_envelope_z - ECal_dz)/2 - sp_thickness/2 + clearance
+# sp_ecal_front_z = ecal_front_z + (ecal_envelope_z - ECal_dz)/2 - sp_thickness/2 + clearance
+sp_ecal_front_z = ecal_front_z - sp_thickness/2 - clearance      # v14
 sp_ecal_back_z = ecal_front_z + ECal_dz + (ecal_envelope_z - ECal_dz)/2 + sp_thickness/2
 sp_ecal_top_y = ECal_dy/2 + sp_thickness/2
 sp_ecal_bot_y = -ECal_dy/2 - sp_thickness/2
@@ -436,6 +437,7 @@ def maxPElectronSPHit(SPHits, sp_z):
     return p_max, Hit_maxP
 
 # Get electron target scoring plane hit
+# Method 1: look at pz
 def electronTargetSPHit(targetSPHits):
     
     E_threshold = 3000    # 3 GeV threshold, may need to modify
@@ -450,7 +452,6 @@ def electronTargetSPHit(targetSPHits):
         if pmax > E_threshold:
             # 3. Interact @ Trigger scin l2
             pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l2_z)
-
 
     # Assume e- interacting @ Target   
     # for hit in targetSPHits:
@@ -467,6 +468,29 @@ def electronTargetSPHit(targetSPHits):
 
     return targetSPHit
 
+# Method 2: look at delta pz
+def electronTargetSPHit_deltaPz(targetSPHits):
+    
+    dpz_threshold = 2400    # Delta pz threshold
+    targetSPHit = None
+    pmax = 0
+    
+    # 1. Interact @ Target
+    pmax_target_down_z, targetSPHit_down = maxPElectronSPHit(targetSPHits, sp_target_down_z)
+    pmax_ts_down_l1, targetSPHit_ts_down_l1 = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l1_z)
+    pmax_ts_down_l2, targetSPHit_ts_down_l2 = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l2_z)
+    targetSPHit = targetSPHit_down
+    if pmax_target_down_z - pmax_ts_down_l1 > dpz_threshold:
+        # 2. Interact @ Trigger scin l1
+        # print('Found dpz = {} > 2.4 GeV @ Trigger scin l1'.format(pmax_target_down_z - pmax_ts_down_l1))
+        targetSPHit = targetSPHit_ts_down_l1
+    elif pmax_ts_down_l1 - pmax_ts_down_l2 > dpz_threshold:
+        # 3. Interact @ Trigger scin l2
+        # print('Found dpz = {} > 2.4 GeV @ Trigger scin l2'.format(pmax_ts_down_l1 - pmax_ts_down_l2))
+        targetSPHit = targetSPHit_ts_down_l2
+
+    return targetSPHit
+
 # Get electron ecal scoring plane hit
 def electronEcalSPHit(ecalSPHits):
 
@@ -476,8 +500,8 @@ def electronEcalSPHit(ecalSPHits):
 
         if abs(hit.getPosition()[2] - sp_ecal_front_z) > 0.5*sp_thickness or\
                 hit.getMomentum()[2] <= 0 or\
-                hit.getTrackID() != 1 or\
                 hit.getPdgID() != 11:
+                # hit.getTrackID() != 1 or\  # doesn't work for v14 sample
             continue
 
         if mag(hit.getMomentum()) > pmax:
@@ -496,8 +520,15 @@ def electronSPHits(ecalSPHits, targetSPHits):
 
 # Return photon position and momentum at target
 def gammaTargetInfo(eTargetSPHit):
-
+    
     gTarget_pvec = np.array([0,0,4000]) - np.array(eTargetSPHit.getMomentum())
+
+    return eTargetSPHit.getPosition(), gTarget_pvec
+
+def gammaTargetInfo_true(eTargetSPHit, eTargetUpSPHit):
+    # Use upstream target sp to decide incident e- momentum
+    
+    gTarget_pvec = np.array(eTargetUpSPHit.getMomentum()) - np.array(eTargetSPHit.getMomentum())
 
     return eTargetSPHit.getPosition(), gTarget_pvec
 

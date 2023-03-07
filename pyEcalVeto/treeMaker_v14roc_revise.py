@@ -1,10 +1,7 @@
-from cmath import sin, sqrt
 import os
 import math
-from turtle import distance
 import ROOT as r
 import numpy as np
-from scipy.special import logsumexp 
 from mods import ROOTmanager as manager
 from mods import physTools, mipTracking
 cellMap = np.loadtxt('mods/cellmodule.txt')

@@ -43,8 +43,9 @@ branches_info = {
         'distance1'             :     {'rtype': float, 'default': 0.},
         }
 
-# RoC variables in 4 binnings, 34 layers
-for i in range(1, 4 +1):
+# RoC variables in 8 binnings, 34 layers
+nbinning = 8
+for i in range(1, nbinning +1):
     for j in range(1, len(physTools.ecal_layerZs) + 1):
         branches_info['roc68_binning{}_layer{}'.format(i, j)] = {'rtype': float, 'default': 0.}
 
@@ -78,14 +79,22 @@ def roc_binning(recoilPMag, recoilTheta):
     # RoC binning
     b = 0
     
-    if recoilTheta < 10 and 500 <= recoilPMag < 1500:
+    if recoilTheta < 10 and 500 <= recoilPMag < 750:
         b = 1
-    elif recoilTheta < 10 and recoilPMag < 500:
+    elif recoilTheta < 10 and 750 <= recoilPMag < 1000:
         b = 2
-    elif 10 <= recoilTheta < 20 and recoilPMag < 1500:
+    elif recoilTheta < 10 and 1000 <= recoilPMag < 1500:
         b = 3
-    elif recoilTheta >= 20 and recoilPMag < 1500:
+    elif recoilTheta < 10 and recoilPMag < 500:
         b = 4
+    elif 10 <= recoilTheta < 15 and recoilPMag < 1500:
+        b = 5
+    elif 15 <= recoilTheta < 20 and recoilPMag < 1500:
+        b = 6
+    elif 20 <= recoilTheta < 30 and recoilPMag < 1500:
+        b = 7
+    elif 30 <= recoilTheta < 60 and recoilPMag < 1500:
+        b = 8
     
     return b
 
@@ -248,7 +257,7 @@ def event_process(self):
     binning = roc_binning(recoilPMag, recoilTheta)
     # print("binning = ", binning)
     
-    for b in range(4):
+    for b in range(nbinning):
         
         if binning == b + 1:     # binning = 1, 2, 3, 4; b = 0, 1, 2, 3
         
@@ -270,7 +279,7 @@ def event_process(self):
                         xy_pair = ( hit.getXPos(), hit.getYPos() )
                         
                         for l in range(34):
-                            if layer == l + 1:   # layer = 1, 2, ..., 34; l = 0, 1, ..., 33
+                            if layer == l:   # layer = 1, 2, ..., 34; l = 0, 1, ..., 33
                                 E_tot[l] += hit.getEnergy()
                                 xy_e_traj = ( e_traj[l][0], e_traj[l][1] )
                                 dist_energy[l].append( (physTools.dist(xy_pair, xy_e_traj), hit.getEnergy()) )    # (distance, energy) tuple
@@ -282,7 +291,7 @@ def event_process(self):
 
             for l in range(34):
                 # print("layer", l)
-                # print(dist_energy[l])
+                print(dist_energy[l])
                 
                 if dist_energy[l]:
                     # Sort the distance-energy tuples according to distance

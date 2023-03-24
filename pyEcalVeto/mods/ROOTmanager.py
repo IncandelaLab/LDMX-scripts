@@ -198,12 +198,27 @@ class TreeMaker:
 
         self.branches_info[branch_name] = {'rtype': rtype, 'default': default_value}
         if str(rtype).find('vector') >= 0:
-            # vector variable
+            # vector
             if str(rtype).find('int') >= 0:
                 self.branches[branch_name] = r.std.vector('int')([0])
-                self.tree.Branch(branch_name, self.branches[branch_name])
+            if str(rtype).find('double') >= 0:
+                self.branches[branch_name] = r.std.vector('double')([0.])
+            if str(rtype).find('string') >= 0:
+                self.branches[branch_name] = r.std.vector('std::string')([''])
+            if str(rtype).find('bool') >= 0:
+                self.branches[branch_name] = r.std.vector('bool')([0])
+            # initiate a new branch of object
+            self.tree.Branch(branch_name, self.branches[branch_name])
+        elif str(rtype).find('vv') >= 0:
+            # vector of vectors
+            if str(rtype).find('int') >= 0:
+                self.branches[branch_name] = r.std.vector('std::vector<int>')([[0]])
+            if str(rtype).find('double') >= 0:
+                self.branches[branch_name] = r.std.vector('std::vector<double>')([[0.]])
+            # initiate a new branch of object
+            self.tree.Branch(branch_name, self.branches[branch_name])
         else:
-            # flat variable
+            # flat
             self.branches[branch_name] = np.zeros(1, dtype=rtype)
             if str(rtype) == "<type 'float'>" or str(rtype) == "<class 'float'>":
                 self.tree.Branch(branch_name, self.branches[branch_name], branch_name + "/D")
@@ -230,11 +245,9 @@ class TreeMaker:
             if isinstance(feats[feat], int) or isinstance(feats[feat], float):
                 self.branches[feat][0] = feats[feat]
             else:
-                print("len = ", feats[feat].size())
                 self.branches[feat].clear()
                 for i in feats[feat]:
                     self.branches[feat].push_back(i)
-                print("after fill len = ", self.branches[feat].size())
         self.tree.Fill()
 
     def wq(self):

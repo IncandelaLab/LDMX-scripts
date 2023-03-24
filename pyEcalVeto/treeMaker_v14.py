@@ -99,34 +99,155 @@ for j in range(1, physTools.nRegions + 1):
     branches_info['oContYStd_x{}'.format(j)]      = {'rtype': float, 'default': 0.}
 
 # Flatten tree variables
-simParticleBranch = ['trackID', 'energy', 'pdgID', 'x', 'y', 'z', 'time', 'mass',
-                     'endX', 'endY', 'endZ', 'px', 'py', 'pz', 'endPX', 'endPY', 'endPZ',
-                     'daughters', 'parents', 'processType', 'vertexVolume', 'size']
-
 branches_flatten = {
         # SimParticles
-        'SimParticles_trackID':         {'rtype': 'vector<int>',   'default': r.std.vector('int')([0]) },
-        # 'SimParticles_energy':          {'rtype': float, 'default': 0.},
-        # 'SimParticles_pdgID':           {'rtype': int,   'default': 0.},
-        # 'SimParticles_x':               {'rtype': float, 'default': 0.},
-        # 'SimParticles_y':               {'rtype': float, 'default': 0.},
-        # 'SimParticles_z':               {'rtype': float, 'default': 0.},
-        # 'SimParticles_time':            {'rtype': float, 'default': 0.},
-        # 'SimParticles_mass':            {'rtype': float, 'default': 0.},
-        # 'SimParticles_endX':            {'rtype': float, 'default': 0.},
-        # 'SimParticles_endY':            {'rtype': float, 'default': 0.},
-        # 'SimParticles_endZ':            {'rtype': float, 'default': 0.},
-        # 'SimParticles_px':              {'rtype': float, 'default': 0.},
-        # 'SimParticles_py':              {'rtype': float, 'default': 0.},
-        # 'SimParticles_pz':              {'rtype': float, 'default': 0.},
-        # 'SimParticles_endPX':           {'rtype': float, 'default': 0.},
-        # 'SimParticles_endPY':           {'rtype': float, 'default': 0.},
-        # 'SimParticles_endPZ':           {'rtype': float, 'default': 0.},
-        # 'SimParticles_daughters':       {'rtype': float, 'default': 0.},
-        # 'SimParticles_parents':         {'rtype': float, 'default': 0.},
-        # 'SimParticles_processType':     {'rtype': float, 'default': 0.},
-        # 'SimParticles_vertexVolume':    {'rtype': float, 'default': 0.},
-        # 'SimParticles_size':            {'rtype': float, 'default': 0.},
+        'SimParticles_size':            {'rtype': int,              'default': 0 },
+        'SimParticles_trackID':         {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'SimParticles_energy':          {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_pdgID':           {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'SimParticles_x':               {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_y':               {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_z':               {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_time':            {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_mass':            {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_endX':            {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_endY':            {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_endZ':            {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_px':              {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_py':              {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_pz':              {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_endPX':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_endPY':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_endPZ':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'SimParticles_daughters':       {'rtype': 'vv<int>',        'default': r.std.vector('std::vector<int>')([[0]]) },
+        'SimParticles_parents':         {'rtype': 'vv<int>',        'default': r.std.vector('std::vector<int>')([[0]]) },
+        'SimParticles_processType':     {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'SimParticles_vertexVolume':    {'rtype': 'vector<string>', 'default': r.std.vector('string')(['']) },
+        # EcalSimHits
+        'EcalSimHits_size':                 {'rtype': int,              'default': 0 },
+        'EcalSimHits_id':                   {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'EcalSimHits_edep':                 {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalSimHits_x':                    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalSimHits_y':                    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalSimHits_z':                    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalSimHits_time':                 {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalSimHits_trackIDContribs':      {'rtype': 'vv<int>',        'default': r.std.vector('std::vector<int>')([[0]]) },
+        'EcalSimHits_incidentIDContribs':   {'rtype': 'vv<int>',        'default': r.std.vector('std::vector<int>')([[0]]) },
+        'EcalSimHits_pdgIDContribs':        {'rtype': 'vv<int>',        'default': r.std.vector('std::vector<int>')([[0]]) },
+        'EcalSimHits_edepContribs':         {'rtype': 'vv<double>',     'default': r.std.vector('std::vector<double>')([[0.]]) },
+        'EcalSimHits_timeContribs':         {'rtype': 'vv<double>',     'default': r.std.vector('std::vector<double>')([[0.]]) },
+        'EcalSimHits_nContribs':            {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'EcalSimHits_velocity':             {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        # TargetSimHits
+        'TargetSimHits_size':               {'rtype': int,              'default': 0 },
+        'TargetSimHits_id':                 {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'TargetSimHits_edep':               {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetSimHits_x':                  {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetSimHits_y':                  {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetSimHits_z':                  {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetSimHits_time':               {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetSimHits_trackIDContribs':    {'rtype': 'vv<int>',        'default': r.std.vector('std::vector<int>')([[0]]) },
+        'TargetSimHits_incidentIDContribs': {'rtype': 'vv<int>',        'default': r.std.vector('std::vector<int>')([[0]]) },
+        'TargetSimHits_pdgIDContribs':      {'rtype': 'vv<int>',        'default': r.std.vector('std::vector<int>')([[0]]) },
+        'TargetSimHits_edepContribs':       {'rtype': 'vv<double>',     'default': r.std.vector('std::vector<double>')([[0.]]) },
+        'TargetSimHits_timeContribs':       {'rtype': 'vv<double>',     'default': r.std.vector('std::vector<double>')([[0.]]) },
+        'TargetSimHits_nContribs':          {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'TargetSimHits_velocity':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        # EcalScoringPlaneHits
+        'EcalScoringPlaneHits_size':        {'rtype': int,              'default': 0 },
+        'EcalScoringPlaneHits_id':          {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'EcalScoringPlaneHits_layerID':     {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'EcalScoringPlaneHits_moduleID':    {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'EcalScoringPlaneHits_edep':        {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalScoringPlaneHits_energy':      {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalScoringPlaneHits_x':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalScoringPlaneHits_y':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalScoringPlaneHits_z':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalScoringPlaneHits_time':        {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalScoringPlaneHits_px':          {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalScoringPlaneHits_py':          {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalScoringPlaneHits_pz':          {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalScoringPlaneHits_trackID':     {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'EcalScoringPlaneHits_pdgID':       {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        # TargetScoringPlaneHits
+        'TargetScoringPlaneHits_size':        {'rtype': int,              'default': 0 },
+        'TargetScoringPlaneHits_id':          {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'TargetScoringPlaneHits_layerID':     {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'TargetScoringPlaneHits_moduleID':    {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'TargetScoringPlaneHits_edep':        {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetScoringPlaneHits_energy':      {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetScoringPlaneHits_x':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetScoringPlaneHits_y':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetScoringPlaneHits_z':           {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetScoringPlaneHits_time':        {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetScoringPlaneHits_px':          {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetScoringPlaneHits_py':          {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetScoringPlaneHits_pz':          {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'TargetScoringPlaneHits_trackID':     {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'TargetScoringPlaneHits_pdgID':       {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        # EcalRecHits
+        'EcalRecHits_size':                 {'rtype': int,              'default': 0 },
+        'EcalRecHits_id':                   {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'EcalRecHits_amplitude':            {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalRecHits_energy':               {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalRecHits_time':                 {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalRecHits_x':                    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalRecHits_y':                    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalRecHits_z':                    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'EcalRecHits_isNoise':              {'rtype': 'vector<bool>',   'default': r.std.vector('bool')([0]) },
+        # HCalRecHits
+        'HCalRecHits_size':                 {'rtype': int,              'default': 0 },
+        'HCalRecHits_id':                   {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'HCalRecHits_amplitude':            {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'HCalRecHits_energy':               {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'HCalRecHits_time':                 {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'HCalRecHits_x':                    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'HCalRecHits_y':                    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'HCalRecHits_z':                    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'HCalRecHits_isNoise':              {'rtype': 'vector<bool>',   'default': r.std.vector('bool')([0]) },
+        'HCalRecHits_pe':                   {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'HCalRecHits_minpe':                {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'HCalRecHits_section':              {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'HCalRecHits_layer':                {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'HCalRecHits_strip':                {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'HCalRecHits_end':                  {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },
+        'HCalRecHits_isADC':                {'rtype': 'vector<int>',    'default': r.std.vector('int')([0]) },             
+        # ECalVeto
+        'ECalVeto_passesVeto':              {'rtype': int,                'default': 0 },
+        'ECalVeto_nReadoutHits':            {'rtype': int,                'default': 0 },
+        'ECalVeto_deepestLayerHit':         {'rtype': int,                'default': 0 },
+        'ECalVeto_summedDet':               {'rtype': float,              'default': 0. },
+        'ECalVeto_summedTightIso':          {'rtype': float,              'default': 0. },
+        'ECalVeto_maxCellDep':              {'rtype': float,              'default': 0. },
+        'ECalVeto_showerRMS':               {'rtype': float,              'default': 0. },
+        'ECalVeto_xStd':                    {'rtype': float,              'default': 0. },
+        'ECalVeto_yStd':                    {'rtype': float,              'default': 0. },
+        'ECalVeto_avgLayerHit':             {'rtype': float,              'default': 0. },
+        'ECalVeto_stdLayerHit':             {'rtype': float,              'default': 0. },
+        'ECalVeto_ecalBackEnergy':          {'rtype': float,              'default': 0. },
+        'ECalVeto_nStraightTracks':         {'rtype': int,                'default': 0 },
+        'ECalVeto_nLinregTracks':           {'rtype': int,                'default': 0 },
+        'ECalVeto_firstNearPhLayer':        {'rtype': int,                'default': 0 },
+        'ECalVeto_epAng':                   {'rtype': float,              'default': 0. },
+        'ECalVeto_epSep':                   {'rtype': float,              'default': 0. },
+        'ECalVeto_electronContainmentEnergy':   {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'ECalVeto_photonContainmentEnergy':     {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'ECalVeto_outsideContainmentEnergy':    {'rtype': 'vector<double>', 'default': r.std.vector('double')([0.]) },
+        'ECalVeto_outsideContainmentNHits': {'rtype': 'vector<int>',      'default': r.std.vector('int')([0]) },
+        'ECalVeto_outsideContainmentXStd':  {'rtype': 'vector<double>',   'default': r.std.vector('double')([0.]) },
+        'ECalVeto_outsideContainmentYStd':  {'rtype': 'vector<double>',   'default': r.std.vector('double')([0.]) },
+        'ECalVeto_discValue':               {'rtype': float,              'default': 0. },
+        'ECalVeto_recoilPx':                {'rtype': float,              'default': 0. },
+        'ECalVeto_recoilPy':                {'rtype': float,              'default': 0. },
+        'ECalVeto_recoilPz':                {'rtype': float,              'default': 0. },
+        'ECalVeto_recoilX':                 {'rtype': float,              'default': 0. },
+        'ECalVeto_recoilY':                 {'rtype': float,              'default': 0. },
+        # HCalVeto
+        'HCalVeto_passesVeto':              {'rtype': int,                'default': 0 },
+        'HCalVeto_maxPEHit_id':             {'rtype': int,                'default': 0 },
+        'HCalVeto_maxPEHit_pe':             {'rtype': float,              'default': 0. },
+        'HCalVeto_maxPEHit_layer':          {'rtype': int,                'default': 0 },
+        'HCalVeto_maxPEHit_strip':          {'rtype': int,                'default': 0 }
 }
 
 # merge two dictionaries
@@ -226,10 +347,220 @@ def event_process(self):
     feats['ecalBackEnergy']     = self.ecalVeto.getEcalBackEnergy()
     
     # Flatten tree variables
+    ## SimParticles collection
+    feats['SimParticles_size'] = self.simParticles.size()
     feats['SimParticles_trackID'].clear()
+    feats['SimParticles_energy'].clear()
+    feats['SimParticles_pdgID'].clear()
+    feats['SimParticles_x'].clear()
+    feats['SimParticles_y'].clear()
+    feats['SimParticles_z'].clear()
+    feats['SimParticles_time'].clear()
+    feats['SimParticles_mass'].clear()
+    feats['SimParticles_endX'].clear()
+    feats['SimParticles_endY'].clear()
+    feats['SimParticles_endZ'].clear()
+    feats['SimParticles_px'].clear()
+    feats['SimParticles_py'].clear()
+    feats['SimParticles_pz'].clear()
+    feats['SimParticles_endPX'].clear()
+    feats['SimParticles_endPY'].clear()
+    feats['SimParticles_endPZ'].clear()
+    feats['SimParticles_daughters'].clear()
+    feats['SimParticles_parents'].clear()
+    feats['SimParticles_processType'].clear()
+    feats['SimParticles_vertexVolume'].clear()
     for (tid, sp) in self.simParticles:
-        # print("SimParticles trackID = ", tid)
         feats['SimParticles_trackID'].push_back(tid)
+        feats['SimParticles_energy'].push_back(sp.getEnergy()) # [MeV]
+        feats['SimParticles_pdgID'].push_back(sp.getPdgID())
+        feats['SimParticles_x'].push_back(sp.getVertex()[0]) # [mm]
+        feats['SimParticles_y'].push_back(sp.getVertex()[1])
+        feats['SimParticles_z'].push_back(sp.getVertex()[2])
+        feats['SimParticles_time'].push_back(sp.getTime()) # [ns]
+        feats['SimParticles_mass'].push_back(sp.getMass()) # [GeV]
+        feats['SimParticles_endX'].push_back(sp.getEndPoint()[0]) # [mm]
+        feats['SimParticles_endY'].push_back(sp.getEndPoint()[1])
+        feats['SimParticles_endZ'].push_back(sp.getEndPoint()[2])
+        feats['SimParticles_px'].push_back(sp.getMomentum()[0]) # [MeV]
+        feats['SimParticles_py'].push_back(sp.getMomentum()[1])
+        feats['SimParticles_pz'].push_back(sp.getMomentum()[2])
+        feats['SimParticles_endPX'].push_back(sp.getEndPointMomentum()[0]) # [MeV]
+        feats['SimParticles_endPY'].push_back(sp.getEndPointMomentum()[1])
+        feats['SimParticles_endPZ'].push_back(sp.getEndPointMomentum()[2])
+        feats['SimParticles_daughters'].push_back(sp.getDaughters())
+        feats['SimParticles_parents'].push_back(sp.getParents())
+        feats['SimParticles_processType'].push_back(sp.getProcessType())
+        feats['SimParticles_vertexVolume'].push_back(sp.getVertexVolume())
+    
+    ## EcalSimHits & TargetSimHits collection
+    trackIDContribs = r.std.vector('int')([])
+    incidentIDContribs = r.std.vector('int')([])
+    pdgIDContribs = r.std.vector('int')([])
+    edepContribs = r.std.vector('double')([])
+    timeContribs = r.std.vector("double")([])
+    
+    for bname in ['EcalSimHits', 'TargetSimHits']:
+        if bname == 'EcalSimHits':
+            hits = self.ecalSimHits
+        else:
+            hits = self.targetSimHits
+
+        feats[bname+'_size'] = hits.size()
+        feats[bname+'_id'].clear()
+        feats[bname+'_edep'].clear()
+        feats[bname+'_x'].clear()
+        feats[bname+'_y'].clear()
+        feats[bname+'_z'].clear()
+        feats[bname+'_time'].clear()
+        feats[bname+'_trackIDContribs'].clear()
+        feats[bname+'_incidentIDContribs'].clear()
+        feats[bname+'_pdgIDContribs'].clear()
+        feats[bname+'_edepContribs'].clear()
+        feats[bname+'_timeContribs'].clear()
+        feats[bname+'_nContribs'].clear()
+        feats[bname+'_velocity'].clear()
+    
+        for hit in hits:
+            feats[bname+'_id'].push_back(hit.getID())
+            feats[bname+'_edep'].push_back(hit.getEdep())
+            feats[bname+'_x'].push_back(hit.getPosition()[0])
+            feats[bname+'_y'].push_back(hit.getPosition()[1])
+            feats[bname+'_z'].push_back(hit.getPosition()[2])
+            feats[bname+'_time'].push_back(hit.getTime()) # [ns]
+            trackIDContribs.clear()
+            incidentIDContribs.clear()
+            pdgIDContribs.clear()
+            edepContribs.clear()
+            timeContribs.clear()
+            for i in range(hit.getNumberOfContribs()):
+                trackIDContribs.push_back(hit.getContrib(i).trackID)
+                incidentIDContribs.push_back(hit.getContrib(i).incidentID)
+                pdgIDContribs.push_back(hit.getContrib(i).pdgCode)
+                edepContribs.push_back(hit.getContrib(i).edep)
+                timeContribs.push_back(hit.getContrib(i).time)
+            feats[bname+'_trackIDContribs'].push_back(trackIDContribs)
+            feats[bname+'_incidentIDContribs'].push_back(incidentIDContribs)
+            feats[bname+'_pdgIDContribs'].push_back(pdgIDContribs)
+            feats[bname+'_edepContribs'].push_back(edepContribs)
+            feats[bname+'_timeContribs'].push_back(timeContribs)
+            feats[bname+'_nContribs'].push_back(hit.getNumberOfContribs())
+            feats[bname+'_velocity'].push_back(hit.getVelocity()) # [mm/ns]
+        
+    ## EcalScoringPlaneHits & TargetScoringPlaneHits collections
+    for bname in ['EcalScoringPlaneHits', 'TargetScoringPlaneHits']:
+        if bname == 'EcalScoringPlaneHits':
+            hits = self.ecalSPHits
+        else:
+            hits = self.targetSPHits
+        feats[bname+'_size'] = hits.size()
+        feats[bname+'_id'].clear()
+        feats[bname+'_layerID'].clear()
+        feats[bname+'_moduleID'].clear()
+        feats[bname+'_edep'].clear()
+        feats[bname+'_energy'].clear()
+        feats[bname+'_x'].clear()
+        feats[bname+'_y'].clear()
+        feats[bname+'_z'].clear()
+        feats[bname+'_time'].clear()
+        feats[bname+'_px'].clear()
+        feats[bname+'_py'].clear()
+        feats[bname+'_pz'].clear()
+        feats[bname+'_trackID'].clear()
+        feats[bname+'_pdgID'].clear()
+        for hit in hits:
+            feats[bname+'_id'].push_back(hit.getID())
+            feats[bname+'_layerID'].push_back(hit.getLayerID())
+            feats[bname+'_moduleID'].push_back(hit.getModuleID())
+            feats[bname+'_edep'].push_back(hit.getEdep())
+            feats[bname+'_energy'].push_back(hit.getEnergy())
+            feats[bname+'_x'].push_back(hit.getPosition()[0])
+            feats[bname+'_y'].push_back(hit.getPosition()[1])
+            feats[bname+'_z'].push_back(hit.getPosition()[2])
+            feats[bname+'_time'].push_back(hit.getTime())
+            feats[bname+'_px'].push_back(hit.getMomentum()[0])
+            feats[bname+'_py'].push_back(hit.getMomentum()[1])
+            feats[bname+'_pz'].push_back(hit.getMomentum()[2])
+            feats[bname+'_trackID'].push_back(hit.getTrackID())
+            feats[bname+'_pdgID'].push_back(hit.getPdgID())
+            
+    ## EcalRecHits & HCalRecHits collections
+    for bname in ['EcalRecHits', 'HCalRecHits']:
+        if bname == 'EcalRecHits':
+            hits = self.ecalRecHits
+        else:
+            hits = self.hcalRecHits
+            feats[bname+'_pe'].clear()
+            feats[bname+'_minpe'].clear()
+            feats[bname+'_section'].clear()
+            feats[bname+'_layer'].clear()
+            feats[bname+'_strip'].clear()
+            feats[bname+'_end'].clear()
+            feats[bname+'_isADC'].clear()
+        feats[bname+'_size'] = hits.size()
+        feats[bname+'_id'].clear()
+        feats[bname+'_amplitude'].clear()
+        feats[bname+'_energy'].clear()
+        feats[bname+'_time'].clear()
+        feats[bname+'_x'].clear()
+        feats[bname+'_y'].clear()
+        feats[bname+'_z'].clear()
+        feats[bname+'_isNoise'].clear()
+
+        for hit in hits:
+            feats[bname+'_id'].push_back(hit.getID())
+            feats[bname+'_amplitude'].push_back(hit.getAmplitude())
+            feats[bname+'_energy'].push_back(hit.getEnergy())
+            feats[bname+'_x'].push_back(hit.getXPos())
+            feats[bname+'_y'].push_back(hit.getYPos())
+            feats[bname+'_z'].push_back(hit.getZPos())
+            feats[bname+'_time'].push_back(hit.getTime())
+            feats[bname+'_isNoise'].push_back(hit.isNoise())
+            if bname == 'HCalRecHits':
+                feats[bname+'_pe'].push_back(hit.getPE())
+                feats[bname+'_minpe'].push_back(hit.getMinPE())
+                feats[bname+'_section'].push_back(hit.getSection())
+                feats[bname+'_layer'].push_back(hit.getLayer())
+                feats[bname+'_strip'].push_back(hit.getStrip())
+                feats[bname+'_end'].push_back(hit.getEnd())
+                feats[bname+'_isADC'].push_back(hit.getIsADC())
+        
+    ## ECalVeto collection
+    feats['ECalVeto_nReadoutHits']              = feats['nReadoutHits']
+    feats['ECalVeto_summedDet']                 = feats['summedDet']
+    feats['ECalVeto_summedTightIso']            = feats['summedTightIso']
+    feats['ECalVeto_maxCellDep']                = feats['maxCellDep']
+    feats['ECalVeto_showerRMS']                 = feats['showerRMS']
+    feats['ECalVeto_xStd']                      = feats['xStd']
+    feats['ECalVeto_yStd']                      = feats['yStd']
+    feats['ECalVeto_avgLayerHit']               = feats['avgLayerHit']
+    feats['ECalVeto_stdLayerHit']               = feats['stdLayerHit']
+    feats['ECalVeto_deepestLayerHit']           = feats['deepestLayerHit']
+    feats['ECalVeto_ecalBackEnergy']            = feats['ecalBackEnergy']
+    feats['ECalVeto_passesVeto']                = self.ecalVeto.passesVeto()
+    feats['ECalVeto_nStraightTracks']           = self.ecalVeto.getNStraightTracks()
+    feats['ECalVeto_firstNearPhLayer']          = self.ecalVeto.getFirstNearPhLayer()
+    feats['ECalVeto_epAng']                     = self.ecalVeto.getEPAng()
+    feats['ECalVeto_epSep']                     = self.ecalVeto.getEPSep()
+    feats['ECalVeto_electronContainmentEnergy'] = self.ecalVeto.getElectronContainmentEnergy()
+    feats['ECalVeto_photonContainmentEnergy']   = self.ecalVeto.getPhotonContainmentEnergy()
+    feats['ECalVeto_outsideContainmentEnergy']  = self.ecalVeto.getOutsideContainmentEnergy()
+    feats['ECalVeto_outsideContainmentNHits']   = self.ecalVeto.getOutsideContainmentNHits()
+    feats['ECalVeto_outsideContainmentXStd']    = self.ecalVeto.getOutsideContainmentXStd()
+    feats['ECalVeto_outsideContainmentYStd']    = self.ecalVeto.getOutsideContainmentYStd()
+    feats['ECalVeto_discValue']                 = self.ecalVeto.getDisc()
+    feats['ECalVeto_recoilPx']                  = self.ecalVeto.getRecoilMomentum()[0]
+    feats['ECalVeto_recoilPy']                  = self.ecalVeto.getRecoilMomentum()[1]
+    feats['ECalVeto_recoilPz']                  = self.ecalVeto.getRecoilMomentum()[2]
+    feats['ECalVeto_recoilX']                   = self.ecalVeto.getRecoilX()
+    feats['ECalVeto_recoilY']                   = self.ecalVeto.getRecoilY()
+    
+    ## HCalVeto collection
+    feats['HCalVeto_passesVeto']     = self.hcalVeto.passesVeto()
+    feats['HCalVeto_maxPEHit_id']    = self.hcalVeto.getMaxPEHit().getID()
+    feats['HCalVeto_maxPEHit_pe']    = self.hcalVeto.getMaxPEHit().getPE()
+    feats['HCalVeto_maxPEHit_layer'] = self.hcalVeto.getMaxPEHit().getLayer()
+    feats['HCalVeto_maxPEHit_strip'] = self.hcalVeto.getMaxPEHit().getStrip()
     
     ###################################
     # Determine event type

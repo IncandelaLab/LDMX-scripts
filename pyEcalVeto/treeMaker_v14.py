@@ -309,7 +309,7 @@ def main():
         for tfMaker in proc.tfMakers:
             proc.tfMakers[tfMaker] = manager.TreeMaker(group_labels[procs.index(proc)]+\
                                         '_{}.root'.format(tfMaker),\
-                                        "EcalVeto",\
+                                        "EcalVeto_flatten",\
                                         branches_info,\
                                         outlist[procs.index(proc)]
                                         )

@@ -1,3 +1,9 @@
+'''
+treeMaker to:
+    - calculate SegMIP & Gabrielle BDT variables
+    - flatten LDMX_Event trees
+    - with v14 geometry
+'''
 import os
 import math
 import ROOT as r
@@ -80,7 +86,7 @@ for i in range(1, physTools.nSegments + 1):
         branches_info['oContYStd_x{}_s{}'.format(j,i)]      = {'rtype': float, 'default': 0.}
         branches_info['oContLayerStd_x{}_s{}'.format(j,i)]  = {'rtype': float, 'default': 0.}
 
-# Gabrielle
+# Gabrielle variables
 for j in range(1, physTools.nRegions + 1):
     # Electron RoC variables
     branches_info['eContEnergy_x{}'.format(j)]    = {'rtype': float, 'default': 0.}
@@ -91,6 +97,40 @@ for j in range(1, physTools.nRegions + 1):
     branches_info['oContNHits_x{}'.format(j)]     = {'rtype': int,   'default': 0 }
     branches_info['oContXStd_x{}'.format(j)]      = {'rtype': float, 'default': 0.}
     branches_info['oContYStd_x{}'.format(j)]      = {'rtype': float, 'default': 0.}
+
+# Flatten tree variables
+simParticleBranch = ['trackID', 'energy', 'pdgID', 'x', 'y', 'z', 'time', 'mass',
+                     'endX', 'endY', 'endZ', 'px', 'py', 'pz', 'endPX', 'endPY', 'endPZ',
+                     'daughters', 'parents', 'processType', 'vertexVolume', 'size']
+
+branches_flatten = {
+        # SimParticles
+        'SimParticles_trackID':         {'rtype': 'vector<int>',   'default': r.std.vector('int')([0]) },
+        # 'SimParticles_energy':          {'rtype': float, 'default': 0.},
+        # 'SimParticles_pdgID':           {'rtype': int,   'default': 0.},
+        # 'SimParticles_x':               {'rtype': float, 'default': 0.},
+        # 'SimParticles_y':               {'rtype': float, 'default': 0.},
+        # 'SimParticles_z':               {'rtype': float, 'default': 0.},
+        # 'SimParticles_time':            {'rtype': float, 'default': 0.},
+        # 'SimParticles_mass':            {'rtype': float, 'default': 0.},
+        # 'SimParticles_endX':            {'rtype': float, 'default': 0.},
+        # 'SimParticles_endY':            {'rtype': float, 'default': 0.},
+        # 'SimParticles_endZ':            {'rtype': float, 'default': 0.},
+        # 'SimParticles_px':              {'rtype': float, 'default': 0.},
+        # 'SimParticles_py':              {'rtype': float, 'default': 0.},
+        # 'SimParticles_pz':              {'rtype': float, 'default': 0.},
+        # 'SimParticles_endPX':           {'rtype': float, 'default': 0.},
+        # 'SimParticles_endPY':           {'rtype': float, 'default': 0.},
+        # 'SimParticles_endPZ':           {'rtype': float, 'default': 0.},
+        # 'SimParticles_daughters':       {'rtype': float, 'default': 0.},
+        # 'SimParticles_parents':         {'rtype': float, 'default': 0.},
+        # 'SimParticles_processType':     {'rtype': float, 'default': 0.},
+        # 'SimParticles_vertexVolume':    {'rtype': float, 'default': 0.},
+        # 'SimParticles_size':            {'rtype': float, 'default': 0.},
+}
+
+# merge two dictionaries
+branches_info.update(branches_flatten)
 
 def main():
 
@@ -125,6 +165,11 @@ def main():
         proc.targetSPHits = proc.addBranch('SimTrackerHit', 'TargetScoringPlaneHits_{}'.format(tag))
         proc.ecalSPHits   = proc.addBranch('SimTrackerHit', 'EcalScoringPlaneHits_{}'.format(tag))
         proc.ecalRecHits  = proc.addBranch('EcalHit', 'EcalRecHits_{}'.format(tag))
+        proc.simParticles = proc.addBranch('SimParticle', 'SimParticles_{}'.format(tag))
+        proc.ecalSimHits = proc.addBranch('SimCalorimeterHit', 'EcalSimHits_{}'.format(tag))
+        proc.targetSimHits = proc.addBranch('SimCalorimeterHit', 'TargetSimHits_{}'.format(tag))
+        proc.hcalRecHits = proc.addBranch('HcalHit', 'HcalRecHits_{}'.format(tag))
+        proc.hcalVeto = proc.addBranch('HcalVetoResult', 'HcalVeto_{}'.format(tag))
 
         # Tree/Files(s) to make
         print('\nRunning %s'%(proc.ID))
@@ -179,6 +224,12 @@ def event_process(self):
     feats['stdLayerHit']        = self.ecalVeto.getStdLayerHit()
     feats['deepestLayerHit']    = self.ecalVeto.getDeepestLayerHit() 
     feats['ecalBackEnergy']     = self.ecalVeto.getEcalBackEnergy()
+    
+    # Flatten tree variables
+    feats['SimParticles_trackID'].clear()
+    for (tid, sp) in self.simParticles:
+        # print("SimParticles trackID = ", tid)
+        feats['SimParticles_trackID'].push_back(tid)
     
     ###################################
     # Determine event type

@@ -3,7 +3,6 @@ import sys
 import ROOT as r
 import numpy as np # ?
 
-
 #TODO: Make options for no output or based on input
 #TODO: Make nolists independant for in and out
 
@@ -131,7 +130,13 @@ class TreeProcess:
         self.tree.SetBranchAddress(branch_name,r.AddressOf(branch))
 
         return branch
- 
+    
+    def task(self, j):
+        self.tree.GetEntry(j)
+        if j % self.pfreq == 0:
+            print('Processing Event: %s'%(j))
+        self.event_process(self)
+    
     def run(self, strEvent=0, maxEvents=-1, pfreq=1000):
    
         # Process events
@@ -192,11 +197,18 @@ class TreeMaker:
         # Add a new branch to write to
 
         self.branches_info[branch_name] = {'rtype': rtype, 'default': default_value}
-        self.branches[branch_name] = np.zeros(1, dtype=rtype)
-        if str(rtype) == "<type 'float'>" or str(rtype) == "<class 'float'>":
-            self.tree.Branch(branch_name, self.branches[branch_name], branch_name + "/D")
-        elif str(rtype) == "<type 'int'>" or str(rtype) == "<class 'int'>":
-            self.tree.Branch(branch_name, self.branches[branch_name], branch_name + "/I")
+        if str(rtype).find('vector') >= 0:
+            # vector variable
+            if str(rtype).find('int') >= 0:
+                self.branches[branch_name] = r.std.vector('int')([0])
+                self.tree.Branch(branch_name, self.branches[branch_name])
+        else:
+            # flat variable
+            self.branches[branch_name] = np.zeros(1, dtype=rtype)
+            if str(rtype) == "<type 'float'>" or str(rtype) == "<class 'float'>":
+                self.tree.Branch(branch_name, self.branches[branch_name], branch_name + "/D")
+            elif str(rtype) == "<type 'int'>" or str(rtype) == "<class 'int'>":
+                self.tree.Branch(branch_name, self.branches[branch_name], branch_name + "/I")
         # ^ probably use cases based on rtype to change the /D if needed?
 
     def resetFeats(self):
@@ -215,7 +227,14 @@ class TreeMaker:
         # Fill the tree with new feature values
 
         for feat in feats:
-            self.branches[feat][0] = feats[feat]
+            if isinstance(feats[feat], int) or isinstance(feats[feat], float):
+                self.branches[feat][0] = feats[feat]
+            else:
+                print("len = ", feats[feat].size())
+                self.branches[feat].clear()
+                for i in feats[feat]:
+                    self.branches[feat].push_back(i)
+                print("after fill len = ", self.branches[feat].size())
         self.tree.Fill()
 
     def wq(self):

@@ -262,14 +262,19 @@ def event_process(self):
     recoilPMag  = physTools.mag(  e_ecalP )                 if e_ecalHit != None else -1.0
     recoilTheta = physTools.angle(e_ecalP, units='degrees') if recoilPMag > 0    else -1.0
 
-    # Set electron RoC binnings
-    e_radii = physTools.radius68_thetalt10_plt500
-    if recoilTheta < 10 and recoilPMag >= 500: e_radii = physTools.radius68_thetalt10_pgt500
-    elif recoilTheta >= 10 and recoilTheta < 20: e_radii = physTools.radius68_theta10to20
-    elif recoilTheta >= 20: e_radii = physTools.radius68_thetagt20
+    # Set electron RoC binnings0
+    e_radii = physTools.radius68_thetalt10
+    if recoilTheta >= 10 and recoilTheta < 15:
+        e_radii = physTools.radius68_theta10to15
+    elif recoilTheta >= 15 and recoilTheta < 20:
+        e_radii = physTools.radius68_theta15to20
+    elif recoilTheta >= 20 and recoilTheta < 30:
+        e_radii = physTools.radius68_theta20to30
+    elif recoilTheta >= 30:
+        e_radii = physTools.radius68_theta30to60
 
     # Always use default binning for photon RoC
-    g_radii = physTools.radius68_thetalt10_plt500
+    g_radii = physTools.radius68_thetalt10
 
     # Big data
     trackingHitList = []
@@ -507,10 +512,12 @@ def event_process(self):
                         feats['oContEnergy_x{}_s{}'.format(j,i)])
 
     for j in range(1, physTools.nRegions + 1):
-        feats['oContXStd_x{}'.format(j)] =\
-                math.sqrt(feats['oContXStd_x{}'.format(j)]/\
-                feats['oContEnergy_x{}'.format(j)])
-        feats['oContYStd_x{}'.format(j)] =\
+        if feats['oContXStd_x{}'.format(j)] > 0:
+            feats['oContXStd_x{}'.format(j)] =\
+                    math.sqrt(feats['oContXStd_x{}'.format(j)]/\
+                    feats['oContEnergy_x{}'.format(j)])
+        if feats['oContEnergy_x{}'.format(j)] > 0:
+            feats['oContYStd_x{}'.format(j)] =\
                 math.sqrt(feats['oContYStd_x{}'.format(j)]/\
                 feats['oContEnergy_x{}'.format(j)])
 

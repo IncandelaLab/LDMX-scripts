@@ -5,12 +5,14 @@ treeMaker to:
     - with v14 geometry
 '''
 import os
+import sys
 import math
 import ROOT as r
 import numpy as np
+sys.path.insert(1, '/home/danyi/ldmx/tracking/LDMX-scripts/pyEcalVeto/mods')
 from mods import ROOTmanager as manager
 from mods import physTools, mipTracking
-cellMap = np.loadtxt('mods/cellmodule.txt')
+cellMap = np.loadtxt('/home/danyi/ldmx/tracking/LDMX-scripts/pyEcalVeto/mods/cellmodule.txt')
 r.gSystem.Load('libFramework.so')
 
 # TreeModel to build here
@@ -279,7 +281,8 @@ def main():
         os.chdir(proc.tmp_dir)
 
         # tag
-        tag = "sim"
+        tag = "sim"  # PN bkg
+        # tag = "signal"  # signal
         
         # Branches needed
         proc.ecalVeto     = proc.addBranch('EcalVetoResult', 'EcalVeto_{}'.format(tag))
@@ -308,11 +311,13 @@ def main():
 
         for tfMaker in proc.tfMakers:
             proc.tfMakers[tfMaker] = manager.TreeMaker(group_labels[procs.index(proc)]+\
-                                        '_{}.root'.format(tfMaker),\
+                                        '.root',\
                                         "EcalVeto_flatten",\
                                         branches_info,\
                                         outlist[procs.index(proc)]
                                         )
+                                        # Don't add this prefix
+                                        # '_{}.root'.format(tfMaker),\
 
         # Gets executed at the end of run()
         proc.extrafs = [ proc.tfMakers[tfMaker].wq for tfMaker in proc.tfMakers ]
@@ -932,6 +937,10 @@ def event_process(self):
 
 
     # Find MIP tracks
+    # hit_z = []
+    # for hit in trackingHitList:
+    #     hit_z.append((hit.getXPos(), hit.getYPos(), hit.getZPos()))
+    # print("trackingHitList = ", hit_z)
     feats['straight4'], trackingHitList = mipTracking.findStraightTracks(
                                 trackingHitList, e_traj_ends, g_traj_ends,
                                 mst = 4, returnHitList = True)

@@ -491,27 +491,27 @@ def electronTargetSPHit(targetSPHits):
     targetSPHit = None
     pmax = 0
     
-    # 1. Interact @ Target
-    pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_target_down_z)
-    if pmax > E_threshold:
-        # 2. Interact @ Trigger scin l1
-        pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l1_z)
-        if pmax > E_threshold:
-            # 3. Interact @ Trigger scin l2
-            pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l2_z)
+    # # 1. Interact @ Target
+    # pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_target_down_z)
+    # if pmax > E_threshold:
+    #     # 2. Interact @ Trigger scin l1
+    #     pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l1_z)
+    #     if pmax > E_threshold:
+    #         # 3. Interact @ Trigger scin l2
+    #         pmax, targetSPHit = maxPElectronSPHit(targetSPHits, sp_trigger_pad_down_l2_z)
 
     # Assume e- interacting @ Target   
-    # for hit in targetSPHits:
+    for hit in targetSPHits:
 
-    #     if abs(hit.getPosition()[2] - sp_target_down_z) > 0.5*sp_thickness or\
-    #             hit.getMomentum()[2] <= 0 or\
-    #             hit.getTrackID() != 1 or\
-    #             hit.getPdgID() != 11:
-    #         continue
+        if abs(hit.getPosition()[2] - sp_target_down_z) > 0.5*sp_thickness or\
+                hit.getMomentum()[2] <= 0 or\
+                hit.getPdgID() != 11:
+                # hit.getTrackID() != 1 or\  # doesn't work for v14 sample
+            continue
 
-    #     if mag(hit.getMomentum()) > pmax:
-    #         targetSPHit = hit
-    #         pmax = mag(targetSPHit.getMomentum())
+        if mag(hit.getMomentum()) > pmax:
+            targetSPHit = hit
+            pmax = mag(targetSPHit.getMomentum())
 
     return targetSPHit
 

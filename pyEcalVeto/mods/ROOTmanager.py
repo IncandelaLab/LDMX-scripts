@@ -87,7 +87,7 @@ class TreeProcess:
 
             # Create and mv into tmp directory that can be used to copy files into
             if self.batch:
-                self.tmp_dir='%s/%s' % (scratch_dir, os.environ['LSB_JOBID'])
+                self.tmp_dir='%s/%s' % (scratch_dir, os.environ['SLURM_JOBID']) # LSB_JOBID
             else:
                 self.tmp_dir = '%s/%s' % (scratch_dir, 'tmp_'+str(num))
             if not os.path.exists(self.tmp_dir):
@@ -261,6 +261,10 @@ class TreeMaker:
                 print( 'Creating %s' % (self.outdir) )
                 os.makedirs(self.outdir)
 
+            print( 'Currently in directory %s' % (os.getcwd()))
+            print( 'Current directory has files:')
+            os.system("ls .")
+            
             print( 'cp %s %s' % (self.outfile,self.outdir) )
             os.system('cp %s %s' % (self.outfile,self.outdir))
 

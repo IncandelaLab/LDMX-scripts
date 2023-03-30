@@ -937,10 +937,6 @@ def event_process(self):
 
 
     # Find MIP tracks
-    # hit_z = []
-    # for hit in trackingHitList:
-    #     hit_z.append((hit.getXPos(), hit.getYPos(), hit.getZPos()))
-    # print("trackingHitList = ", hit_z)
     feats['straight4'], trackingHitList = mipTracking.findStraightTracks(
                                 trackingHitList, e_traj_ends, g_traj_ends,
                                 mst = 4, returnHitList = True)

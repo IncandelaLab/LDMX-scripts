@@ -39,10 +39,13 @@ def nearPhotonInfo(trackingHitList, g_trajectory, returnLayer=True, returnNumber
 # Based on previous python; All of v9 analysis done with this
 def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
                         mst = 2, returnN=True, returnHitList = False, returnTracks = False):
-
+    
+    # sort hitlist by decreasing distance from the ECal face
+    hitlist.sort(key=lambda h: h.getZPos(), reverse=True)
+    
     strtracklist = []   # Initialize output
     hitscopy = hitlist  # Need this because hitlist gets eddited
-
+        
     for hit in hitlist:  #Go through all hits, starting at the back of the ecal
         track = [hit]
         currenthit = hit  #Stores "trailing" hit in track being constructed
@@ -52,7 +55,10 @@ def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
                 possibleNeigh = True  #Optimization
                 continue
             if not possibleNeigh:  continue
-            if currenthit.getZPos() - h.getZPos() > 25:  #Optimization
+            # if currenthit.getZPos() - h.getZPos() > 36:  #Optimization
+            # Optimization, ECal geometry independent
+            if physTools.layerofHitZ(currenthit.getZPos())\
+                                        - physTools.layerofHitZ(h.getZPos()) > 3:  
                 possibleNeigh = False
                 continue
             neighFound = (
@@ -65,7 +71,6 @@ def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
             if neighFound:
                 track.append(h)
                 currenthit = h
-
         # Too short
         if len(track) < mst: continue
 
@@ -92,34 +97,29 @@ def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
         # Append track to track list
         strtracklist.append(track)
 
-    # Combine tracks that should be consecutive
-    # NOTE: Should maybe do this eariler in case 2 len=2 tracks add up to a passing 4
-    strtracklist.sort(key=lambda h: hit.getZPos(), reverse=True) # Should be done check this
-
-    currentInd = 0
-    while currentInd < len(strtracklist):
-
-        trk = strtracklist[currentInd]
-        tmpInd = currentInd+1
-        mergeFound = False
-
-        # Search for track compatible with current one
-        while tmpInd < len(strtracklist) and not mergeFound:
-            trk_ = strtracklist[tmpInd]
-            trk_e = np.array( (track[-1].getXPos(), track[-1].getYPos(),
-                                                    track[-1].getZPos() ) )
-            trk_s = np.array( (track[ 0].getXPos(), track[ 0].getYPos(),
-                                                    track[ 0].getZPos() ) )
-            # If head+tail are w/in one cell of each other
-            if physTools.dist( trk_e, trk_s ) < physTools.cellWidth:
-                for hit in trk_:
-                    trk.append(hit)
-                strtracklist.remove(trk_)
-                mergeFound = True
-            tmpInd += 1
-        if not mergeFound:
-            currentInd += 1
-
+    # Merge nearby straight tracks
+    # Criteria: consider tail of track. 
+    #           Merge if head of next track is 1/2 layers behind, within 1 cell of xy position.
+    for base_track in strtracklist:
+        tail_hit = base_track[-1]
+        for checking_track in strtracklist:
+            head_hit = checking_track[0]
+            # if 1-2 layers behind, and xy within one cell...
+            if abs(physTools.layerofHitZ(tail_hit.getZPos()) - \
+                            physTools.layerofHitZ(head_hit.getZPos())) < 3 and \
+                physTools.dist( [tail_hit.getXPos(), tail_hit.getYPos()], \
+                                [head_hit.getXPos(), head_hit.getYPos()] ) < physTools.cellWidth:
+                # ...then append the second track to the first one and delete it
+                for hit in checking_track:
+                    base_track.append(hit)
+                strtracklist.remove(checking_track)
+            
+    # if len(strtracklist) != 0:
+    #     print("strtracklist afetr merging: ",\
+    #         np.array([np.array([(hit.getXPos(), hit.getYPos(), hit.getZPos()) for hit in track])\
+    #                                                                           for track in strtracklist]))
+    #     print("N = ", len(strtracklist))
+    
     # Prepare and return desired output
     out = []
     if returnN: out.append( len(strtracklist) )

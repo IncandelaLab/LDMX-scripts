@@ -44,13 +44,12 @@ def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
     hitlist.sort(key=lambda h: h.getZPos(), reverse=True)
     
     strtracklist = []   # Initialize output
-    hitscopy = hitlist  # Need this because hitlist gets eddited
         
     for hit in hitlist:  #Go through all hits, starting at the back of the ecal
         track = [hit]
         currenthit = hit  #Stores "trailing" hit in track being constructed
         possibleNeigh = False
-        for h in hitscopy:
+        for h in hitlist:
             if h.getZPos() == currenthit.getZPos():
                 possibleNeigh = True  #Optimization
                 continue

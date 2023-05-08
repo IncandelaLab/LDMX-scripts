@@ -92,13 +92,23 @@ for i in range(1, physTools.nSegments + 1):
 for j in range(1, physTools.nRegions + 1):
     # Electron RoC variables
     branches_info['eContEnergy_x{}'.format(j)]    = {'rtype': float, 'default': 0.}
+    # branches_info['eContEnergy_x{}_0p5'.format(j)]    = {'rtype': float, 'default': 0.}
     # Photon RoC variables 
     branches_info['gContEnergy_x{}'.format(j)]    = {'rtype': float, 'default': 0.}
+    # branches_info['gContEnergy_x{}_0p5'.format(j)]    = {'rtype': float, 'default': 0.}
     # Outside RoC variables
     branches_info['oContEnergy_x{}'.format(j)]    = {'rtype': float, 'default': 0.}
     branches_info['oContNHits_x{}'.format(j)]     = {'rtype': int,   'default': 0 }
+    branches_info['oContXMean_x{}'.format(j)]     = {'rtype': float, 'default': 0.}
+    branches_info['oContYMean_x{}'.format(j)]     = {'rtype': float, 'default': 0.}
     branches_info['oContXStd_x{}'.format(j)]      = {'rtype': float, 'default': 0.}
     branches_info['oContYStd_x{}'.format(j)]      = {'rtype': float, 'default': 0.}
+    # branches_info['oContEnergy_x{}_0p5'.format(j)]    = {'rtype': float, 'default': 0.}
+    # branches_info['oContNHits_x{}_0p5'.format(j)]     = {'rtype': int,   'default': 0 }
+    # branches_info['oContXMean_x{}_0p5'.format(j)]     = {'rtype': float, 'default': 0.}
+    # branches_info['oContYMean_x{}_0p5'.format(j)]     = {'rtype': float, 'default': 0.}
+    # branches_info['oContXStd_x{}_0p5'.format(j)]      = {'rtype': float, 'default': 0.}
+    # branches_info['oContYStd_x{}_0p5'.format(j)]      = {'rtype': float, 'default': 0.}
 
 # Flatten tree variables
 branches_flatten = {
@@ -738,6 +748,24 @@ def event_process(self):
                             feats['oContLayerMean_x{}_s{}'.format(j,i)] +=\
                                                                 layer*hit.getEnergy()
 
+                        # double granularity
+                        # if ((j - 1)*e_radii[layer]*0.5 <= distance_e_traj)\
+                        #   and (distance_e_traj < j*e_radii[layer]*0.5):
+                        #     feats['eContEnergy_x{}_0p5'.format(j)] += hit.getEnergy()
+                              
+                        # if ((j - 1)*g_radii[layer]*0.5 <= distance_g_traj)\
+                        #   and (distance_g_traj < j*g_radii[layer]*0.5):
+                        #     feats['gContEnergy_x{}_0p5'.format(j)] += hit.getEnergy()
+                        
+                        # if (distance_e_traj > j*e_radii[layer]*0.5)\
+                        #   and (distance_g_traj > j*g_radii[layer]*0.5):
+                        #     feats['oContEnergy_x{}_0p5'.format(j)] += hit.getEnergy()
+                        #     feats['oContNHits_x{}_0p5'.format(j)] += 1
+                        #     feats['oContXMean_x{}_0p5'.format(j)] +=\
+                        #                                         xy_pair[0]*hit.getEnergy()
+                        #     feats['oContYMean_x{}_0p5'.format(j)] +=\
+                        #                                         xy_pair[1]*hit.getEnergy()
+                        
             # Build MIP tracking hit list; (outside electron region or electron missing)
             if distance_e_traj >= e_radii[layer] or distance_e_traj == -1.0:
                 trackingHitList.append(hit) 
@@ -749,6 +777,8 @@ def event_process(self):
             feats['gContEnergy_x{}'.format(j)] += feats['gContEnergy_x{}_s{}'.format(j,i)]
             feats['oContEnergy_x{}'.format(j)] += feats['oContEnergy_x{}_s{}'.format(j,i)]
             feats['oContNHits_x{}'.format(j)] += feats['oContNHits_x{}_s{}'.format(j,i)]
+            feats['oContXMean_x{}'.format(j)] += feats['oContXMean_x{}_s{}'.format(j,i)]
+            feats['oContYMean_x{}'.format(j)] += feats['oContYMean_x{}_s{}'.format(j,i)]
 
     # If possible, quotient out the total energy from the means
     for i in range(1, physTools.nSegments + 1):
@@ -784,6 +814,14 @@ def event_process(self):
                 feats['oContLayerMean_x{}_s{}'.format(j,i)] /=\
                                                     feats['oContEnergy_x{}_s{}'.format(j,i)]
 
+    for j in range(1, physTools.nRegions + 1):
+        if feats['oContEnergy_x{}'.format(j)] > 0:
+            feats['oContXMean_x{}'.format(j)] /= feats['oContEnergy_x{}'.format(j)]
+            feats['oContYMean_x{}'.format(j)] /= feats['oContEnergy_x{}'.format(j)]
+        # if feats['oContEnergy_x{}_0p5'.format(j)] > 0:
+        #     feats['oContXMean_x{}_0p5'.format(j)] /= feats['oContEnergy_x{}_0p5'.format(j)]
+        #     feats['oContYMean_x{}_0p5'.format(j)] /= feats['oContEnergy_x{}_0p5'.format(j)]
+    
     # Loop over hits again to calculate the standard deviations
     for hit in self.ecalRecHits:
 
@@ -845,12 +883,25 @@ def event_process(self):
                                 feats['oContYMean_x{}_s{}'.format(j,i)])**2)*hit.getEnergy()
                         feats['oContLayerStd_x{}_s{}'.format(j,i)] += ((layer -\
                             feats['oContLayerMean_x{}_s{}'.format(j,i)])**2)*hit.getEnergy()
+                        # Gabrielle
+                        feats['oContXStd_x{}'.format(j)] += ((xy_pair[0] -\
+                                feats['oContXMean_x{}'.format(j)])**2)*hit.getEnergy()
+                        feats['oContYStd_x{}'.format(j)] += ((xy_pair[1] -\
+                                feats['oContYMean_x{}'.format(j)])**2)*hit.getEnergy()
+                    
+                    # double granularity
+                    # if (distance_e_traj > j*e_radii[layer]*0.5)\
+                    #   and (distance_g_traj > j*g_radii[layer]*0.5):
+                    #     feats['oContXStd_x{}_0p5'.format(j)] += ((xy_pair[0] -\
+                    #             feats['oContXMean_x{}_0p5'.format(j)])**2)*hit.getEnergy()
+                    #     feats['oContYStd_x{}_0p5'.format(j)] += ((xy_pair[1] -\
+                    #             feats['oContYMean_x{}_0p5'.format(j)])**2)*hit.getEnergy()
 
     # Sum over segments to get total oContXStd, oContYStd per region
-    for j in range(1, physTools.nRegions + 1):
-        for i in range(1, physTools.nSegments + 1):
-            feats['oContXStd_x{}'.format(j)] += feats['oContXStd_x{}_s{}'.format(j,i)]
-            feats['oContYStd_x{}'.format(j)] += feats['oContYStd_x{}_s{}'.format(j,i)]
+    # for j in range(1, physTools.nRegions + 1):
+    #     for i in range(1, physTools.nSegments + 1):
+    #         feats['oContXStd_x{}'.format(j)] += feats['oContXStd_x{}_s{}'.format(j,i)]
+    #         feats['oContYStd_x{}'.format(j)] += feats['oContYStd_x{}_s{}'.format(j,i)]
 
     # Quotient out the total energies from the standard deviations if possible and take root
     for i in range(1, physTools.nSegments + 1):
@@ -899,14 +950,19 @@ def event_process(self):
                         feats['oContEnergy_x{}_s{}'.format(j,i)])
 
     for j in range(1, physTools.nRegions + 1):
-        if feats['oContXStd_x{}'.format(j)] > 0:
+        if feats['oContEnergy_x{}'.format(j)] > 0:
             feats['oContXStd_x{}'.format(j)] =\
                     math.sqrt(feats['oContXStd_x{}'.format(j)]/\
                     feats['oContEnergy_x{}'.format(j)])
-        if feats['oContEnergy_x{}'.format(j)] > 0:
             feats['oContYStd_x{}'.format(j)] =\
-                math.sqrt(feats['oContYStd_x{}'.format(j)]/\
-                feats['oContEnergy_x{}'.format(j)])
+                    math.sqrt(feats['oContYStd_x{}'.format(j)]/\
+                    feats['oContEnergy_x{}'.format(j)])
+            # feats['oContXStd_x{}_0p5'.format(j)] =\
+            #         math.sqrt(feats['oContXStd_x{}_0p5'.format(j)]/\
+            #         feats['oContEnergy_x{}_0p5'.format(j)])
+            # feats['oContYStd_x{}_0p5'.format(j)] =\
+            #         math.sqrt(feats['oContYStd_x{}_0p5'.format(j)]/\
+            #         feats['oContEnergy_x{}_0p5'.format(j)])
 
     # Find the first layer of the ECal where a hit near the projected photon trajectory
     # AND the total number of hits around the photon trajectory

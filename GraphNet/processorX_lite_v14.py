@@ -57,7 +57,7 @@ data_to_save = {
     }
 }
 
-def blname(branch, leaf, sig=True):
+def blname(branch, leaf, sig):
     if sig:
         if branch.startswith('EcalVeto') or branch.startswith('HcalVeto'):
             return '{}/{}'.format(f'{branch}_signal', leaf)
@@ -92,6 +92,7 @@ def processFile(input_vars):
     mass = input_vars[1]
     filenum = input_vars[2]
 
+    sig = True
     if not mass:
         sig = False
 
@@ -115,26 +116,26 @@ def processFile(input_vars):
             return 0, 0, 0 ,0, 0
     with uproot.open(filename)['LDMX_Events'] as t:
         raw_data = t.arrays(branchList)
-        nTotalEvents = len(raw_data[blname('EcalRecHits', 'xpos_')])
+        nTotalEvents = len(raw_data[blname('EcalRecHits', 'xpos_', sig)])
 
         # preselection #
-        el = (raw_data[blname('EcalVeto', 'nReadoutHits_')] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto', 'summedTightIso_')] < MAX_ISO_ENERGY)
+        el = (raw_data[blname('EcalVeto', 'nReadoutHits_', sig)] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto', 'summedTightIso_', sig)] < MAX_ISO_ENERGY)
 
         preselected_data = {}
         for branch in branchList:
             preselected_data[branch] = raw_data[branch][el]
-        nEvents = len(preselected_data[blname('EcalVeto', 'summedTightIso_')])
+        nEvents = len(preselected_data[blname('EcalVeto', 'summedTightIso_', sig)])
 
         # simple hcal veto #
-        hv1 = preselected_data[blname('HcalVeto', 'passesVeto_')] == 1
+        hv1 = preselected_data[blname('HcalVeto', 'passesVeto_', sig)] == 1
 
         selected_data = {}
         for branch in branchList:
             selected_data[branch] = preselected_data[branch][hv1]
-        nPassesVeto = len(selected_data[blname('HcalVeto', 'passesVeto_')])
+        nPassesVeto = len(selected_data[blname('HcalVeto', 'passesVeto_', sig)])
 
         # hcal hits cut (boosted preselection) #
-        HE_data = preselected_data[blname('HcalRecHits', 'energy_')]
+        HE_data = preselected_data[blname('HcalRecHits', 'energy_', sig)]
         nHRecHits = np.zeros(nEvents)
         for i in range(nEvents):
             nHRecHits[i] = sum(HE_data[i] > 0)
@@ -153,12 +154,12 @@ def processFile(input_vars):
         # crude modified hcal veto #
 
         # Find Ecal SP recoil electron (with maximum momentum)
-        recoilZ = preselected_data[blname('EcalScoringPlaneHits','z_')]
-        px = preselected_data[blname('EcalScoringPlaneHits','px_')]
-        py = preselected_data[blname('EcalScoringPlaneHits','py_')]
-        pz = preselected_data[blname('EcalScoringPlaneHits','pz_')]
-        pdgID = preselected_data[blname('EcalScoringPlaneHits','pdgID_')]
-        trackID = preselected_data[blname('EcalScoringPlaneHits','trackID_')]
+        recoilZ = preselected_data[blname('EcalScoringPlaneHits','z_', sig)]
+        px = preselected_data[blname('EcalScoringPlaneHits','px_', sig)]
+        py = preselected_data[blname('EcalScoringPlaneHits','py_', sig)]
+        pz = preselected_data[blname('EcalScoringPlaneHits','pz_', sig)]
+        pdgID = preselected_data[blname('EcalScoringPlaneHits','pdgID_', sig)]
+        trackID = preselected_data[blname('EcalScoringPlaneHits','trackID_', sig)]
         
         e_cut = []
         for i in range(len(px)):
@@ -176,8 +177,8 @@ def processFile(input_vars):
             if maxP > 0:
                 e_cut[i][e_index] = True
 
-        recoilX = pad_array(preselected_data[blname('EcalScoringPlaneHits','x_')][e_cut])
-        recoilY = pad_array(preselected_data[blname('EcalScoringPlaneHits','y_')][e_cut])
+        recoilX = pad_array(preselected_data[blname('EcalScoringPlaneHits','x_', sig)][e_cut])
+        recoilY = pad_array(preselected_data[blname('EcalScoringPlaneHits','y_', sig)][e_cut])
         recoilPx = pad_array(px[e_cut])
         recoilPy = pad_array(py[e_cut])
         recoilPz = pad_array(pz[e_cut])
@@ -220,8 +221,8 @@ def processFile(input_vars):
             sectionOff[i] = idx + 1 if counts_col[idx] != 0 else -1
 
         # Omit the side hcal given by sectionOff when calculating maxPE...then apply maxPE < 5 hcal veto 
-        PE = preselected_data[blname('HcalRecHits', 'pe_')]
-        hcal_id = preselected_data[blname('HcalRecHits', 'id_')]
+        PE = preselected_data[blname('HcalRecHits', 'pe_', sig)]
+        hcal_id = preselected_data[blname('HcalRecHits', 'id_', sig)]
 
         modmaxPE = np.zeros(len(PE))
         for i in range(len(PE)):
@@ -236,7 +237,7 @@ def processFile(input_vars):
         selected_data_2 = {}
         for branch in branchList:
             selected_data_2[branch] = preselected_data[branch][hv2]
-        nPassesModVeto1 = len(selected_data_2[blname('HcalVeto', 'passesVeto_')])
+        nPassesModVeto1 = len(selected_data_2[blname('HcalVeto', 'passesVeto_', sig)])
    
 
     return (nTotalEvents, nEvents, nPassesVeto, nEvents2, nPassesModVeto1)

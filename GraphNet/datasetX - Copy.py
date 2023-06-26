@@ -70,13 +70,11 @@ class XCalHitsDataset(Dataset):
         self._energy_branch = 'energy_rec_'  # load from 'EcalRecHits_v12.energy_'
         self._h_pos_branch = '{}pos_hrec_'
         self._h_energy_branch = 'energy_hrec_'
-        self._h_id_branch = 'id_hrec'
         if detector_version == 'v12':
             self._branches = [self._id_branch, self._energy_branch]
         else:
             self._branches = [self._energy_branch] + [self._pos_branch.format(v) for v in ['x', 'y', 'z']]  \
-                           + [self._h_energy_branch] + [self._h_pos_branch.format(v) for v in ['x', 'y', 'z']] \
-                           + [self._h_id_branch]
+                           + [self._h_energy_branch] + [self._h_pos_branch.format(v) for v in ['x', 'y', 'z']]
 
         self.obs_branches = obs_branches
         # NOTE:  Need to explicitly keep track of and save all obs_dict data!  Fortunately, order doesn't matter.
@@ -146,8 +144,7 @@ class XCalHitsDataset(Dataset):
     def num_features(self):
         # Hard-coded; not worried about generalizing atm
         #return 5
-        #return 4 # removed layer id
-        return 6 # restored layer id, added strip id
+        return 4
 
     def __len__(self):
         return len(self.event_list)
@@ -186,7 +183,7 @@ class XCalHitsDataset(Dataset):
         # NOTE:  Always 3-dimensional!  [[a, b...]] for 1-region PN
         coordinates = np.stack((var_data['x_'], var_data['y_'], var_data['z_']), axis=1)
         features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
-                                var_data['log_energy_']), var_data['layer_id_'], var_data['strip_id_']axis=1,)                   
+                                var_data['log_energy_']), axis=1)                   # removed var_dict['layer_id_']
         return coordinates, features, label
 
 
@@ -290,9 +287,6 @@ class XCalHitsDataset(Dataset):
             h_energy_leaf = self.ttree.GetLeaf(self._h_energy_branch)
             h_energy = np.array([h_energy_leaf.GetValue(i) for i in range(h_energy_leaf.GetLen())], dtype='float32')
             layer_id = self._getlayer(z)
-            hid_leaf = self.ttree.GetLeaf(self._h_id_branch)
-            hid = np.array([hid_leaf.GetValue(i) for i in range(hid_leaf.GetLen())], dtype='float32')
-            (hcal_section, hcal_layer, hcal_strip) = self._parse_hid(hid)
 
 
         # Now, work with table['etraj_ref'] and table['ptraj_ref'].
@@ -367,8 +361,7 @@ class XCalHitsDataset(Dataset):
                     x_[r][j] = x[j] - etraj_point[0]  # Store relative to xy distance from trajectory
                     y_[r][j] = y[j] - etraj_point[1]
                     z_[r][j] = z[j]  # - self._layerZs[0]  # Used to be defined relative to the ecal face; changed to absolute bc of Huilin's old results
-                    layer_id_[r][j] = layer_id[j]
-                    strip_id[r][j] = 0
+                    #layer_id_[r][j] = layer_id[j]
                     if energy[j] > 0:
                         log_energy_[r][j] = np.log(energy[j]) 
                     elif energy[j] == 0:
@@ -378,34 +371,15 @@ class XCalHitsDataset(Dataset):
                 
         for k in range(len(h_energy)):
             
-            hcal_regions = []
-            if self.nRegions == 4:
-                hcal_regions.append(3) # ANY HCAL
-            elif self.nRegion == 5:
-                if hcal_section == 0: # BACK HCAL
-                    hcal_regions.append(3)
-                else: # ANY SIDE HCAL
-                    hcal_regions.append(4)
-            elif self.nRegions == 8:
-                if hcal_section == 0: # BACK HCAL
-                    hcal_regions.append(3)
-                elif hcal_section == 1: # LEFT SIDE-HCAL
-                    hcal_regions.append(4)
-                elif hcal_section == 2: # BOTTOM SIDE-HCAL
-                    hcal_regions.append(5) 
-                elif hcal_section == 3: # RIGHT SIDE-HCAL
-                    hcal_regions.append(6)
-                elif hcal_section == 4: # LEFT SIDE-HCAL
-                    hcal_regions.append(7)
-
+            hcal_region = []
+            hcal_region.append(self.nRegions - 1)
 
             for r in range(self.nRegions):
-                if r in hcal_regions:
+                if r in hcal_region:
                     x_[r][k] = hx[k]
                     y_[r][k] = hy[k]
                     z_[r][k] = hz[k]  
-                    layer_id_[r][k] = hcal_layer[k]
-                    strip_id_[r][k] = hcal_strip[k]
+                    #layer_id_[r][k] = 0
                     if h_energy[k] > 0:
                         log_energy_[r][k] = np.log(h_energy[k])
                     elif h_energy[k] == 0:
@@ -415,7 +389,7 @@ class XCalHitsDataset(Dataset):
 
         # Create and fill var_dict w/ feature information:
         var_dict = {'x_':x_, 'y_':y_, 'z_':z_,        
-                    'log_energy_':log_energy_, 'layer_id_': layer_id_, 'stip_id_': strip_id_
+                    'log_energy_':log_energy_ # removed 'layer_id_': layer_id
                    }
 
         # Lastly, create and fill obs_dict w/ branches specified in train.py:
@@ -471,20 +445,6 @@ class XCalHitsDataset(Dataset):
         x, y = zip(*map(self._cellMap.__getitem__, mcid))
         z = list(map(self._layerZs.__getitem__, layer))
         return (x, y, z), layer
-
-    def _parse_hid(self, hid):
-         SECTION_MASK = 0x7  # space for up to 7 sections
-         SECTION_SHIFT = 18
-         LAYER_MASK = 0xFF  # space for up to 255 layers
-         LAYER_SHIFT = 10
-         STRIP_MASK = 0xFF  # space for 255 strips/layer
-         STRIP_SHIFT = 0 
-
-         hcal_section = (hid >> SECTION_SHIFT) & SECTION_MASK
-         hcal_layer = (hid >> LAYER_SHIFT) & LAYER_MASK
-         hcal_strip = (hid >> STRIP_SHIFT) & STRIP_MASK
-
-         return (hcal_section, hcal_layer, hcal_strip)
 
 
 class _SimpleCustomBatch:

@@ -180,9 +180,9 @@ def processFile(input_vars):
     mass = input_vars[1]
     filenum = input_vars[2]
 
-    sig = True:
+    sig = True
     if not mass:
-        sig = False:
+        sig = False
 
     print("Processing file {}".format(filename))
     if not mass:

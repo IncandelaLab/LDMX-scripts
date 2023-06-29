@@ -186,7 +186,7 @@ class XCalHitsDataset(Dataset):
         # NOTE:  Always 3-dimensional!  [[a, b...]] for 1-region PN
         coordinates = np.stack((var_data['x_'], var_data['y_'], var_data['z_']), axis=1)
         features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
-                                var_data['log_energy_']), var_data['layer_id_'], var_data['strip_id_']axis=1,)                   
+                                var_data['log_energy_']), var_data['layer_id_'], var_data['strip_id_'], axis=1)                   
         return coordinates, features, label
 
 

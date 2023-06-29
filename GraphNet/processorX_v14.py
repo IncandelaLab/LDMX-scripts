@@ -225,6 +225,14 @@ def processFile(input_vars):
         if not t.keys():
             print("FOUND ZOMBIE: {} SKIPPING...".format(filename))
             return 0, 0
+        key_miss = False
+        for branch in branchList:
+            if not re.split('/', branch)[0] in t.keys():
+                key_miss = True
+                break
+        if key_miss:
+            print(f"MISSING KEYS IN: {filename}  SKIPPING...", flush=True)
+            return 0,0
         # (This part is just for printing the # of pre-preselection events:)
         #tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
         #nTotalEvents = len(tmp)

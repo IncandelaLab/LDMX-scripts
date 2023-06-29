@@ -6,15 +6,24 @@ import concurrent.futures
 executor = concurrent.futures.ThreadPoolExecutor(20)
 
 # file dictionary {mass: filepath}
+'''
 file_templates = {
-    0.001: '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*0.001*.root',
-    0.01:  '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*0.01*.root',
-    0.1:   '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*0.1*.root',
-    1.0:   '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*1GeV*.root',
+    0.001: '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*0.001GeV*.root',
+    0.01:  '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*0.01GeV*.root',
+    0.1:   '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*0.1GeV*.root',
+    1.0:   '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*Ap1GeV*.root',
+    0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
+}
+'''
+file_templates = {
+    0.001: '/home/aminali/production/v14_prod/Ap0.001GeV_1e_v3.2.2_v14_tskim/*.root',
+    0.01:  '/home/aminali/production/v14_prod/Ap0.01GeV_1e_v3.2.2_v14_tskim/*.root',
+    0.1:   '/home/aminali/production/v14_prod/Ap0.1GeV_1e_v3.2.2_v14_tskim/*.root',
+    1.0:   '/home/aminali/production/v14_prod/Ap1GeV_1e_v3.2.3_v14_tskim/*.root',
     0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
 }
 
-# dictionaires for total events, selected events, and preselection efficiency
+# dictionaries for total events, selected events, and preselection efficiency
 # for each mass point (4 sig + PN bkg)
 nTotal = {}
 nPass = {}
@@ -51,6 +60,14 @@ for mass in file_templates.keys():
             if not t.keys(): # if no keys in 'LDMX_Events'
                 print(f"FOUND ZOMBIE: {filename}  SKIPPING...", flush=True)
                 continue
+            key_miss = False
+            for branch in branchList:
+                if not re.split('/', branch)[0] in t.keys():
+                    key_miss = True
+                    break
+            if key_miss:
+                print(f"MISSING KEYS IN: {filename}  SKIPPING...", flush=True)
+                continue
             data = t.arrays(branchList, interpretation_executor=executor)
             
             nReadoutHits = data[branchList[0]] # array with number of ecal hits for each event
@@ -81,4 +98,4 @@ print(f"Maximum isolated energy (summedTightIso): {MAX_ISO_ENERGY}")
 
 # output ...
 # v14 preselection efficiencies for MAX_NUM_ECAL_HITS = 50 and MAX_ISO_ENERGY = 700
-# effs = {0.001: 0.9815366636237547, 0.01: 0.990946862016182, 0.1: 0.9926712171901053, 1.0: 0.9888390477198093, 0: 0.06929824265618538}
+# effs = {0.001: 0.9815241742343622, 0.01: 0.99102142309365, 0.1: 0.9926784519870396, 1.0: 0.9949900511654349, 0: 0.06929824265618538}

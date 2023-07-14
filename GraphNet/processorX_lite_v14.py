@@ -6,10 +6,10 @@ import math
 from multiprocessing import Pool
 
 file_templates = {
-    0.001: '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*0.001*.root',
-    0.01:  '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*0.01*.root',
-    0.1:   '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*0.1*.root',
-    1.0:   '/home/aminali/production/v14_prod/Ap_sizeskim_1e_v3.2.1_v14_tskim/*1GeV*.root',
+    0.001: '/home/aminali/production/v14_prod/Ap0.001GeV_1e_v3.2.2_v14_tskim/*.root',
+    0.01:  '/home/aminali/production/v14_prod/Ap0.01GeV_1e_v3.2.2_v14_tskim/*.root',
+    0.1:   '/home/aminali/production/v14_prod/Ap0.1GeV_1e_v3.2.2_v14_tskim/*.root',
+    1.0:   '/home/aminali/production/v14_prod/Ap1GeV_1e_v3.2.3_v14_tskim/*.root',
     0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
 }
 

@@ -124,7 +124,7 @@ MAX_NUM_ECAL_HITS = 50 #60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pas
 MAX_ISO_ENERGY = 700 #500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
 # Results:  >0.994 vs 0.055
 # UPDATED FOR v14 ... Results: ~0.98-0.99 vs 0.069
-MAX_NUM_HCAL_HITS = 30
+#MAX_NUM_HCAL_HITS = 30
 
 # Branches to save:
 # Quantities labeled with 'scalars' have a single value per event.  Quantities labeled with 'vectors' have
@@ -231,7 +231,7 @@ def processFile(input_vars):
                 key_miss = True
                 break
         if key_miss:
-            print(f"MISSING KEYS IN: {filename}  SKIPPING...", flush=True)
+            print(f"MISSING KEYS IN: {filename}  SKIPPING...")
             return 0,0
         # (This part is just for printing the # of pre-preselection events:)
         #tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
@@ -379,11 +379,11 @@ def processFile(input_vars):
             parent = re.split(r'[./]', branch)[0]
             branchname = re.split(r'[./]', branch)[-1]
             #print("Found parent={}, branchname={}".format(parent, branchname))
-            if parent == 'EcalScoringPlaneHits':
+            if parent == 'EcalScoringPlaneHits_signal' or parent == 'EcalScoringPlaneHits_sim':
                 tree.Branch(branchname, var, "{}[nSPHits]/F".format(branchname))
-            elif parent == 'TargetScoringPlaneHits':
+            elif parent == 'TargetScoringPlaneHits_signal' or parent == 'TargetScoringPlaneHits_sim':
                 tree.Branch(branchname+'tsp_', var, "{}[nTSPHits]/F".format(branchname+'tsp_'))
-            elif parent == 'EcalRecHits_v3_v13': 
+            elif parent == 'EcalRecHits_signal' or parent == 'EcalRecHits_sim': 
                 tree.Branch(branchname+'rec_', var, "{}[nRecHits]/F".format(branchname+'rec_'))
             else: # else in HcalRecHits
                 tree.Branch(branchname+'hrec_', var, "{}[nHRecHits]/F".format(branchname+'hrec_'))
@@ -404,7 +404,12 @@ def processFile(input_vars):
                 if branch in scalar_holders.keys():  # Scalar
                     # fill scalar data
                     #if i==0:  print("filling scalar", branch)
-                    scalar_holders[branch][0] = preselected_data[branch][i]
+                    try:
+                        scalar_holders[branch][0] = preselected_data[branch][i]
+                    except IndexError:
+                        print("Encountered index error filling scalar branches.")
+                        print(f"SKIPPING FILE: {filename}")
+                        return 0,0
                 elif branch in vector_holders.keys():  # Vector
                     # fill vector data
                     #if i==0:  print("filling vector", branch)

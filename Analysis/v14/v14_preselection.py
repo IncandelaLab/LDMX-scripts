@@ -66,12 +66,12 @@ for mass in file_templates.keys():
                     key_miss = True
                     break
             if key_miss:
-                print(f"MISSING KEYS IN: {filename}  SKIPPING...", flush=True)
+                print(f"MISSING KEY(S) IN: {filename}  SKIPPING...", flush=True)
                 continue
             data = t.arrays(branchList, interpretation_executor=executor)
             
             nReadoutHits = data[branchList[0]] # array with number of ecal hits for each event
-            IsoEnergy = data[branchList[1]] # array with iso energy for each event
+            isoEnergy = data[branchList[1]] # array with iso energy for each event
                 
             # preselection
             presel = (nReadoutHits < MAX_NUM_ECAL_HITS) * (IsoEnergy < MAX_ISO_ENERGY)

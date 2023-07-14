@@ -75,31 +75,31 @@ args = parser.parse_args()
 # NOTE:  These must be output files produced by file_processor.py, not unprocessed ldmx-sw ROOT files.
 bkglist = {
     # (filepath, num_events_for_training)
-    0: ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*pn*.root', -1)
+    0: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*pn*.root', -1)
     }
 
 # was processed/*pn*, *0.001*, etc.
 
 siglist = {
     # (filepath, num_events_for_training)
-    1:    ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*0.001*.root', 200000),
-    10:   ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*0.01*.root',  200000),
-    100:  ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*0.1*.root',   200000),
-    1000: ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*1.0*.root',   200000),
+    1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 200000),
+    10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  200000),
+    100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   200000),
+    1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   200000),
     }
 
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        0: ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*pn*.root', 800)
+        0: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*pn*.root', 800)
         }
 
     siglist = {
         # (filepath, num_events_for_training)
-        1:    ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*0.001*.root', 200),
-        10:   ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*0.01*.root',  200),
-        100:  ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*0.1*.root',   200),
-        1000: ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*1.0*.root',   200),
+        1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 200),
+        10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  200),
+        100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   200),
+        1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   200),
         }
 
 # NOTE:  Must manually type this in here from file_processor.py output

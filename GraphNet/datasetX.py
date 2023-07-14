@@ -347,14 +347,14 @@ class XCalHitsDataset(Dataset):
                 insidePhotonRadius   = True
             
             ecal_regions = []  # Regions ecal hit falls inside
-            if self.nRegions == 2:
+            if self.nRegions == 2 or self.nRegions == 6:
                 ecal_regions.append(0)
-            elif self.nRegions == 3:
+            elif self.nRegions == 3 or self.nRegions == 7:
                 if insideElectronRadius:
                     ecal_regions.append(0)
                 else:
                     ecal_regions.append(1)
-            elif self.nRegions == 4:
+            elif self.nRegions == 4 or self.nRegions == 8:
                 if insideElectronRadius:
                     ecal_regions.append(0)
                 if insidePhotonRadius:
@@ -379,24 +379,19 @@ class XCalHitsDataset(Dataset):
         for k in range(len(h_energy)):
             
             hcal_regions = []
-            if self.nRegions == 4:
-                hcal_regions.append(3) # ANY HCAL
-            elif self.nRegion == 5:
+            if self.nRegions == 2 or self.nRegions == 3 or self.nRegions == 4:
+                hcal_regions.append(self.nRegions - 1) # ANY HCAL
+            elif self.nRegions == 6 or self.nRegions == 7 or self.nRegions == 8:
                 if hcal_section == 0: # BACK HCAL
-                    hcal_regions.append(3)
-                else: # ANY SIDE HCAL
-                    hcal_regions.append(4)
-            elif self.nRegions == 8:
-                if hcal_section == 0: # BACK HCAL
-                    hcal_regions.append(3)
+                    hcal_regions.append(self.nRegions - 5)
                 elif hcal_section == 1: # LEFT SIDE-HCAL
-                    hcal_regions.append(4)
+                    hcal_regions.append(self.nRegions - 4)
                 elif hcal_section == 2: # BOTTOM SIDE-HCAL
-                    hcal_regions.append(5) 
+                    hcal_regions.append(self.nRegions - 3) 
                 elif hcal_section == 3: # RIGHT SIDE-HCAL
-                    hcal_regions.append(6)
+                    hcal_regions.append(self.nRegions - 2)
                 elif hcal_section == 4: # LEFT SIDE-HCAL
-                    hcal_regions.append(7)
+                    hcal_regions.append(self.nRegions - 1)
 
 
             for r in range(self.nRegions):

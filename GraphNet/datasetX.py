@@ -399,7 +399,7 @@ class XCalHitsDataset(Dataset):
             # 3-region:
             if self.enorm_sp[2] == -999:
                 insideElectronRadius = False
-                insidePhotonRadius   = False
+                insidePhotonRadius   = True
             
             ecal_regions = []  # Regions ecal hit falls inside
             if self.nRegions == 2 or self.nRegions == 6:

@@ -75,31 +75,31 @@ args = parser.parse_args()
 # NOTE:  These must be output files produced by file_processor.py, not unprocessed ldmx-sw ROOT files.
 bkglist = {
     # (filepath, num_events_for_training)
-    0: ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*pn*.root', -1)
+    0: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*pn*.root', -1)
     }
 
 # was processed/*pn*, *0.001*, etc.
 
 siglist = {
     # (filepath, num_events_for_training)
-    1:    ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*0.001*.root', 200000),
-    10:   ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*0.01*.root',  200000),
-    100:  ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*0.1*.root',   200000),
-    1000: ('/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/XCal_total/*1.0*.root',   200000),
+    1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 1200000),
+    10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  1200000),
+    100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   1200000),
+    1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   1200000),
     }
 
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        0: ('/home/pmasterson/GraphNet_input/v13/training/*pn*.root', 800)
+        0: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*pn*.root', 800)
         }
 
     siglist = {
         # (filepath, num_events_for_training)
-        1:    ('/home/pmasterson/GraphNet_input/v13/training/*0.001*.root', 200),
-        10:   ('/home/pmasterson/GraphNet_input/v13/training/*0.01*.root',  200),
-        100:  ('/home/pmasterson/GraphNet_input/v13/training/*0.1*.root',   200),
-        1000: ('/home/pmasterson/GraphNet_input/v13/training/*1.0*.root',   200),
+        1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 200),
+        10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  200),
+        100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   200),
+        1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   200),
         }
 
 # NOTE:  Must manually type this in here from file_processor.py output
@@ -109,7 +109,9 @@ if args.demo:
 #presel_eff = {1: 0.994131455399061, 10: 0.9975881667769368, 100: 0.9980669665667397, 1000: 0.9967660072125927, 0: 0.053747662244142014}
 #presel_eff = {1: 0.9827394704896031, 10: 0.994069800288674, 100: 0.9954494433152322, 1000: 0.9952696700988878, 0: 0.04038671770809463}
 # v13:
-presel_eff = {1: 0.9840214199343582, 10: 0.993525558985169, 100: 0.9963092463092463, 1000: 0.9953046798410815, 0: 0.03833032309853502}
+#presel_eff = {1: 0.9840214199343582, 10: 0.993525558985169, 100: 0.9963092463092463, 1000: 0.9953046798410815, 0: 0.03833032309853502}
+# v14:
+presel_eff = {1: 0.9815241742343622, 10: 0.99102142309365, 100: 0.9926784519870396, 1000: 0.9949900511654349, 0: 0.06929824265618538}
 
 #########################################################
 

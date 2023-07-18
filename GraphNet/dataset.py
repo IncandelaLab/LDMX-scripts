@@ -356,7 +356,7 @@ class ECalHitsDataset(Dataset):
             ir = -1
             #if recoilangle==-1 or recoil_p==-1:  ir = 1  # Not used for now
             # Select the class of containment radii based on trajectory angle/energy:
-            if detector_version=='v14':
+            if self.detector_version=='v14':
                 if recoilangle < 10:
                     ir = 1
                 elif 10 <= recoilangle < 15:

@@ -1,16 +1,21 @@
 import uproot
 import glob
 import os
+from tqdm import tqdm
+import concurrent.futures
+executor = concurrent.futures.ThreadPoolExecutor(30)
 
-filepath = '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/fiducial/*.root'
+filepath = '/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*.root'
 
 kills = 0
-for filename in glob.glob(filepath):
-	with uproot.open(filename) as file:
-		if len(file.keys()) == 0:
-			print("Found zombie: {} KILLING...".format(filename))
-			os.remove(filename)
-			kills += 1
-			print("KILLED ZOMBIE")
-		
-print("Level cleared. {} zombies killed".format(kills))
+filelist = glob.glob(filepath)
+nFiles = len(filelist)
+for filename in tqdm(filelist, total=nFiles):
+    with uproot.open(filename, interpretation_executor=executor) as file:
+        if len(file.keys()) == 0:
+            #print("Found zombie: {} KILLING...".format(filename), flush=True)
+            #os.remove(filename)
+            kills += 1
+            #print("KILLED ZOMBIE", flush=True)
+
+print("\nLevel cleared. {} zombies killed".format(kills), flush=True)

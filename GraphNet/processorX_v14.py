@@ -280,8 +280,10 @@ def processFile(input_vars):
                     max_pz = pz_[i][j]
                     recoil_index = j
             # Calculate the recoil SP
-            if len(px_[i]) > 0:   # if max_pz > 0:
+            if max_pz > 0: #if len(px_[i]) > 0:   # if max_pz > 0:
                 tspRecoil.append(np.sqrt(px_[i][recoil_index]**2 + py_[i][recoil_index]**2))
+            else:
+                tspRecoil.append(-999)
         # Put it in the preselected_data and treat it as an ordinary branch from here on out
         preselected_data['TargetSPRecoilE_pt'] = np.array(tspRecoil)
 
@@ -422,6 +424,7 @@ def processFile(input_vars):
 
         # Finally, write the filled tree to the ouput file:
         outfile.Write()
+        outfile.Close()
         print("FINISHED.  File written to {}.".format(outfile_path))
 
     return (nTotalEvents, nEvents)

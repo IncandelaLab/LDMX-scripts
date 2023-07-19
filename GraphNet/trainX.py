@@ -21,6 +21,7 @@ import os
 import sys
 import datetime
 import argparse
+import gc
 
 from utils.ParticleNet import ParticleNet
 from datasetX import XCalHitsDataset
@@ -91,15 +92,15 @@ siglist = {
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        0: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*pn*.root', 800)
+        0: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*pn*.root', 8000)
         }
 
     siglist = {
         # (filepath, num_events_for_training)
-        1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 200),
-        10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  200),
-        100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   200),
-        1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   200),
+        1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 2000),
+        10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  2000),
+        100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   2000),
+        1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   2000),
         }
 
 # NOTE:  Must manually type this in here from file_processor.py output
@@ -286,7 +287,9 @@ def evaluate(model, test_loader, dev, return_scores=False):
                 _, preds = logits.max(1)
 
                 if return_scores:
-                    scores.append(torch.softmax(logits, dim=1).cpu().detach().numpy())
+                    log_score = torch.nn.functional.log_softmax(logits, dim=1)
+                    scores.append(torch.exp(log_score).cpu().detach().numpy())
+                    #scores.append(torch.softmax(logits, dim=1).cpu().detach().numpy())
 
                 correct = (preds == label).sum().item()
                 total_correct += correct
@@ -340,6 +343,9 @@ if training_mode:
                 torch.save(model, args.save_model_path + '_full.pt')
         torch.save(model.state_dict(), args.save_model_path + '_state_epoch-%d_acc-%.4f.pt' % (epoch, valid_acc))
         print('Current validation acc: %.5f (best: %.5f)' % (valid_acc, best_valid_acc))
+        gc.collect()
+        torch.cuda.empty_cache()
+        torch.cuda.list_gpu_processes()
 else:
     # NOTE: NEW
     # Need to load obs_dict info otherwise, which can only be done by calling __getitem__() once on every event.  So:

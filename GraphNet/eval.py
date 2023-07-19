@@ -129,7 +129,9 @@ def evaluate(model, test_loader, dev, return_scores=False):
                 _, preds = logits.max(1)
 
                 if return_scores:
-                    scores.append(torch.softmax(logits, dim=1).cpu().detach().numpy())
+                    log_scores = torch.nn.functional.log_softmax(logits, dim=1)
+                    scores.append(torch.exp(log_scores).cpu().detach().numpy())
+                    #scores.append(torch.softmax(logits, dim=1).cpu().detach().numpy())
 
                 correct = (preds == label).sum().item()
                 total_correct += correct

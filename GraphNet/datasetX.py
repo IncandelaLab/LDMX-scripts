@@ -18,7 +18,7 @@ import ROOT as r
 # Note:  Number of threads has not been optimized for lazy-loading; it may be worth experimenting w/ lower values.
 #executor = concurrent.futures.ThreadPoolExecutor(12)
 
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float64)
 
 # Should match value in the preselection.  Determines size of ParticleNet position arrays.
 MAX_NUM_ECAL_HITS = 50 #60  #110  # NOW REDUCED!
@@ -228,7 +228,7 @@ class XCalHitsDataset(Dataset):
         # NOTE:  Always 3-dimensional!  [[a, b...]] for 1-region PN
         coordinates = np.stack((var_data['x_'], var_data['y_'], var_data['z_']), axis=1)
         features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
-                                var_data['log_energy_']), var_data['layer_id_'], var_data['strip_id_'], axis=1)                   
+                                var_data['log_energy_'], var_data['layer_id_'], var_data['strip_id_']), axis=1)                   
         return coordinates, features, label
 
 
@@ -324,16 +324,16 @@ class XCalHitsDataset(Dataset):
             (x, y, z), layer_id = self._parse_cid(eid)  # layer_id > 0, so can use layer_id-1 to index e/ptraj_ref
         else:
             xyz_leaves = [self.ttree.GetLeaf(self._pos_branch.format(v)) for v in ['x', 'y', 'z']]
-            (x, y, z) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float32') for lf in xyz_leaves]
+            (x, y, z) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float64') for lf in xyz_leaves]
             h_xyz_leaves = [self.ttree.GetLeaf(self._h_pos_branch.format(v)) for v in ['x', 'y', 'z']]
-            (hx, hy, hz) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float32') for lf in h_xyz_leaves]
+            (hx, hy, hz) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float64') for lf in h_xyz_leaves]
             energy_leaf = self.ttree.GetLeaf(self._energy_branch)
-            energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float32')
+            energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float64')
             h_energy_leaf = self.ttree.GetLeaf(self._h_energy_branch)
-            h_energy = np.array([h_energy_leaf.GetValue(i) for i in range(h_energy_leaf.GetLen())], dtype='float32')
+            h_energy = np.array([h_energy_leaf.GetValue(i) for i in range(h_energy_leaf.GetLen())], dtype='float64')
             layer_id = self._getlayer(z)
             hid_leaf = self.ttree.GetLeaf(self._h_id_branch)
-            hid = np.array([hid_leaf.GetValue(i) for i in range(hid_leaf.GetLen())], dtype='float32')
+            hid = np.array([hid_leaf.GetValue(i) for i in range(hid_leaf.GetLen())], dtype='int')
             (hcal_section, hcal_layer, hcal_strip) = self._parse_hid(hid)
 
 
@@ -342,14 +342,14 @@ class XCalHitsDataset(Dataset):
         # For each event, look through all hits.
         # - Determine whether hit falls inside either the e or p RoCs
         # - If so, fill corresp xyzlayer, energy, eid lists...
-        x_          = np.zeros((self.nRegions, 100), dtype='float32')
-        y_          = np.zeros((self.nRegions, 100), dtype='float32')
-        z_          = np.zeros((self.nRegions, 100), dtype='float32')
-        log_energy_ = np.zeros((self.nRegions, 100), dtype='float32')
-        layer_id_   = np.zeros((self.nRegions, 100), dtype='float32')
-        strip_id_   = np.zeros((self.nRegions, 100), dtype='float32')
+        x_          = np.zeros((self.nRegions, 100), dtype='float64')
+        y_          = np.zeros((self.nRegions, 100), dtype='float64')
+        z_          = np.zeros((self.nRegions, 100), dtype='float64')
+        log_energy_ = np.zeros((self.nRegions, 100), dtype='float64')
+        layer_id_   = np.zeros((self.nRegions, 100), dtype='float64')
+        strip_id_   = np.zeros((self.nRegions, 100), dtype='float64')
 
-        regionIndices = [0, 0, 0]  # Indices of last hit added to feature arrays
+        #regionIndices = [0, 0, 0]  # Indices of last hit added to feature arrays
 
 
         for j in range(len(energy)):  #eid_leaf.GetLen()):  # For every hit...
@@ -437,15 +437,15 @@ class XCalHitsDataset(Dataset):
             if self.nRegions == 2 or self.nRegions == 3 or self.nRegions == 4:
                 hcal_regions.append(self.nRegions - 1) # ANY HCAL
             elif self.nRegions == 6 or self.nRegions == 7 or self.nRegions == 8:
-                if hcal_section == 0: # BACK HCAL
+                if hcal_section[k] == 0: # BACK HCAL
                     hcal_regions.append(self.nRegions - 5)
-                elif hcal_section == 1: # TOP SIDE-HCAL
+                elif hcal_section[k] == 1: # TOP SIDE-HCAL
                     hcal_regions.append(self.nRegions - 4)
-                elif hcal_section == 2: # BOTTOM SIDE-HCAL
+                elif hcal_section[k] == 2: # BOTTOM SIDE-HCAL
                     hcal_regions.append(self.nRegions - 3) 
-                elif hcal_section == 3: # RIGHT SIDE-HCAL
+                elif hcal_section[k] == 3: # RIGHT SIDE-HCAL
                     hcal_regions.append(self.nRegions - 2)
-                elif hcal_section == 4: # LEFT SIDE-HCAL
+                elif hcal_section[k] == 4: # LEFT SIDE-HCAL
                     hcal_regions.append(self.nRegions - 1)
 
 
@@ -465,14 +465,14 @@ class XCalHitsDataset(Dataset):
 
         # Create and fill var_dict w/ feature information:
         var_dict = {'x_':x_, 'y_':y_, 'z_':z_,        
-                    'log_energy_':log_energy_, 'layer_id_': layer_id_, 'stip_id_': strip_id_
+                    'log_energy_':log_energy_, 'layer_id_': layer_id_, 'strip_id_': strip_id_
                    }
 
         # Lastly, create and fill obs_dict w/ branches specified in train.py:
         o_dict = {}
         for branch in self.obs_branches:
             o_leaf = self.ttree.GetLeaf(branch)
-            o_arr = np.array([o_leaf.GetValue(i) for i in range(o_leaf.GetLen())], dtype='float32')
+            o_arr = np.array([o_leaf.GetValue(i) for i in range(o_leaf.GetLen())], dtype='float64')
             o_dict[branch] = o_arr
 
         return var_dict, o_dict
@@ -530,9 +530,9 @@ class XCalHitsDataset(Dataset):
          STRIP_MASK = 0xFF  # space for 255 strips/layer
          STRIP_SHIFT = 0 
 
-         hcal_section = (hid >> SECTION_SHIFT) & SECTION_MASK
-         hcal_layer = (hid >> LAYER_SHIFT) & LAYER_MASK
-         hcal_strip = (hid >> STRIP_SHIFT) & STRIP_MASK
+         hcal_section = np.bitwise_and(np.right_shift(hid.astype(np.uint64), SECTION_SHIFT), SECTION_MASK)
+         hcal_layer = np.bitwise_and(np.right_shift(hid.astype(np.uint64), LAYER_SHIFT), LAYER_MASK)
+         hcal_strip = np.bitwise_and(np.right_shift(hid.astype(np.uint64), STRIP_SHIFT), STRIP_MASK)
 
          return (hcal_section, hcal_layer, hcal_strip)
 

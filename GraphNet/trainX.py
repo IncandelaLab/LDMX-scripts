@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float64)
 
 import tqdm
 import os
@@ -287,8 +287,10 @@ def evaluate(model, test_loader, dev, return_scores=False):
                 _, preds = logits.max(1)
 
                 if return_scores:
-                    log_score = torch.nn.functional.log_softmax(logits, dim=1)
-                    scores.append(torch.exp(log_score).cpu().detach().numpy())
+                    log_scores = torch.nn.functional.log_softmax(logits, dim=1).cpu().detach().numpy()
+                    scores.append(np.exp(np.longdouble(log_scores)))
+                    #log_scores = torch.nn.functional.log_softmax(logits, dim=1)
+                    #scores.append(torch.exp(log_scores).cpu().detach().numpy())
                     #scores.append(torch.softmax(logits, dim=1).cpu().detach().numpy())
 
                 correct = (preds == label).sum().item()
@@ -408,7 +410,7 @@ import awkward
 pred_file = os.path.splitext(args.test_output_path)[0] + '_OUTPUT'
 out_data = test_data.get_obs_data()  #test_data.obs_data
 out_data['ParticleNet_extra_label'] = test_extra_labels
-out_data['ParticleNet_disc'] = test_preds[:, 1]
+out_data['ParticleNet_disc'] = test_preds[:, 1].astype(np.float64)
 # OUTDATED:
 # awkward.save(pred_file, out_data, mode='w')
 #import pyarrow.parquet as pq

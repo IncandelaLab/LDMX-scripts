@@ -1,5 +1,6 @@
 import uproot
 import glob
+import re
 from tqdm import tqdm
 import json
 import concurrent.futures
@@ -74,7 +75,7 @@ for mass in file_templates.keys():
             isoEnergy = data[branchList[1]] # array with iso energy for each event
                 
             # preselection
-            presel = (nReadoutHits < MAX_NUM_ECAL_HITS) * (IsoEnergy < MAX_ISO_ENERGY)
+            presel = (nReadoutHits < MAX_NUM_ECAL_HITS) * (isoEnergy < MAX_ISO_ENERGY)
                 
             # update event counts
             nTotal[mass] += len(nReadoutHits)

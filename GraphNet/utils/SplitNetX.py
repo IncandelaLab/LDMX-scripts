@@ -4,9 +4,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from utils.ParticleNet import *
+from utils.ParticleNetX import *
 
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float64)
 
 class SplitNetX(nn.Module):
     # SplitNet class:
@@ -33,7 +33,7 @@ class SplitNetX(nn.Module):
 
         # Particle nets:  named pn1, pn2, etc.
         for i in range(self.nRegions):
-            pn = ParticleNet(input_dims=input_dims, num_classes=2,           conv_params=conv_params,
+            pn = ParticleNetX(input_dims=input_dims, num_classes=2,           conv_params=conv_params,
                              fc_params=fc_params,   use_fusion=use_fusion,   return_softmax = return_softmax)
             setattr(self, 'pn{}'.format(i), pn)
 

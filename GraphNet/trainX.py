@@ -23,7 +23,7 @@ import datetime
 import argparse
 import gc
 
-from utils.ParticleNet import ParticleNet
+from utils.ParticleNetX import ParticleNetX
 from datasetX import XCalHitsDataset
 from datasetX import collate_wrapper as collate_fn
 from utils.SplitNetX import SplitNetX

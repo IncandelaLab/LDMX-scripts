@@ -116,7 +116,7 @@ class EdgeConvBlock(nn.Module):
         return self.sc_act(sc + fts)  # (N, C_out, P)
 
 
-class ParticleNet(nn.Module):
+class ParticleNetX(nn.Module):
 
     def __init__(self,
                  input_dims,
@@ -126,7 +126,7 @@ class ParticleNet(nn.Module):
                  use_fusion=False,
                  return_softmax=False,
                  **kwargs):
-        super(ParticleNet, self).__init__(**kwargs)
+        super(ParticleNetX, self).__init__(**kwargs)
 
         self.bn_fts = nn.BatchNorm1d(input_dims)
 

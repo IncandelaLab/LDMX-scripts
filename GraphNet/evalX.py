@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float64)
 
 import tqdm
 import glob
@@ -19,7 +19,7 @@ import os
 import datetime
 import argparse
 
-from utils.ParticleNet import ParticleNet
+from utils.ParticleNetX import ParticleNetX
 from utils.SplitNetX import SplitNetX
 from datasetX import XCalHitsDataset
 from datasetX import collate_wrapper as collate_fn
@@ -129,8 +129,10 @@ def evaluate(model, test_loader, dev, return_scores=False):
                 _, preds = logits.max(1)
 
                 if return_scores:
-                    log_scores = torch.nn.functional.log_softmax(logits, dim=1)
-                    scores.append(torch.exp(log_scores).cpu().detach().numpy())
+                    log_scores = torch.nn.functional.log_softmax(logits, dim=1).cpu().detach().numpy()
+                    scores.append(np.exp(np.longdouble(log_scores)))
+                    #log_scores = torch.nn.functional.log_softmax(logits, dim=1)
+                    #scores.append(torch.exp(log_scores).cpu().detach().numpy())
                     #scores.append(torch.softmax(logits, dim=1).cpu().detach().numpy())
 
                 correct = (preds == label).sum().item()
@@ -196,7 +198,7 @@ def run_one_file(filepath, extra_label=0):
     #print("PRINTING BRANCHES")
     #for branch in out_data:
     #    print(out_data[branch][:10])
-    out_data['ParticleNet_disc'] = test_preds[:, 1]
+    out_data['ParticleNet_disc'] = test_preds[:, 1].astype(np.float64)
     #print("Test preds", out_data['ParticleNet_disc'][:20])
     # OLD:
     #awkward.save(pred_file, out_data, mode='w')

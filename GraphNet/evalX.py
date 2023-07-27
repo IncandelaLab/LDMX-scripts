@@ -94,7 +94,7 @@ print('fc_params: %s' % fc_params)
 dev = torch.device(args.device)
 
 # load data
-input_dims = 4 # WAS: 5 (removed layer_id)
+input_dims = 6 #4 # WAS: 5 (removed layer_id)
 
 # model
 

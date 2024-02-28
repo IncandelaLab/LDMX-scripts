@@ -16,12 +16,13 @@ mpl_logger.setLevel(logging.WARNING)
 plt.use('Agg')
 
 class sampleContainer:
-    def __init__(self,filename,maxEvts,isSig):
+    def __init__(self,filename,maxEvts,trainFrac,isSig):
 
         print("Initializing Container!")
         self.tree = r.TChain("EcalVeto")
         self.tree.Add(filename)
         self.maxEvts = maxEvts
+        self.trainFrac = trainFrac
         self.isSig   = isSig
 
     def root2PyEvents(self):
@@ -53,6 +54,8 @@ class sampleContainer:
                     event.electronTerritoryHits     ,
                     event.photonTerritoryHits       ,
                     event.TerritoryRatio            ,
+                    event.epSep                     ,
+                    event.epDot                     ,
                     # Longitudinal segment variables
                     event.energy_s1                 ,
                     event.nHits_s1                  ,
@@ -440,8 +443,8 @@ class sampleContainer:
                     event.oContLayerStd_x2_s3       ,
                     event.oContLayerStd_x3_s3       ,
                     event.oContLayerStd_x4_s3       ,
-                    event.oContLayerStd_x5_s3       ,
-                    ]
+                    event.oContLayerStd_x5_s3
+            ]
 
             self.events.append(evt)
 
@@ -451,8 +454,11 @@ class sampleContainer:
         print("Final Event Shape" + str(np.shape(self.events)))
 
     def constructTrainAndTest(self):
-        self.train_x = self.events
+        self.train_x = self.events[0:int(len(self.events)*self.trainFrac)]
+        self.test_x = self.events[int(len(self.events)*self.trainFrac):]
+
         self.train_y = np.zeros(len(self.train_x)) + (self.isSig == True)
+        self.test_y = np.zeros(len(self.test_x)) + (self.isSig == True)
 
 class mergedContainer:
     def __init__(self, sigContainer,bkgContainer):
@@ -461,9 +467,12 @@ class mergedContainer:
         
         self.train_x[np.isnan(self.train_x)] = 0.000
         self.train_y[np.isnan(self.train_y)] = 0.000
+
+        self.test_x  = np.vstack((sigContainer.test_x,bkgContainer.test_x))
+        self.test_y  = np.append(sigContainer.test_y,bkgContainer.test_y)
         
         self.dtrain = xgb.DMatrix(self.train_x,self.train_y)
-    
+        self.dtest  = xgb.DMatrix(self.test_x,self.test_y)
 
 if __name__ == "__main__":
     
@@ -471,6 +480,7 @@ if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option('--seed', dest='seed',type="int",  default=2, help='Numpy random seed.')
     parser.add_option('--max_evt', dest='max_evt',type="int",  default=1500000, help='Max Events to load')
+    parser.add_option('--train_frac', dest='train_frac',  default=.8, help='Fraction of events to use for training')
     parser.add_option('--eta', dest='eta',type="float",  default=0.023, help='Learning Rate')
     parser.add_option('--tree_number', dest='tree_number',type="int",  default=1000, help='Tree Number')
     parser.add_option('--depth', dest='depth',type="int",  default=10, help='Max Tree Depth')
@@ -504,35 +514,38 @@ if __name__ == "__main__":
 
     # Make Signal Container
     print( 'Loading sig_file = {}'.format(options.sig_file) )
-    sigContainer = sampleContainer(options.sig_file,options.max_evt,True)
+    sigContainer = sampleContainer(options.sig_file,options.max_evt,options.train_frac,True)
     sigContainer.root2PyEvents()
     sigContainer.constructTrainAndTest()
 
     # Make Background Container
     print( 'Loading bkg_file = {}'.format(options.bkg_file) )
-    bkgContainer = sampleContainer(options.bkg_file,options.max_evt,False)
+    bkgContainer = sampleContainer(options.bkg_file,options.max_evt,options.train_frac,False)
     bkgContainer.root2PyEvents()
     bkgContainer.constructTrainAndTest()
 
     # Merge
     eventContainer = mergedContainer(sigContainer,bkgContainer)
 
-    params     = {'objective': 'binary:logistic',
-                  'eta': options.eta,
-                  'max_depth': options.depth,
-                  'min_child_weight': 20,
-                  'silent': 1,
-                  'subsample':.9,
-                  'colsample_bytree': .85,
-                  #'eval_metric': 'auc',
-                  'eval_metric': 'error',
-                  'seed': 1,
-                  'nthread': 1,
-                  'verbosity': 1,
-                  'early_stopping_rounds' : 10}
+    params = {
+               'objective': 'binary:logistic',
+               'eta': options.eta,
+               'max_depth': options.depth,
+               'min_child_weight': 20,
+               # 'silent': 1,
+               'subsample':.9,
+               'colsample_bytree': .85,
+               # 'eval_metric': 'auc',
+               'eval_metric': 'error',
+               'seed': 1,
+               'nthread': 1,
+               'verbosity': 1
+               # 'early_stopping_rounds' : 10
+    }
 
-    # Actual training
-    gbm = xgb.train(params, eventContainer.dtrain, options.tree_number)
+    # Train the BDT model
+    evallist = [(eventContainer.dtrain,'train'), (eventContainer.dtest,'eval')]
+    gbm = xgb.train(params, eventContainer.dtrain, num_boost_round = options.tree_number, evals = evallist, early_stopping_rounds = 10)
 
     # Store BDT
     output = open(options.out_name+'_'+str(bdt_num)+'/' + \

@@ -138,7 +138,7 @@ for mass in file_templates.keys():
                 continue
             data = t.arrays(branchList, interpretation_executor=executor)
 
-            # stop data here temporarily then add to plot_vars
+            # store data here temporarily then add to plot_vars
             ecal_vars = {}
             for var in plot_vars.keys():
                 ecal_vars[var] = data[blname('EcalVeto', var, sig)]

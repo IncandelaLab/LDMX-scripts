@@ -153,7 +153,7 @@ for mass in file_templates.keys():
 
 # print out event counts (for 4 masses + bkg)
 json_events = json.dumps(nEvents, indent=4)
-print(f"Number of events:\n{json_events}", flush=True)
+print(f"\nNumber of events:\n{json_events}\n", flush=True)
 
 ## set config values for plots
 

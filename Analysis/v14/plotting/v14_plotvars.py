@@ -244,7 +244,7 @@ for var, data in plot_vars.items():
     if log_dict[var]:
         ax.set_ylim(y_ranges[var][0], y_ranges[var][1])
     plt.tight_layout()
-    if args.show():
+    if args.show:
     	plt.show()
     if args.save:
     	if args.output_path:

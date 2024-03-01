@@ -266,4 +266,4 @@ for var, data in plot_vars.items():
 if args.save:
     fullpath = os.path.abspath(dirname)
     print(f"\nSaved plots to {fullpath}")
-print("\nDONE.\n\n")
+print("\nDONE.\n")

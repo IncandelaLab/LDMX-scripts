@@ -83,10 +83,10 @@ bkglist = {
 
 siglist = {
     # (filepath, num_events_for_training)
-    1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 1200000),
-    10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  1200000),
-    100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   1200000),
-    1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   1200000),
+    1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 200000),
+    10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  200000),
+    100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   200000),
+    1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   200000),
     }
 
 if args.demo:

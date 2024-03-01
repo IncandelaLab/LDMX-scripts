@@ -1,5 +1,5 @@
 import numpy as np
-print("Importing uproot...")
+print("\nImporting uproot...")
 import uproot
 print("uproot imported")
 import glob
@@ -11,7 +11,7 @@ import argparse
 import concurrent.futures
 executor = concurrent.futures.ThreadPoolExecutor(20)
 
-print("\nInitializing...\n")
+print("Initializing...\n")
 
 # add some arguments when running script from command line
 parser = argparse.ArgumentParser()
@@ -153,7 +153,8 @@ for mass in file_templates.keys():
 
 # print out event counts (for 4 masses + bkg)
 json_events = json.dumps(nEvents, indent=4)
-print(f"\nNumber of events:\n{json_events}\n", flush=True)
+print()
+print(f"Number of events:\n{json_events}\n", flush=True)
 
 ## set config values for plots
 
@@ -231,7 +232,7 @@ units = {
 }
 
 # plot histograms
-print("\nPlotting histograms")
+print("\nPlotting histograms...")
 import matplotlib.pyplot as plt
 
 for var, data in plot_vars.items():
@@ -262,4 +263,7 @@ for var, data in plot_vars.items():
             plt.savefig(f"outfile_path", facecolor='w', dpi=200)
         else:
             plt.savefig(f"v14_4gev_{var}", facecolor='w', dpi=200)
-print("\n\nDONE.\n\n")
+if args.save:
+    fullpath = os.path.abspath(dirname)
+    print(f"\nSaved plots to {fullpath}")
+print("\nDONE.\n\n")

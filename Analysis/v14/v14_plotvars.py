@@ -157,7 +157,7 @@ print(f"\nNumber of events:\n{json_events}", flush=True)
 
 ## set config values for plots
 
-# colors to plot with (lighsaber hex codes!)
+# colors to plot with (lightsaber hex codes!)
 colors = ['#4A7DFF', '#14AD0C', '#FF212E', '#FF8F13', '#871EFE'] 
 
 # x ranges for each variable

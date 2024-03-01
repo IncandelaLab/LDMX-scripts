@@ -251,7 +251,7 @@ for var, data in plot_vars.items():
             dirname = os.path.dirname(args.output_path)
             if dirname and not os.path.exists(dirname):
                 os.makedirs(dirname)
-    		outfile_path = os.path.join([dirname, f"v14_4gev_{var}"])
-    		plt.savefig(f"outfile_path", facecolor='w', dpi=200)
-    	else:
-    		plt.savefig(f"v14_4gev_{var}", facecolor='w', dpi=200)
+            outfile_path = os.path.join([dirname, f"v14_4gev_{var}"])
+            plt.savefig(f"outfile_path", facecolor='w', dpi=200)
+        else:
+            plt.savefig(f"v14_4gev_{var}", facecolor='w', dpi=200)

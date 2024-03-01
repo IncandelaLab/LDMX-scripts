@@ -1,5 +1,7 @@
 import numpy as np
+print("Importing uproot...")
 import uproot
+print("uproot imported")
 import glob
 import re
 import os
@@ -8,6 +10,8 @@ from tqdm import tqdm
 import argparse
 import concurrent.futures
 executor = concurrent.futures.ThreadPoolExecutor(20)
+
+print("\nInitializing...\n")
 
 # add some arguments when running script from command line
 parser = argparse.ArgumentParser()
@@ -70,10 +74,12 @@ plot_vars = {
 # will keep track of # of events (each mass point)
 nEvents = {}
 
+print("\nReading ROOT files and filling plot data...\n")
+
 # loop through each mass point (4 signal + PN background)
 for mass in file_templates.keys():
     
-    print(f"==== m = {mass} ====", flush=True)
+    print(f"\n===== m = {mass} =====", flush=True)
     
     nEvents[mass] = 0 # start event count at 0
     
@@ -225,6 +231,7 @@ units = {
 }
 
 # plot histograms
+print("\nPlotting histograms")
 import matplotlib.pyplot as plt
 
 for var, data in plot_vars.items():
@@ -251,7 +258,8 @@ for var, data in plot_vars.items():
             dirname = os.path.dirname(args.output_path)
             if dirname and not os.path.exists(dirname):
                 os.makedirs(dirname)
-            outfile_path = os.path.join([dirname, f"v14_4gev_{var}"])
+            outfile_path = os.path.join(dirname, f"v14_4gev_{var}")
             plt.savefig(f"outfile_path", facecolor='w', dpi=200)
         else:
             plt.savefig(f"v14_4gev_{var}", facecolor='w', dpi=200)
+print("\n\nDONE.\n\n")

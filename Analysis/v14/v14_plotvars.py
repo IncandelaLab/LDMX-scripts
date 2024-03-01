@@ -11,7 +11,7 @@ import argparse
 import concurrent.futures
 executor = concurrent.futures.ThreadPoolExecutor(20)
 
-print("Initializing...\n")
+print("Initializing...")
 
 # add some arguments when running script from command line
 parser = argparse.ArgumentParser()
@@ -74,7 +74,7 @@ plot_vars = {
 # will keep track of # of events (each mass point)
 nEvents = {}
 
-print("\nReading ROOT files and filling plot data...\n")
+print("\nReading ROOT files and filling plot data...")
 
 # loop through each mass point (4 signal + PN background)
 for mass in file_templates.keys():
@@ -153,8 +153,7 @@ for mass in file_templates.keys():
 
 # print out event counts (for 4 masses + bkg)
 json_events = json.dumps(nEvents, indent=4)
-print()
-print(f"Number of events:\n{json_events}\n", flush=True)
+print(f"\nNumber of events:\n{json_events}", flush=True)
 
 ## set config values for plots
 
@@ -260,7 +259,7 @@ for var, data in plot_vars.items():
             if dirname and not os.path.exists(dirname):
                 os.makedirs(dirname)
             outfile_path = os.path.join(dirname, f"v14_4gev_{var}")
-            plt.savefig(f"outfile_path", facecolor='w', dpi=200)
+            plt.savefig(f"{outfile_path}", facecolor='w', dpi=200)
         else:
             plt.savefig(f"v14_4gev_{var}", facecolor='w', dpi=200)
 if args.save:

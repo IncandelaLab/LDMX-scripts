@@ -245,10 +245,10 @@ for var, data in plot_vars.items():
         ax.set_ylim(y_ranges[var][0], y_ranges[var][1])
     plt.tight_layout()
     if args.show:
-    	plt.show()
+        plt.show()
     if args.save:
     	if args.output_path:
-    		dirname = os.path.dirname(args.output_path)
+            dirname = os.path.dirname(args.output_path)
             if dirname and not os.path.exists(dirname):
                 os.makedirs(dirname)
     		outfile_path = os.path.join([dirname, f"v14_4gev_{var}"])

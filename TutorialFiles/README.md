@@ -20,9 +20,8 @@ NOTE: You will need to run the source command every time you start a new termina
 * Now download LDMX-scripts
 ```
 cd ~
-# replace this next command with this repo for now (until I do a pull request)
-# i.e., git clone -b v14_tutorial_files --recursive https://github.com/DuncanWilmot/LDMX-scripts LDMX-scripts-temp
 git clone --recursive https://github.com/IncandelaLab/LDMX-scripts
+# if you already have this, use git pull to update
 ```
 
 ## Generating Photonuclear (PN) Background samples

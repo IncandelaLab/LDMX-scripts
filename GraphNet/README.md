@@ -1,4 +1,4 @@
-# ParticleNet for the LDMX ECal veto
+# ParticleNet for the LDMX ECal veto (stable, detector v13)
 ------
 
 ## Introduction

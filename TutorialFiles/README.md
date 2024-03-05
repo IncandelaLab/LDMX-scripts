@@ -22,7 +22,7 @@ NOTE: You will need to run the source command every time you start a new termina
 cd ~
 git clone --recursive https://github.com/IncandelaLab/LDMX-scripts
 # if you already have this, use git pull to update
-# if you want to make and save changes to the code, fork this repository (on the github site) then clone your fork
+# if you want to make and save changes to the code, fork this repository (on the github site) then clone your fork and commit changes with git push
 ```
 
 ## Generating Photonuclear (PN) Background samples

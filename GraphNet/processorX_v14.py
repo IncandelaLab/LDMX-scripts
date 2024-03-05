@@ -10,6 +10,7 @@ import uproot
 import awkward
 import glob
 import os
+import sys
 import re
 import math
 print("Importing ROOT")
@@ -37,7 +38,7 @@ Outline:
 """
 
 # Directory to write output files to:
-output_dir = '/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total'
+output_dir = '/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total'
 # Locations of the 2.3.0 ldmx-sw ROOT files to process+train on:
 """
 file_templates = {
@@ -111,6 +112,7 @@ file_templates = {
     0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
 }
 '''
+'''
 file_templates = {
     0.001: '/home/aminali/production/v14_prod/Ap0.001GeV_1e_v3.2.2_v14_tskim/*.root',
     0.01:  '/home/aminali/production/v14_prod/Ap0.01GeV_1e_v3.2.2_v14_tskim/*.root',
@@ -118,10 +120,18 @@ file_templates = {
     1.0:   '/home/aminali/production/v14_prod/Ap1GeV_1e_v3.2.3_v14_tskim/*.root',
     0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
 }
+'''
+file_templates = {
+    0.001:  '/home/vamitamas/Samples8GeV/Ap0.001GeV_sim/*.root',
+    0.01:  '/home/vamitamas/Samples8GeV/Ap0.01GeV_sim/*.root',
+    0.1:   '/home/vamitamas/Samples8GeV/Ap0.1GeV_sim/*.root',
+    1.0:   '/home/vamitamas/Samples8GeV/Ap1GeV_sim/*.root',
+    0:     '/home/vamitamas/Samples8GeV/v3.3.3_ecalPN*/*.root'
+}
 
 # Standard preselection values (-> 95% sig/5% bkg)
-MAX_NUM_ECAL_HITS = 50 #60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
-MAX_ISO_ENERGY = 700 #500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
+MAX_NUM_ECAL_HITS = 90 #50 #60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
+MAX_ISO_ENERGY = 1100 #700 #500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
 # Results:  >0.994 vs 0.055
 # UPDATED FOR v14 ... Results: ~0.98-0.99 vs 0.069
 #MAX_NUM_HCAL_HITS = 30
@@ -162,7 +172,7 @@ data_to_save = {
 
 def blname(branch, leaf, sig):
     if sig:
-        if branch.startswith('EcalVeto'):
+        if branch.startswith('EcalVeto') or branch.startswith('Trigger'):
             return '{}/{}'.format(f'{branch}_signal', leaf)
         else:
             return '{}/{}.{}'.format(f'{branch}_signal', f'{branch}_signal', leaf)
@@ -186,9 +196,9 @@ def processFile(input_vars):
 
     print("Processing file {}".format(filename))
     if not mass:
-        outfile_name = "v14_pn_XCal_total_{}.root".format(filenum)
+        outfile_name = "v14_8gev_pn_XCal_total_{}.root".format(filenum)
     else:
-        outfile_name = "v14_{}_XCal_total_{}.root".format(mass, filenum)
+        outfile_name = "v14_8gev_{}_XCal_total_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
 
     # NOTE:  Added this to ...
@@ -212,6 +222,8 @@ def processFile(input_vars):
                 branchList.append(branchname_ + '/' + leaf)
             else:
                 branchList.append(branchname_ + '/' + branchname_ + '.' + leaf)
+    if sig:
+        branchList.append(blname('TriggerSums20Layers', 'pass_', sig))
 
     #print("Branches to load:")
     #print(branchList)
@@ -233,16 +245,27 @@ def processFile(input_vars):
         if key_miss:
             print(f"MISSING KEYS IN: {filename}  SKIPPING...")
             return 0,0
+
         # (This part is just for printing the # of pre-preselection events:)
-        #tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
-        #nTotalEvents = len(tmp)
-        raw_data = t.arrays(branchList) #, preselection)  #, aliases=alias_dict)
-        #print("Check raw_data:")
-        #print(raw_data[blname('EcalScoringPlaneHits_v3_v13','pdgID_')])
-        nTotalEvents = len(raw_data[blname('EcalRecHits', 'xpos_', sig)])
+        # Must trigger skim first (if signal)
+        if sig:
+            raw_data = t.arrays(branchList)
+            trig_pass = raw_data[blname('TriggerSums20Layers', 'pass_', sig)]
+            tskimed_data = {}
+            for branch in branchList:
+                tskimmed_data[branch] = raw_data[branch][trig_pass]
+        else: # bkg, already trigger skimmed
+            #tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
+            #nTotalEvents = len(tmp)
+            tskimmed_data = t.arrays(branchList) #, preselection)  #, aliases=alias_dict)
+        
+        #print("Check tskimmed_data:")
+        #print(tskimmed_data[blname('EcalScoringPlaneHits_v3_v13','pdgID_')])
+        nTotalEvents = len(tskimmed_data[blname('EcalRecHits', 'xpos_', sig)])
         if nTotalEvents == 0:
             print("FILE {} CONTAINS ZERO EVENTS. SKIPPING...".format(filename))
             return 0, 0
+
         print("Before preselection: found {} events".format(nTotalEvents))
 
         # t.arrays() returns a dict-like object:
@@ -252,11 +275,11 @@ def processFile(input_vars):
 
         # Perform the preselection:  Drop all events with more than MAX_NUM_ECAL_HITS in the ecal, 
         # and all events with an isolated energy that exceeds MAXX_ISO_ENERGY
-        el = (raw_data[blname('EcalVeto', 'nReadoutHits_', sig)] < MAX_NUM_ECAL_HITS) * (raw_data[blname('EcalVeto', 'summedTightIso_', sig)] < MAX_ISO_ENERGY) 
+        el = (tskimmed_data[blname('EcalVeto', 'nReadoutHits_', sig)] < MAX_NUM_ECAL_HITS) * (tskimmed_data[blname('EcalVeto', 'summedTightIso_', sig)] < MAX_ISO_ENERGY) 
 
         preselected_data = {}
         for branch in branchList:
-            preselected_data[branch] = raw_data[branch][el]
+            preselected_data[branch] = tskimmed_data[branch][el]
         #print("Preselected data")
         nEvents = len(preselected_data[blname('EcalVeto', 'summedTightIso_', sig)])
         print("After preselection: skimming from {} events".format(nEvents))
@@ -265,11 +288,12 @@ def processFile(input_vars):
         # information that ParticleNet doesn't need, and that would take a long time to load with the lazy-loading
         # approach.)
         # For each event, find the recoil electron (maximal recoil pz):
-        pdgID_ = t[blname('TargetScoringPlaneHits', 'pdgID_', sig)].array()[el]
-        z_     = t[blname('TargetScoringPlaneHits', 'z_', sig)].array()[el]
-        px_    = t[blname('TargetScoringPlaneHits', 'px_', sig)].array()[el]
-        py_    = t[blname('TargetScoringPlaneHits', 'py_', sig)].array()[el]
-        pz_    = t[blname('TargetScoringPlaneHits', 'pz_', sig)].array()[el]
+        # pdgID_ = t[blname('TargetScoringPlaneHits', 'pdgID_', sig)].array()[el] (this type of array used before, no trig skim)
+        pdgID_ = preselected_data[blname('TargetScoringPlaneHits', 'pdgID_', sig)]
+        z_     = preselected_data[blname('TargetScoringPlaneHits', 'z_', sig)]
+        px_    = preselected_data[blname('TargetScoringPlaneHits', 'px_', sig)]
+        py_    = preselected_data[blname('TargetScoringPlaneHits', 'py_', sig)]
+        pz_    = preselected_data[blname('TargetScoringPlaneHits', 'pz_', sig)]
         tspRecoil = []
         for i in range(nEvents):
             max_pz = 0
@@ -292,10 +316,12 @@ def processFile(input_vars):
         nTSPHits = np.zeros(nEvents)
         nRecHits = np.zeros(nEvents) # was: []
         nHRecHits = np.zeros(nEvents)
+        maxPE = np.zeros(nEvents)
         x_data = preselected_data[blname('EcalScoringPlaneHits','x_', sig)]
         xsp_data = preselected_data[blname('TargetScoringPlaneHits','x_', sig)]
         E_data = preselected_data[blname('EcalRecHits','energy_', sig)]
         HE_data = preselected_data[blname('HcalRecHits', 'energy_', sig)]
+        pe_data = preselected_data[blname('HcalRecHits', 'pe_', sig)]
         for i in range(nEvents):
             # NOTE:  max num hits may exceed MAX_NUM...this is okay.
             nSPHits[i] = len(x_data[i])      # was: nSPHits.append(len(x_data[i])) 
@@ -306,10 +332,15 @@ def processFile(input_vars):
             nHRecHits[i] = sum(HE_data[i] > 0)
             if len(HE_data[i]) == 0:
                 nHRecHits[i] = 0
+            if len(pe_data[i]) != 0:
+                maxPE[i] = max(pe_data[i])
+            if len(pe_data[i]) == 0:
+                maxPE[i] = 0
         preselected_data['nSPHits'] = np.array(nSPHits)
         preselected_data['nTSPHits'] = np.array(nTSPHits)
         preselected_data['nRecHits'] = np.array(nRecHits)
         preselected_data['nHRecHits'] = np.array(nHRecHits)
+        preselected_data['maxPE'] = np.array(maxPE)
 
         '''
         # Apply cut on nHRecHits for improved background rejection 
@@ -357,16 +388,18 @@ def processFile(input_vars):
         scalar_holders['nTSPHits'] = np.array([0], 'i')
         scalar_holders['nRecHits'] = np.array([0], 'i')
         scalar_holders['nHRecHits'] = np.array([0], 'i')
+        scalar_holders['maxPE'] = np.array([0], 'i')
         scalar_holders['TargetSPRecoilE_pt'] = np.array([0], dtype='float32')
         branchList.append('nSPHits')
         branchList.append('nTSPHits')
         branchList.append('nRecHits')
         branchList.append('nHRecHits')
+        branchList.append('maxPE')
         branchList.append('TargetSPRecoilE_pt')
         # Now, go through each branch name and a corresponding branch to the tree:
         for branch, var in scalar_holders.items():
             # Need to make sure that each var is stored as the correct type (floats, ints, etc):
-            if branch == 'nSPHits' or branch == 'nTSPHits' or branch == 'nRecHits' or branch == 'nHRecHits':
+            if branch == 'nSPHits' or branch == 'nTSPHits' or branch == 'nRecHits' or branch == 'nHRecHits' or branch == 'maxPE':
                 branchname = branch
                 dtype = 'I'
             elif branch == 'TargetSPRecoilE_pt':
@@ -416,7 +449,14 @@ def processFile(input_vars):
                     # fill vector data
                     #if i==0:  print("filling vector", branch)
                     for j in range(len(preselected_data[branch][i])):
-                        vector_holders[branch][j] = preselected_data[branch][i][j]
+                        try:
+                            vector_holders[branch][j] = preselected_data[branch][i][j]
+                        except IndexError:
+                        print("INDEX ERROR FILLING VECTOR BRANCHES...")
+                        print(f"Offending file: {filename}")
+                        print(f"Offending branch: {branch}")
+                        print("EXITING PROGRAM ...")
+                        sys.exit(1)
                 else:
                     print("FATAL ERROR:  {} not found in *_holders".format(branch))
                     assert(False)

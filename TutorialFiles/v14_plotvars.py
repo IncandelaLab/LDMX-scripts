@@ -255,14 +255,25 @@ for var, data in plot_vars.items():
         plt.show()
     if args.save:
         if args.output_path:
-            base = os.path.basename(args.output_path)
-            if base and not os.path.exists(base):
-                os.makedirs(base)
-            outfile_path = os.path.join(base, f"v14_4gev_{var}")
-            plt.savefig(f"{outfile_path}", facecolor='w', dpi=200)
+            if os.path.isabs(args.output_path):
+                abspath = args.output_path
+                if abspath and not os.path.exists(abspath):
+                    os.makedirs(abspath)
+                outfile_path = os.path.join(abspath, f"v14_4gev_{var}")
+                plt.savefig(f"{outfile_path}", facecolor='w', dpi=200)
+            else:
+                base = os.path.basename(args.output_path)
+                if base and not os.path.exists(base):
+                    os.makedirs(base)
+                outfile_path = os.path.join(base, f"v14_4gev_{var}")
+                plt.savefig(f"{outfile_path}", facecolor='w', dpi=200)
         else:
             plt.savefig(f"v14_4gev_{var}", facecolor='w', dpi=200)
 if args.save:
-    fullpath = os.path.abspath(base)
-    print(f"\nSaved plots to {fullpath}")
+    if os.path.isabs(args.output_path):
+        fullpath = abspath
+        print(f"\nSaved plots to {fullpath}")
+    else:
+        fullpath = os.path.abspath(base)
+        print(f"\nSaved plots to {fullpath}")
 print("\nDONE.\n")

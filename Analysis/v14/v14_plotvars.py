@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--show', action='store_true', default=False,
                     help='show plots (requires X server if on remote server)')
 parser.add_argument('--save', action='store_true', default=False,
-                    help='save plots as pdfs')
+                    help='save plots as png's)
 parser.add_argument('-o', '--output-path', type=str, default='',
                     help='path to save the generated plots')
 args = parser.parse_args()

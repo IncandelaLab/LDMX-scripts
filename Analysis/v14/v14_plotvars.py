@@ -20,7 +20,7 @@ parser.add_argument('--show', action='store_true', default=False,
 parser.add_argument('--save', action='store_true', default=False,
                     help='save plots as pdfs')
 parser.add_argument('-o', '--output-path', type=str, default='',
-                    help='path to save the prediction output')
+                    help='path to save the generated plots')
 args = parser.parse_args()
 
 # dictionary for v14 4 GeV filepaths (mass:filepath)

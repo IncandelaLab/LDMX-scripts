@@ -157,7 +157,7 @@ print(f"\nNumber of events:\n{json_events}", flush=True)
 
 ## set config values for plots
 
-# colors to plot with (lightsaber hex codes!)
+# colors to plot with (light4saber hex codes!)
 colors = ['#4A7DFF', '#14AD0C', '#FF212E', '#FF8F13', '#871EFE'] 
 
 # x ranges for each variable
@@ -255,11 +255,15 @@ for var, data in plot_vars.items():
         plt.show()
     if args.save:
         if args.output_path:
-            base = os.path.basename(args.output_path)
-            if base and not os.path.exists(base):
-                os.makedirs(base)
-            outfile_path = os.path.join(base, f"v14_4gev_{var}")
-            plt.savefig(f"{outfile_path}", facecolor='w', dpi=200)
+            if os.path.isabs(args.output_path):
+                outfile_path = os.path.join(args.output_path, f"v14_4gev_{var}")
+                plt.savefig(f"{outfile_path}", facecolor='w', dpi=200)
+            else:
+                base = os.path.basename(args.output_path)
+                if base and not os.path.exists(base):
+                    os.makedirs(base)
+                outfile_path = os.path.join(base, f"v14_4gev_{var}")
+                plt.savefig(f"{outfile_path}", facecolor='w', dpi=200)
         else:
             plt.savefig(f"v14_4gev_{var}", facecolor='w', dpi=200)
 if args.save:

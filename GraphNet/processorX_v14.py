@@ -16,7 +16,9 @@ import math
 print("Importing ROOT")
 import ROOT as r
 print("Imported ROOT.  Starting...")
-from multiprocessing import Pool
+# this will allow you to control how Pool creates processes (spawn instead of fork) to avoid deadlock!
+# nice blog post about this here: https://pythonspeed.com/articles/python-multiprocessing/
+from multiprocessing import get_context # WAS: from multiprocessing import Pool
 
 """
 file_processor.py
@@ -251,7 +253,7 @@ def processFile(input_vars):
         if sig:
             raw_data = t.arrays(branchList)
             trig_pass = raw_data[blname('TriggerSums20Layers', 'pass_', sig)]
-            tskimed_data = {}
+            tskimmed_data = {}
             for branch in branchList:
                 tskimmed_data[branch] = raw_data[branch][trig_pass]
         else: # bkg, already trigger skimmed
@@ -368,12 +370,14 @@ def processFile(input_vars):
             for br, brdict in data_to_save.items():
                 #print(leaf)
                 #print(brdict['scalars'], brdict['vectors'])
-                if leaf in brdict['scalars']:
+                if leaf in brdict['scalars'] or leaf:
                     datatype = 'scalar'
                     continue
                 elif leaf in brdict['vectors']:
                     datatype = 'vector'
                     continue
+            if leaf == 'pass_':
+                datatype = 'scalar'
             assert(datatype == 'scalar' or datatype == 'vector')
             if datatype == 'scalar':  # If scalar, temp array has a length of 1
                 scalar_holders[branch] = np.zeros((1), dtype='float32')
@@ -452,11 +456,11 @@ def processFile(input_vars):
                         try:
                             vector_holders[branch][j] = preselected_data[branch][i][j]
                         except IndexError:
-                        print("INDEX ERROR FILLING VECTOR BRANCHES...")
-                        print(f"Offending file: {filename}")
-                        print(f"Offending branch: {branch}")
-                        print("EXITING PROGRAM ...")
-                        sys.exit(1)
+                            print("INDEX ERROR FILLING VECTOR BRANCHES...")
+                            print(f"Offending file: {filename}")
+                            print(f"Offending branch: {branch}")
+                            print("EXITING PROGRAM ...")
+                            sys.exit(1)
                 else:
                     print("FATAL ERROR:  {} not found in *_holders".format(branch))
                     assert(False)
@@ -483,8 +487,11 @@ if __name__ == '__main__':
         params = []
         for filenum, f in enumerate(glob.glob(filepath)):
             params.append([f, mass, filenum])  # list will be passed to ProcessFile:  processFile([filepath, mass, file_number])
-        with Pool(20) as pool:  # Can increase this number if desired, although this depends on how many threads POD will let you run at once...
+        with get_context("spawn").Pool(40, maxtasksperchild=1) as pool:  # Can increase this number if desired, although this depends on how many threads POD will let you run at once...
             # this number is unclear, but 20 seems right judging from the POD webpage
+            # changed job file to specify 20 tasks and max 1 task per core
+            # may try increasing to 40 (entire node), and changing Pool arg to 40
+            # maxtasksperchild=1 makes sure processes don't linger after task completion (in case there is a memory leak somewhere in the script)
             results = pool.map(processFile, params)
         print("Finished.  Result len:", len(results))
         print(results)

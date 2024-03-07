@@ -487,7 +487,7 @@ if __name__ == '__main__':
         params = []
         for filenum, f in enumerate(glob.glob(filepath)):
             params.append([f, mass, filenum])  # list will be passed to ProcessFile:  processFile([filepath, mass, file_number])
-        with get_context("spawn").Pool(40, maxtasksperchild=1) as pool:  # Can increase this number if desired, although this depends on how many threads POD will let you run at once...
+        with get_context("spawn").Pool(20, maxtasksperchild=1) as pool:  # Can increase this number if desired, although this depends on how many threads POD will let you run at once...
             # this number is unclear, but 20 seems right judging from the POD webpage
             # changed job file to specify 20 tasks and max 1 task per core
             # may try increasing to 40 (entire node), and changing Pool arg to 40

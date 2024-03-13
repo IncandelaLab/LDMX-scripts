@@ -66,7 +66,7 @@ parser.add_argument('--save-extra', action='store_true', default=False,
                     help='save extra information defined in `obs_branches` and `veto_branches` to the prediction output')
 parser.add_argument('--test-output-path', type=str, default='test-outputs/particle_net_output',
                     help='path to save the prediction output')
-parser.add_argument('--num-regions', type=int, default=2,
+parser.add_argument('--num-regions', type=int, default=1,
                     help='Number of regions for SplitNet')
 parser.add_argument('-X', '--extended', action='store_true', default=False,
                     help='Use extended ParticleNet (ECal + HCal)')

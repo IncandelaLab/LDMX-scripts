@@ -35,7 +35,7 @@ parser.add_argument('--test-output-path', type=str, default='')
 parser.add_argument('--num-workers', type=int, default=2)
 parser.add_argument('--batch-size', type=int, default=1024)
 parser.add_argument('--device', type=str, default='cuda:0')
-parser.add_argument('--num-regions', type=int, default=2)
+parser.add_argument('--num-regions', type=int, default=1)
 parser.add_argument('-X', '--extended', action='store_true', default=False,
                     help='Use extended ParticleNet (ECal + HCal)')
 args = parser.parse_args()

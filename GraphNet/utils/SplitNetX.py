@@ -23,7 +23,7 @@ class SplitNetX(nn.Module):
                  fc_params=[(128,0.1)],
                  use_fusion=False,
                  return_softmax=False,
-                 nRegions=2,
+                 nRegions=1,
                  regSizes = None, # List w/ len==nRegions
                  **kwargs):
         super(SplitNetX, self).__init__(**kwargs)

@@ -20,8 +20,13 @@ import ROOT as r
 
 torch.set_default_dtype(torch.float64)
 
+# this will simply change E_beam and eventually RoC (new RoC for 8gev not added yet)
+8gev = True 
+
 # Should match value in the preselection.  Determines size of ParticleNet position arrays.
-MAX_NUM_ECAL_HITS = 50 #60  #110  # NOW REDUCED!
+# going to leave this hard coded seperately since it relies on detector version as well as beam energy
+# v14 settings: 90 for 8gev, 50 for 4gev
+MAX_NUM_ECAL_HITS = 90 #50 #60  #110  # NOW REDUCED!
 
 # NEW: Radius of containment data
 # Note:  Should still be valid for 2e ParticleNet unless the shower shape has changed
@@ -45,6 +50,7 @@ radius_beam_68 = [4.73798004, 4.80501156, 4.77108164, 4.53839401, 4.73273021,
 #radius_68 = [radius_beam_68,radius_recoil_68_p_0_500_theta_0_10, radius_recoil_68_p_500_1500_theta_0_10,radius_recoil_68_theta_10_20,radius_recoil_68_theta_20_end]
 
 #NEW: RoC bins for v14 1e
+#NOTE: this is still for 4gev (must update for 8gev if doing multiple ECal regions)
 radius68_thetalt10 = [  10.12233413, 9.921772, 11.38255086, 11.67991867, 13.14337347, 
                                 13.17120624, 16.80994665, 17.83787244, 22.44684374, 23.74239886, 
                                 28.60564083, 30.27889678, 34.86404888, 36.39009394, 41.29309474, 
@@ -100,7 +106,7 @@ def _concat(arrays, axis=0):
 
 class XCalHitsDataset(Dataset):
 
-    def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v14', nRegions=2, regSizes=None):
+    def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v14', nRegions=None, regSizes=None, extended=False):
         super(XCalHitsDataset, self).__init__()
         print("Initializing XCalHitsDataset")
         # load cell map (for calculating xyz+layer from hit IDs)
@@ -131,6 +137,7 @@ class XCalHitsDataset(Dataset):
         assert(detector_version != 'v9')  # v9 compatibility would be nontrivial to add, and is probably unnecessary
 
         self.nRegions = nRegions
+        self.extended = extended
 
         # General approach to init():
         # - Input events have all been preselected.
@@ -189,7 +196,10 @@ class XCalHitsDataset(Dataset):
         # Hard-coded; not worried about generalizing atm
         #return 5
         #return 4 # removed layer id
-        return 6 # restored layer id, added strip id
+        if args.extended:
+            return 6 # restored layer id, added strip id
+        else:
+            return 5
 
     def __len__(self):
         return len(self.event_list)
@@ -227,8 +237,12 @@ class XCalHitsDataset(Dataset):
         # create features and coordinates:
         # NOTE:  Always 3-dimensional!  [[a, b...]] for 1-region PN
         coordinates = np.stack((var_data['x_'], var_data['y_'], var_data['z_']), axis=1)
-        features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
-                                var_data['log_energy_'], var_data['layer_id_'], var_data['strip_id_']), axis=1)                   
+        if self.extended:
+            features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
+                                    var_data['log_energy_'], var_data['layer_id_'], var_data['strip_id_']), axis=1)  
+        else:
+             features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
+                                    var_data['log_energy_'], var_data['layer_id_']), axis=1)             
         return coordinates, features, label
 
 
@@ -285,7 +299,10 @@ class XCalHitsDataset(Dataset):
 
         # Create vectors holding the electron/photon momenta so the trajectory projections can be found later
         # Set xtraj_p_norm relative to z=1 to make projecting easier:
-        E_beam = 4000.0  # In MeV
+        if 8gev:
+            E_beam = 8000.0 # in MeV
+        else:
+            E_beam = 4000.0
         target_dist = 240.5 # distance from ecal to target, mm
         
         # Compute and store trajectories:
@@ -325,16 +342,17 @@ class XCalHitsDataset(Dataset):
         else:
             xyz_leaves = [self.ttree.GetLeaf(self._pos_branch.format(v)) for v in ['x', 'y', 'z']]
             (x, y, z) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float64') for lf in xyz_leaves]
-            h_xyz_leaves = [self.ttree.GetLeaf(self._h_pos_branch.format(v)) for v in ['x', 'y', 'z']]
-            (hx, hy, hz) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float64') for lf in h_xyz_leaves]
             energy_leaf = self.ttree.GetLeaf(self._energy_branch)
             energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float64')
-            h_energy_leaf = self.ttree.GetLeaf(self._h_energy_branch)
-            h_energy = np.array([h_energy_leaf.GetValue(i) for i in range(h_energy_leaf.GetLen())], dtype='float64')
             layer_id = self._getlayer(z)
-            hid_leaf = self.ttree.GetLeaf(self._h_id_branch)
-            hid = np.array([hid_leaf.GetValue(i) for i in range(hid_leaf.GetLen())], dtype='int')
-            (hcal_section, hcal_layer, hcal_strip) = self._parse_hid(hid)
+            if self.extended:
+                h_xyz_leaves = [self.ttree.GetLeaf(self._h_pos_branch.format(v)) for v in ['x', 'y', 'z']]
+                (hx, hy, hz) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float64') for lf in h_xyz_leaves]
+                h_energy_leaf = self.ttree.GetLeaf(self._h_energy_branch)
+                h_energy = np.array([h_energy_leaf.GetValue(i) for i in range(h_energy_leaf.GetLen())], dtype='float64')
+                hid_leaf = self.ttree.GetLeaf(self._h_id_branch)
+                hid = np.array([hid_leaf.GetValue(i) for i in range(hid_leaf.GetLen())], dtype='int')
+                (hcal_section, hcal_layer, hcal_strip) = self._parse_hid(hid)
 
 
         # Now, work with table['etraj_ref'] and table['ptraj_ref'].
@@ -347,7 +365,8 @@ class XCalHitsDataset(Dataset):
         z_          = np.zeros((self.nRegions, 150), dtype='float64')
         log_energy_ = np.zeros((self.nRegions, 150), dtype='float64')
         layer_id_   = np.zeros((self.nRegions, 150), dtype='float64')
-        strip_id_   = np.zeros((self.nRegions, 150), dtype='float64')
+        if self.extended:
+            strip_id_   = np.zeros((self.nRegions, 150), dtype='float64')
 
         #regionIndices = [0, 0, 0]  # Indices of last hit added to feature arrays
 
@@ -370,6 +389,7 @@ class XCalHitsDataset(Dataset):
             ir = -1
             #if recoilangle==-1 or recoil_p==-1:  ir = 1  # Not used for now
             # Select the class of containment radii based on trajectory angle/energy:
+            # Note: v14 8 gev RoC not added yet so this is still just for 4gev
             if self.detector_version=='v14':
                 if recoilangle < 10:
                     ir = 1
@@ -402,14 +422,14 @@ class XCalHitsDataset(Dataset):
                 insidePhotonRadius   = True
             
             ecal_regions = []  # Regions ecal hit falls inside
-            if self.nRegions == 2 or self.nRegions == 6:
+            if (self.nRegions == 1 and not self.extended) or ((self.nRegions == 2 or self.nRegions == 6) and self.extended):
                 ecal_regions.append(0)
-            elif self.nRegions == 3 or self.nRegions == 7:
+            elif (self.nRegions == 2 and not self.extended) or ((self.nRegions == 3 or self.nRegions == 7) and self.extended):
                 if insideElectronRadius:
                     ecal_regions.append(0)
                 else:
                     ecal_regions.append(1)
-            elif self.nRegions == 4 or self.nRegions == 8:
+            elif (self.nRegions == 3 and not self.extended) or ((self.nRegions == 4 or self.nRegions == 8) and self.extended):
                 if insideElectronRadius:
                     ecal_regions.append(0)
                 if insidePhotonRadius:
@@ -423,7 +443,8 @@ class XCalHitsDataset(Dataset):
                     y_[r][j] = y[j] - etraj_point[1]
                     z_[r][j] = z[j]  # - self._layerZs[0]  # Used to be defined relative to the ecal face; changed to absolute bc of Huilin's old results
                     layer_id_[r][j] = layer_id[j]
-                    strip_id_[r][j] = 0
+                    if self.extended:
+                        strip_id_[r][j] = 0
                     if energy[j] > 0:
                         log_energy_[r][j] = np.log(energy[j]) 
                     elif energy[j] == 0:
@@ -431,42 +452,48 @@ class XCalHitsDataset(Dataset):
                     else: # else E<0
                         log_energy_[r][j] = -1  # Note:  E<0 is very uncommon, so -1 is okay to round to.
                 
-        for k in range(len(h_energy)):
-            
-            hcal_regions = []
-            if self.nRegions == 2 or self.nRegions == 3 or self.nRegions == 4:
-                hcal_regions.append(self.nRegions - 1) # ANY HCAL
-            elif self.nRegions == 6 or self.nRegions == 7 or self.nRegions == 8:
-                if hcal_section[k] == 0: # BACK HCAL
-                    hcal_regions.append(self.nRegions - 5)
-                elif hcal_section[k] == 1: # TOP SIDE-HCAL
-                    hcal_regions.append(self.nRegions - 4)
-                elif hcal_section[k] == 2: # BOTTOM SIDE-HCAL
-                    hcal_regions.append(self.nRegions - 3) 
-                elif hcal_section[k] == 3: # RIGHT SIDE-HCAL
-                    hcal_regions.append(self.nRegions - 2)
-                elif hcal_section[k] == 4: # LEFT SIDE-HCAL
-                    hcal_regions.append(self.nRegions - 1)
+        if self.extended
+            for k in range(len(h_energy)):
+                
+                hcal_regions = []
+                if self.nRegions == 2 or self.nRegions == 3 or self.nRegions == 4:
+                    hcal_regions.append(self.nRegions - 1) # ANY HCAL
+                elif self.nRegions == 6 or self.nRegions == 7 or self.nRegions == 8:
+                    if hcal_section[k] == 0: # BACK HCAL
+                        hcal_regions.append(self.nRegions - 5)
+                    elif hcal_section[k] == 1: # TOP SIDE-HCAL
+                        hcal_regions.append(self.nRegions - 4)
+                    elif hcal_section[k] == 2: # BOTTOM SIDE-HCAL
+                        hcal_regions.append(self.nRegions - 3) 
+                    elif hcal_section[k] == 3: # RIGHT SIDE-HCAL
+                        hcal_regions.append(self.nRegions - 2)
+                    elif hcal_section[k] == 4: # LEFT SIDE-HCAL
+                        hcal_regions.append(self.nRegions - 1)
 
 
-            for r in range(self.nRegions):
-                if r in hcal_regions:
-                    x_[r][k] = hx[k]
-                    y_[r][k] = hy[k]
-                    z_[r][k] = hz[k]  
-                    layer_id_[r][k] = hcal_layer[k]
-                    strip_id_[r][k] = hcal_strip[k]
-                    if h_energy[k] > 0:
-                        log_energy_[r][k] = np.log(h_energy[k])
-                    elif h_energy[k] == 0:
-                        log_energy_[r][k] = -2
-                    else: # else E<0
-                        log_energy_[r][k] = -1 
+                for r in range(self.nRegions):
+                    if r in hcal_regions:
+                        x_[r][k] = hx[k]
+                        y_[r][k] = hy[k]
+                        z_[r][k] = hz[k]  
+                        layer_id_[r][k] = hcal_layer[k]
+                        strip_id_[r][k] = hcal_strip[k]
+                        if h_energy[k] > 0:
+                            log_energy_[r][k] = np.log(h_energy[k])
+                        elif h_energy[k] == 0:
+                            log_energy_[r][k] = -2
+                        else: # else E<0
+                            log_energy_[r][k] = -1 
 
         # Create and fill var_dict w/ feature information:
-        var_dict = {'x_':x_, 'y_':y_, 'z_':z_,        
-                    'log_energy_':log_energy_, 'layer_id_': layer_id_, 'strip_id_': strip_id_
-                   }
+        if self.extended:
+            var_dict = {'x_':x_, 'y_':y_, 'z_':z_,        
+                        'log_energy_':log_energy_, 'layer_id_': layer_id_, 'strip_id_': strip_id_
+                        }
+        else:
+            var_dict = {'x_':x_, 'y_':y_, 'z_':z_,        
+                        'log_energy_':log_energy_, 'layer_id_': layer_id_
+                        }
 
         # Lastly, create and fill obs_dict w/ branches specified in train.py:
         o_dict = {}

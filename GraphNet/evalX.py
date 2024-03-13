@@ -36,6 +36,8 @@ parser.add_argument('--num-workers', type=int, default=2)
 parser.add_argument('--batch-size', type=int, default=1024)
 parser.add_argument('--device', type=str, default='cuda:0')
 parser.add_argument('--num-regions', type=int, default=2)
+parser.add_argument('-X', '--extended', action='store_true', default=False,
+                    help='Use extended ParticleNet (ECal + HCal)')
 args = parser.parse_args()
 
 obs_branches = []
@@ -176,7 +178,7 @@ def run_one_file(filepath, extra_label=0):
         siglist = {extra_label:(filepath, -1)}
 
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
-    test_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, obs_branches=obs_branches, nRegions=args.num_regions)
+    test_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, obs_branches=obs_branches, nRegions=args.num_regions, extended=args.extended)
                                 #, veto_branches=veto_branches, coord_ref=args.coord_ref)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)

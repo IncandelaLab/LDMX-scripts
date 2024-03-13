@@ -21,7 +21,7 @@ import torch
 from torch.optim.optimizer import Optimizer, required
 import itertools as it
 
-torch.set_default_dtype(torch.float32)  # CHANGED
+torch.set_default_dtype(torch.float64)  # CHANGED
 
 
 class Ranger(Optimizer):
@@ -80,7 +80,7 @@ class Ranger(Optimizer):
         super(Ranger, self).__setstate__(state)
 
 
-    def step(self, closure=None):
+    def step(self, closure=None, avgloss=None, avgacc=None):
         loss = None
         #note - below is commented out b/c I have other work that passes back the loss as a float, and thus not a callable closure.  
         #Uncomment if you need to use the actual closure...
@@ -94,11 +94,11 @@ class Ranger(Optimizer):
             for p in group['params']:
                 if p.grad is None:
                     continue
-                grad = p.grad.data.float()  # CHANGEd
+                grad = p.grad.data #.float()  # CHANGEd
                 if grad.is_sparse:
                     raise RuntimeError('Ranger optimizer does not support sparse gradients')
 
-                p_data_fp32 = p.data.float()  # CHANGED
+                p_data_fp32 = p.data #.float()  # CHANGED
 
                 state = self.state[p]  #get state dict for this param
 
@@ -163,4 +163,7 @@ class Ranger(Optimizer):
                     slow_p.add_(self.alpha, p.data - slow_p)  #(fast weights - slow weights) * alpha
                     p.data.copy_(slow_p)  #copy interpolated weights to RAdam param tensor
 
-        return loss
+        if avgloss and avgacc:
+            return loss, avgloss, avgacc
+        else:
+            return loss

@@ -68,6 +68,8 @@ parser.add_argument('--test-output-path', type=str, default='test-outputs/partic
                     help='path to save the prediction output')
 parser.add_argument('--num-regions', type=int, default=2,
                     help='Number of regions for SplitNet')
+parser.add_argument('-X', '--extended', action='store_true', default=False,
+                    help='Use extended ParticleNet (ECal + HCal)')
 
 print(sys.argv)
 args = parser.parse_args()
@@ -76,31 +78,31 @@ args = parser.parse_args()
 # NOTE:  These must be output files produced by file_processor.py, not unprocessed ldmx-sw ROOT files.
 bkglist = {
     # (filepath, num_events_for_training)
-    0: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*pn*.root', -1)
+    0: ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*pn*.root', -1)
     }
 
 # was processed/*pn*, *0.001*, etc.
 
 siglist = {
     # (filepath, num_events_for_training)
-    1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 200000),
-    10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  200000),
-    100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   200000),
-    1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   200000),
+    1:    ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*0.001*.root', 200000),
+    10:   ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*0.01*.root',  200000),
+    100:  ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*0.1*.root',   200000),
+    1000: ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*1.0*.root',   200000),
     }
 
 if args.demo:
     bkglist = {
         # (filepath, num_events_for_training)
-        0: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*pn*.root', 8000)
+        0: ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*pn*.root', 8000)
         }
 
     siglist = {
         # (filepath, num_events_for_training)
-        1:    ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.001*.root', 2000),
-        10:   ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.01*.root',  2000),
-        100:  ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*0.1*.root',   2000),
-        1000: ('/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*1.0*.root',   2000),
+        1:    ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*0.001*.root', 2000),
+        10:   ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*0.01*.root',  2000),
+        100:  ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*0.1*.root',   2000),
+        1000: ('/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/*1.0*.root',   2000),
         }
 
 # NOTE:  Must manually type this in here from file_processor.py output
@@ -112,7 +114,9 @@ if args.demo:
 # v13:
 #presel_eff = {1: 0.9840214199343582, 10: 0.993525558985169, 100: 0.9963092463092463, 1000: 0.9953046798410815, 0: 0.03833032309853502}
 # v14:
-presel_eff = {1: 0.9815241742343622, 10: 0.99102142309365, 100: 0.9926784519870396, 1000: 0.9949900511654349, 0: 0.06929824265618538}
+#presel_eff = {1: 0.9815241742343622, 10: 0.99102142309365, 100: 0.9926784519870396, 1000: 0.9949900511654349, 0: 0.06929824265618538}
+# v14 8gev:
+presel_eff = {1: 0.9952855229150378, 10: 0.9976172400798192, 100: 0.9979411114121182, 1000: 0.9981519444725636, 0: 0.04734728725337247}
 
 #########################################################
 
@@ -130,7 +134,8 @@ if args.save_extra:
         'discValue_',
         'recoilX_',
         'recoilY_',
-        'TargetSPRecoilE_pt'
+        'TargetSPRecoilE_pt',
+        'maxPE'
         ]
 
 
@@ -197,9 +202,9 @@ dev = torch.device(args.device)
 if training_mode:
     # for training: we use the first 0-20% for testing, and 20-80% for training
     # Create one EcalHitsDatset storing the testing/validation sample...
-    train_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), nRegions=args.num_regions)
+    train_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0.2, 1), nRegions=args.num_regions, extended=args.extended)
     # ...and one storing the training sample.
-    val_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), nRegions=args.num_regions)
+    val_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=(0, 0.2), nRegions=args.num_regions, extended=args.extended)
     train_loader = DataLoader(train_data, num_workers=args.num_workers, batch_size=args.batch_size,
                               collate_fn=collate_fn, shuffle=True, drop_last=True, pin_memory=True)
     val_loader = DataLoader(val_data, num_workers=args.num_workers, batch_size=args.batch_size,
@@ -213,7 +218,7 @@ else:
     # If not in training mode, don't need to bother with the second training dataset.
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
     test_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, 
-                                obs_branches=obs_branches, nRegions=args.num_regions)
+                                obs_branches=obs_branches, nRegions=args.num_regions, extended=args.extended)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                              collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
 
@@ -267,7 +272,10 @@ def train(model, opt, scheduler, train_loader, dev):
                 'Acc': '%.5f' % (correct / num_examples),
                 'AvgAcc': '%.5f' % (total_correct / count)})
 
-    scheduler.step()
+            avgloss = (total_loss / num_batches)
+            avgacc = (total_correct / count)
+
+    scheduler.step(avgloss=avgloss, avgacc=avgacc)
 
 
 def evaluate(model, test_loader, dev, return_scores=False):
@@ -287,10 +295,10 @@ def evaluate(model, test_loader, dev, return_scores=False):
                 _, preds = logits.max(1)
 
                 if return_scores:
-                    log_scores = torch.nn.functional.log_softmax(logits, dim=1).cpu().detach().numpy()
-                    scores.append(np.exp(np.longdouble(log_scores)))
-                    #log_scores = torch.nn.functional.log_softmax(logits, dim=1)
-                    #scores.append(torch.exp(log_scores).cpu().detach().numpy())
+                    #log_scores = torch.nn.functional.log_softmax(logits, dim=1).cpu().detach().numpy()
+                    #scores.append(np.exp(np.longdouble(log_scores)))
+                    log_scores = torch.nn.functional.log_softmax(logits, dim=1)
+                    scores.append(torch.exp(log_scores).cpu().detach().numpy())
                     #scores.append(torch.softmax(logits, dim=1).cpu().detach().numpy())
 
                 correct = (preds == label).sum().item()
@@ -330,13 +338,19 @@ if training_mode:
 
     # training loop
     best_valid_acc = 0
+    best_train_acc = 0
+    train_loss_list = []
+    train_acc_list = []
+    valid_acc_list = []
     for epoch in range(args.num_epochs):
-        train(model, opt, scheduler, train_loader, dev)
+        _, train_loss, train_acc = train(model, opt, scheduler, train_loader, dev)
 
         print('Epoch #%d Validating' % epoch)
         valid_acc = evaluate(model, val_loader, dev)
         if valid_acc > best_valid_acc:
             best_valid_acc = valid_acc
+        if train_acc > best_train_acc:
+            best_train_acc = train_acc
             if args.save_model_path:
                 dirname = os.path.dirname(args.save_model_path)
                 if dirname and not os.path.exists(dirname):
@@ -344,7 +358,13 @@ if training_mode:
                 torch.save(model.state_dict(), args.save_model_path + '_state.pt')
                 torch.save(model, args.save_model_path + '_full.pt')
         torch.save(model.state_dict(), args.save_model_path + '_state_epoch-%d_acc-%.4f.pt' % (epoch, valid_acc))
+        print('Current train loss: %.5f' % (train_loss))
+        print('Current train acc: %.5f (best: %.5f)' % (train_acc, best_train_acc))
         print('Current validation acc: %.5f (best: %.5f)' % (valid_acc, best_valid_acc))
+        train_loss_list.append(train_loss)
+        train_acc_list.append(train_acc)
+        valid_acc_list.append(valid_acc)
+
         gc.collect()
         torch.cuda.empty_cache()
         torch.cuda.list_gpu_processes()
@@ -383,7 +403,8 @@ info_dict = {'model_name':args.network,
 if training_mode:
     info_dict.update({'model_path': args.save_model_path})
 
-from utils.plot_utils import plotROC, get_signal_effs
+# auto generated plots for ROC, train/val acc, and train loss
+from utils.plot_utils import plotROC, get_signal_effs, plot_acc, plot_loss
 for k in siglist:
     if k > 0:
         mass = '%d MeV' % k
@@ -394,6 +415,15 @@ for k in siglist:
                            'acc-presel': acc,
                            'effs': get_signal_effs(fpr, tpr)
                            }
+
+plot_acc(tacc=train_acc_list, vacc=valid_acc_list, output=os.path.splitext(args.test_output_path)[0] + 'acc_plot.pdf')
+plot_loss(tloss=train_loss_list, output=os.path.splitext(args.test_output_path)[0] + 'loss_plot.pdf')
+
+# save train accuracy, validation accuracy, and train loss in a pickle file (can custom plot later)
+import pickle
+df_dict = {'train_acc': train_acc_list, 'val_acc': valid_acc_list, 'train_loss': train_loss_list}
+with open(os.path.splitext(args.test_output_path)[0] + 'df.pkl', 'wb') as pklf:
+    pickle.dump(df_dict, pklf)
 
 print(' === Summary ===')
 for k in info_dict:

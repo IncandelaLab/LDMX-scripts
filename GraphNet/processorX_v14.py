@@ -41,6 +41,7 @@ Outline:
 
 # Directory to write output files to:
 output_dir = '/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total'
+8gev = True # set to false for v14 4gev
 # Locations of the 2.3.0 ldmx-sw ROOT files to process+train on:
 """
 file_templates = {
@@ -114,26 +115,31 @@ file_templates = {
     0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
 }
 '''
-'''
-file_templates = {
-    0.001: '/home/aminali/production/v14_prod/Ap0.001GeV_1e_v3.2.2_v14_tskim/*.root',
-    0.01:  '/home/aminali/production/v14_prod/Ap0.01GeV_1e_v3.2.2_v14_tskim/*.root',
-    0.1:   '/home/aminali/production/v14_prod/Ap0.1GeV_1e_v3.2.2_v14_tskim/*.root',
-    1.0:   '/home/aminali/production/v14_prod/Ap1GeV_1e_v3.2.3_v14_tskim/*.root',
-    0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
-}
-'''
-file_templates = {
-    0.001:  '/home/vamitamas/Samples8GeV/Ap0.001GeV_sim/*.root',
-    0.01:  '/home/vamitamas/Samples8GeV/Ap0.01GeV_sim/*.root',
-    0.1:   '/home/vamitamas/Samples8GeV/Ap0.1GeV_sim/*.root',
-    1.0:   '/home/vamitamas/Samples8GeV/Ap1GeV_sim/*.root',
-    0:     '/home/vamitamas/Samples8GeV/v3.3.3_ecalPN*/*.root'
-}
+if not 8gev:
+    file_templates = {
+        0.001: '/home/aminali/production/v14_prod/Ap0.001GeV_1e_v3.2.2_v14_tskim/*.root',
+        0.01:  '/home/aminali/production/v14_prod/Ap0.01GeV_1e_v3.2.2_v14_tskim/*.root',
+        0.1:   '/home/aminali/production/v14_prod/Ap0.1GeV_1e_v3.2.2_v14_tskim/*.root',
+        1.0:   '/home/aminali/production/v14_prod/Ap1GeV_1e_v3.2.3_v14_tskim/*.root',
+        0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
+    }
+
+elif 8gev:
+    file_templates = {
+        0.001:  '/home/vamitamas/Samples8GeV/Ap0.001GeV_sim/*.root',
+        0.01:  '/home/vamitamas/Samples8GeV/Ap0.01GeV_sim/*.root',
+        0.1:   '/home/vamitamas/Samples8GeV/Ap0.1GeV_sim/*.root',
+        1.0:   '/home/vamitamas/Samples8GeV/Ap1GeV_sim/*.root',
+        0:     '/home/vamitamas/Samples8GeV/v3.3.3_ecalPN*/*.root'
+    }
 
 # Standard preselection values (-> 95% sig/5% bkg)
-MAX_NUM_ECAL_HITS = 90 #50 #60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
-MAX_ISO_ENERGY = 1100 #700 #500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
+if 8gev:
+    MAX_NUM_ECAL_HITS = 90 #50 #60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
+    MAX_ISO_ENERGY = 1100 #700 #500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
+else: # v14 4gev
+    MAX_NUM_ECAL_HITS = 50 #50 #60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
+    MAX_ISO_ENERGY = 700
 # Results:  >0.994 vs 0.055
 # UPDATED FOR v14 ... Results: ~0.98-0.99 vs 0.069
 #MAX_NUM_HCAL_HITS = 30
@@ -197,10 +203,14 @@ def processFile(input_vars):
         sig = False
 
     print("Processing file {}".format(filename))
-    if not mass:
+    if 8gev and not sig:
         outfile_name = "v14_8gev_pn_XCal_total_{}.root".format(filenum)
-    else:
+    elif not 8gev and not sig:
+        outfile_name = "v14_4gev_pn_XCal_total_{}.root".format(filenum)
+    elif 8gev and sig:
         outfile_name = "v14_8gev_{}_XCal_total_{}.root".format(mass, filenum)
+    else: # 4gev sig
+        outfile_name = "v14_4gev_{}_XCal_total_{}.root".format(mass, filenum)
     outfile_path = os.sep.join([output_dir, outfile_name])
 
     # NOTE:  Added this to ...
@@ -214,7 +224,7 @@ def processFile(input_vars):
     # to ldmx-sw.
     branchList = []
     for branchname, leafdict in data_to_save.items():
-        if mass:
+        if sig:
             branchname_ = f'{branchname}_signal'
         else:
             branchname_ = f'{branchname}_sim'
@@ -224,7 +234,7 @@ def processFile(input_vars):
                 branchList.append(branchname_ + '/' + leaf)
             else:
                 branchList.append(branchname_ + '/' + branchname_ + '.' + leaf)
-    if sig:
+    if sig and 8gev:
         branchList.append(blname('TriggerSums20Layers', 'pass_', sig))
 
     #print("Branches to load:")
@@ -250,12 +260,13 @@ def processFile(input_vars):
 
         # (This part is just for printing the # of pre-preselection events:)
         # Must trigger skim first (if signal)
-        if sig:
+        if sig and 8gev:
             raw_data = t.arrays(branchList)
             trig_pass = raw_data[blname('TriggerSums20Layers', 'pass_', sig)]
             tskimmed_data = {}
             for branch in branchList:
                 tskimmed_data[branch] = raw_data[branch][trig_pass]
+            branchList.remove(blname('TriggerSums20Layers', 'pass_', sig))
         else: # bkg, already trigger skimmed
             #tmp = t.arrays(['EcalVeto_v12/nReadoutHits_'])
             #nTotalEvents = len(tmp)
@@ -370,7 +381,7 @@ def processFile(input_vars):
             for br, brdict in data_to_save.items():
                 #print(leaf)
                 #print(brdict['scalars'], brdict['vectors'])
-                if leaf in brdict['scalars'] or leaf:
+                if leaf in brdict['scalars']:
                     datatype = 'scalar'
                     continue
                 elif leaf in brdict['vectors']:
@@ -382,8 +393,11 @@ def processFile(input_vars):
             if datatype == 'scalar':  # If scalar, temp array has a length of 1
                 scalar_holders[branch] = np.zeros((1), dtype='float32')
             else:  # If vector, temp array must have at least one element per hit
-                # (liberally picked 2k)
-                vector_holders[branch] = np.zeros((200000), dtype='float32')
+                # up to 800k v14 8gev # up to 200k v14 4gev # (liberally picked 2k)
+                if 8gev:
+                    vector_holders[branch] = np.zeros((800000), dtype='float32')
+                else:
+                    vector_holders[branch] = np.zeros((200000), dtype='float32')
         #print("TEMP:  Scalar, vector holders keys:")
         #print(scalar_holders.keys())
         #print(vector_holders.keys())
@@ -453,14 +467,7 @@ def processFile(input_vars):
                     # fill vector data
                     #if i==0:  print("filling vector", branch)
                     for j in range(len(preselected_data[branch][i])):
-                        try:
-                            vector_holders[branch][j] = preselected_data[branch][i][j]
-                        except IndexError:
-                            print("INDEX ERROR FILLING VECTOR BRANCHES...")
-                            print(f"Offending file: {filename}")
-                            print(f"Offending branch: {branch}")
-                            print("EXITING PROGRAM ...")
-                            sys.exit(1)
+                        vector_holders[branch][j] = preselected_data[branch][i][j]
                 else:
                     print("FATAL ERROR:  {} not found in *_holders".format(branch))
                     assert(False)
@@ -493,6 +500,9 @@ if __name__ == '__main__':
             # may try increasing to 40 (entire node), and changing Pool arg to 40
             # maxtasksperchild=1 makes sure processes don't linger after task completion (in case there is a memory leak somewhere in the script)
             results = pool.map(processFile, params)
+        if not mass:
+            print("\nALERT: Script may freeze here if photonuclear background results array is very large\n")
+            print("\nALL FILES HAVE BEEN PROCESSED ... safe to cancel script/job (but will lose preselection efficiency info)\n")
         print("Finished.  Result len:", len(results))
         print(results)
         nTotal  = sum([r[0] for r in results])

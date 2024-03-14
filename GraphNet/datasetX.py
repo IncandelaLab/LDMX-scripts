@@ -20,8 +20,8 @@ import ROOT as r
 
 torch.set_default_dtype(torch.float64)
 
-# this will simply change E_beam and eventually RoC (new RoC for 8gev not added yet)
-8gev = True 
+# this will simply change E_beam and eventually RoC (new RoC for 8gev not added yet)...set to False for 4gev
+beam_8gev = True 
 
 # Should match value in the preselection.  Determines size of ParticleNet position arrays.
 # going to leave this hard coded seperately since it relies on detector version as well as beam energy
@@ -299,7 +299,7 @@ class XCalHitsDataset(Dataset):
 
         # Create vectors holding the electron/photon momenta so the trajectory projections can be found later
         # Set xtraj_p_norm relative to z=1 to make projecting easier:
-        if 8gev:
+        if beam_8gev:
             E_beam = 8000.0 # in MeV
         else:
             E_beam = 4000.0

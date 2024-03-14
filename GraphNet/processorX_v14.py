@@ -41,7 +41,7 @@ Outline:
 
 # Directory to write output files to:
 output_dir = '/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total'
-8gev = True # set to false for v14 4gev
+beam_8gev = True # set to false for v14 4gev
 # Locations of the 2.3.0 ldmx-sw ROOT files to process+train on:
 """
 file_templates = {
@@ -115,7 +115,7 @@ file_templates = {
     0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
 }
 '''
-if not 8gev:
+if not beam_8gev:
     file_templates = {
         0.001: '/home/aminali/production/v14_prod/Ap0.001GeV_1e_v3.2.2_v14_tskim/*.root',
         0.01:  '/home/aminali/production/v14_prod/Ap0.01GeV_1e_v3.2.2_v14_tskim/*.root',
@@ -124,7 +124,7 @@ if not 8gev:
         0:     '/home/aminali/production/v14_prod/v3.2.0_ecalPN_tskim_sizeskim/*.root'
     }
 
-elif 8gev:
+elif beam_8gev:
     file_templates = {
         0.001:  '/home/vamitamas/Samples8GeV/Ap0.001GeV_sim/*.root',
         0.01:  '/home/vamitamas/Samples8GeV/Ap0.01GeV_sim/*.root',
@@ -134,7 +134,7 @@ elif 8gev:
     }
 
 # Standard preselection values (-> 95% sig/5% bkg)
-if 8gev:
+if beam_8gev:
     MAX_NUM_ECAL_HITS = 90 #50 #60  #110  #Now MUCH lower!  >99% of 1 MeV sig should pass this. (and >10% of bkg)
     MAX_ISO_ENERGY = 1100 #700 #500  # NOTE:  650 passes 99.99% sig, ~13% bkg for 3.0.0!  Lowering...
 else: # v14 4gev
@@ -203,11 +203,11 @@ def processFile(input_vars):
         sig = False
 
     print("Processing file {}".format(filename))
-    if 8gev and not sig:
+    if beam_8gev and not sig:
         outfile_name = "v14_8gev_pn_XCal_total_{}.root".format(filenum)
-    elif not 8gev and not sig:
+    elif not beam_8gev and not sig:
         outfile_name = "v14_4gev_pn_XCal_total_{}.root".format(filenum)
-    elif 8gev and sig:
+    elif beam_8gev and sig:
         outfile_name = "v14_8gev_{}_XCal_total_{}.root".format(mass, filenum)
     else: # 4gev sig
         outfile_name = "v14_4gev_{}_XCal_total_{}.root".format(mass, filenum)
@@ -234,7 +234,7 @@ def processFile(input_vars):
                 branchList.append(branchname_ + '/' + leaf)
             else:
                 branchList.append(branchname_ + '/' + branchname_ + '.' + leaf)
-    if sig and 8gev:
+    if sig and beam_8gev:
         branchList.append(blname('TriggerSums20Layers', 'pass_', sig))
 
     #print("Branches to load:")
@@ -260,7 +260,7 @@ def processFile(input_vars):
 
         # (This part is just for printing the # of pre-preselection events:)
         # Must trigger skim first (if signal)
-        if sig and 8gev:
+        if sig and beam_8gev:
             raw_data = t.arrays(branchList)
             trig_pass = raw_data[blname('TriggerSums20Layers', 'pass_', sig)]
             tskimmed_data = {}
@@ -394,7 +394,7 @@ def processFile(input_vars):
                 scalar_holders[branch] = np.zeros((1), dtype='float32')
             else:  # If vector, temp array must have at least one element per hit
                 # up to 800k v14 8gev # up to 200k v14 4gev # (liberally picked 2k)
-                if 8gev:
+                if beam_8gev:
                     vector_holders[branch] = np.zeros((800000), dtype='float32')
                 else:
                     vector_holders[branch] = np.zeros((200000), dtype='float32')

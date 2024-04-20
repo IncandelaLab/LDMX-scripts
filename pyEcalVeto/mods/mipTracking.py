@@ -36,7 +36,7 @@ def nearPhotonInfo(trackingHitList, g_trajectory, returnLayer=True, returnNumber
 # Straight tracks
 ##########################
 
-# Based on previous python; All of v9 analysis done with this
+# Based on EcalVetoProcessor in ldmx-sw; All of v9 analysis done with this
 def findStraightTracks(hitlist, etraj_ends, ptraj_ends,\
                         mst = 2, returnN=True, returnHitList = False, returnTracks = False):
     

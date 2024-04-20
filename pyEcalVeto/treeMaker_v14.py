@@ -20,6 +20,7 @@ branches_info = {
         # Base variables
         'nReadoutHits':              {'rtype': int,   'default': 0 },
         'summedDet':                 {'rtype': float, 'default': 0.},
+        'summedDetTrig':             {'rtype': float, 'default': 0.},
         'summedTightIso':            {'rtype': float, 'default': 0.},
         'maxCellDep':                {'rtype': float, 'default': 0.},
         'showerRMS':                 {'rtype': float, 'default': 0.},
@@ -660,6 +661,13 @@ def event_process(self):
     recoilTheta = physTools.angle(e_ecalP, units='degrees') if recoilPMag > 0    else -1.0
 
     # Set electron RoC binnings0
+    ## v9 RoC
+    # e_radii = physTools.radius68_thetalt10_plt500
+    # if recoilTheta < 10 and recoilPMag >= 500: e_radii = physTools.radius68_thetalt10_pgt500
+    # elif recoilTheta >= 10 and recoilTheta < 20: e_radii = physTools.radius68_theta10to20
+    # elif recoilTheta >= 20: e_radii = physTools.radius68_thetagt20
+    
+    ## v14 RoC
     e_radii = physTools.radius68_thetalt10
     if recoilTheta >= 10 and recoilTheta < 15:
         e_radii = physTools.radius68_theta10to15
@@ -669,9 +677,25 @@ def event_process(self):
         e_radii = physTools.radius68_theta20to30
     elif recoilTheta >= 30:
         e_radii = physTools.radius68_theta30to60
+    
+    ## half v14 RoC
+    # e_radii = 0.5 * np.array(physTools.radius68_thetalt10)
+    # if recoilTheta >= 10 and recoilTheta < 15:
+    #     e_radii = 0.5 * np.array(physTools.radius68_theta10to15)
+    # elif recoilTheta >= 15 and recoilTheta < 20:
+    #     e_radii = 0.5 * np.array(physTools.radius68_theta15to20)
+    # elif recoilTheta >= 20 and recoilTheta < 30:
+    #     e_radii = 0.5 * np.array(physTools.radius68_theta20to30)
+    # elif recoilTheta >= 30:
+    #     e_radii = 0.5 * np.array(physTools.radius68_theta30to60)
 
     # Always use default binning for photon RoC
+    ## v9 RoC
+    # g_radii = physTools.radius68_thetalt10_plt500
+    ## v14 RoC
     g_radii = physTools.radius68_thetalt10
+    ## half v14 RoC
+    # g_radii = 0.5 * np.array(physTools.radius68_thetalt10)
 
     # Big data
     trackingHitList = []
@@ -680,7 +704,7 @@ def event_process(self):
     for hit in self.ecalRecHits:
         
         if hit.getEnergy() > 0:
-
+            
             layer = physTools.ecal_layer(hit)
             xy_pair = ( hit.getXPos(), hit.getYPos() )
 
@@ -700,6 +724,10 @@ def event_process(self):
                 xy_g_traj = ( g_traj[layer][0], g_traj[layer][1] )
                 distance_g_traj = physTools.dist(xy_pair, xy_g_traj)
             else: distance_g_traj = -1.0
+            
+            # Trigger energy
+            if layer <= 20:
+                feats['summedDetTrig'] += hit.getEnergy()
 
             # Decide which longitudinal segment the hit is in and add to sums
             for i in range(1, physTools.nSegments + 1):

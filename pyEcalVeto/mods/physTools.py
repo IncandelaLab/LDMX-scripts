@@ -170,6 +170,7 @@ ecal_MODULE_SHIFT = 12
 ecal_CELL_MASK = 0xFFF  # Space for 4096 cells/module
 ecal_CELL_SHIFT = 0
 
+## v9 ecal layer zpos
 # ecal_layerZs = ecal_front_z  + (ecal_envelope_z - ECal_dz)/2 + np.array([7.850,   13.300,  26.400,  33.500,  47.950,
 #                                                                          56.550,  72.250,  81.350,  97.050,  106.150,
 #                                                                          121.850, 130.950, 146.650, 155.750, 171.450,

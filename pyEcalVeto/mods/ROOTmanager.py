@@ -3,7 +3,6 @@ import sys
 import ROOT as r
 import numpy as np # ?
 
-
 #TODO: Make options for no output or based on input
 #TODO: Make nolists independant for in and out
 
@@ -88,7 +87,7 @@ class TreeProcess:
 
             # Create and mv into tmp directory that can be used to copy files into
             if self.batch:
-                self.tmp_dir='%s/%s' % (scratch_dir, os.environ['LSB_JOBID'])
+                self.tmp_dir='%s/%s' % (scratch_dir, os.environ['SLURM_JOBID']) # LSB_JOBID
             else:
                 self.tmp_dir = '%s/%s' % (scratch_dir, 'tmp_'+str(num))
             if not os.path.exists(self.tmp_dir):
@@ -131,7 +130,13 @@ class TreeProcess:
         self.tree.SetBranchAddress(branch_name,r.AddressOf(branch))
 
         return branch
- 
+    
+    def task(self, j):
+        self.tree.GetEntry(j)
+        if j % self.pfreq == 0:
+            print('Processing Event: %s'%(j))
+        self.event_process(self)
+    
     def run(self, strEvent=0, maxEvents=-1, pfreq=1000):
    
         # Process events
@@ -192,11 +197,33 @@ class TreeMaker:
         # Add a new branch to write to
 
         self.branches_info[branch_name] = {'rtype': rtype, 'default': default_value}
-        self.branches[branch_name] = np.zeros(1, dtype=rtype)
-        if str(rtype) == "<type 'float'>" or str(rtype) == "<class 'float'>":
-            self.tree.Branch(branch_name, self.branches[branch_name], branch_name + "/D")
-        elif str(rtype) == "<type 'int'>" or str(rtype) == "<class 'int'>":
-            self.tree.Branch(branch_name, self.branches[branch_name], branch_name + "/I")
+        if str(rtype).find('vector') >= 0:
+            # vector
+            if str(rtype).find('int') >= 0:
+                self.branches[branch_name] = r.std.vector('int')([0])
+            if str(rtype).find('double') >= 0:
+                self.branches[branch_name] = r.std.vector('double')([0.])
+            if str(rtype).find('string') >= 0:
+                self.branches[branch_name] = r.std.vector('std::string')([''])
+            if str(rtype).find('bool') >= 0:
+                self.branches[branch_name] = r.std.vector('bool')([0])
+            # initiate a new branch of object
+            self.tree.Branch(branch_name, self.branches[branch_name])
+        elif str(rtype).find('vv') >= 0:
+            # vector of vectors
+            if str(rtype).find('int') >= 0:
+                self.branches[branch_name] = r.std.vector('std::vector<int>')([[0]])
+            if str(rtype).find('double') >= 0:
+                self.branches[branch_name] = r.std.vector('std::vector<double>')([[0.]])
+            # initiate a new branch of object
+            self.tree.Branch(branch_name, self.branches[branch_name])
+        else:
+            # flat
+            self.branches[branch_name] = np.zeros(1, dtype=rtype)
+            if str(rtype) == "<type 'float'>" or str(rtype) == "<class 'float'>":
+                self.tree.Branch(branch_name, self.branches[branch_name], branch_name + "/D")
+            elif str(rtype) == "<type 'int'>" or str(rtype) == "<class 'int'>":
+                self.tree.Branch(branch_name, self.branches[branch_name], branch_name + "/I")
         # ^ probably use cases based on rtype to change the /D if needed?
 
     def resetFeats(self):
@@ -215,7 +242,12 @@ class TreeMaker:
         # Fill the tree with new feature values
 
         for feat in feats:
-            self.branches[feat][0] = feats[feat]
+            if isinstance(feats[feat], int) or isinstance(feats[feat], float):
+                self.branches[feat][0] = feats[feat]
+            else:
+                self.branches[feat].clear()
+                for i in feats[feat]:
+                    self.branches[feat].push_back(i)
         self.tree.Fill()
 
     def wq(self):
@@ -229,6 +261,10 @@ class TreeMaker:
                 print( 'Creating %s' % (self.outdir) )
                 os.makedirs(self.outdir)
 
+            print( 'Currently in directory %s' % (os.getcwd()))
+            print( 'Current directory has files:')
+            os.system("ls .")
+            
             print( 'cp %s %s' % (self.outfile,self.outdir) )
             os.system('cp %s %s' % (self.outfile,self.outdir))
 

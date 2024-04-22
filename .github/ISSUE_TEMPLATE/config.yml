@@ -1,0 +1,25 @@
+name: Issue template
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Issue description
+      description: Describe what the issue is about
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Tasks
+      description: What are the tasks to resolve this issue?
+      value: "- [ ] Task A"
+    validations:
+      required: true
+  - type: textarea
+    id: existing-material
+    attributes:
+      label: Existing material to start off
+      description: Are there any sources one can use an input?
+      value: " * Source 1"
+    validations:
+      required: false

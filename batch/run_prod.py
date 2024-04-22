@@ -14,28 +14,45 @@ import shutil
 
 from jinja2 import Environment, FileSystemLoader
 
-def write_config(config, run, seed1, seed2, prefix, detector):
+def write_config(config, run, seed1, seed2, prefix, detector, mass=None, lhe=None, num_lhe_events=None):
     
     config_path = '%s.py' % prefix.replace('.', '_') 
     logging.info('Writing configuration to %s' % config_path)
 
-    rfile = '%s_%s_run%s_seeds_%s_%s.root' % (prefix, detector, run, seed1, seed2)
+    #rfile = '%s_%s_run%s_seeds_%s_%s_%s.root' % (prefix, detector, run, seed1, seed2, mass)
+    rfile = '%s_%s_run%s_seeds_%s_%s_%s.root' % (prefix, detector, run, run*2, run*2+1, mass)
     logging.info('Saving file to %s' % rfile)
 
     file_loader = FileSystemLoader(searchpath='./')
     env = Environment(loader=file_loader)
     template = env.get_template(config)
 
+    if mass and lhe:  # if signal:
+        logging.info('Writing signal config, mass={} GeV!'.format(mass))
+    elif mass and not lhe:
+        logging.error('Mass is not accompanied by a LHE file!')
+    else:
+        logging.info('Writing background config!')
+
     with open(config_path, 'w') as fh:
         fh.write(template.render(
                 run=run, 
                 detector=detector,
-                seed1=seed1, 
-                seed2=seed2,
-                outputFile=rfile
+                outputFile=rfile,
+                mass = mass,
+                signal_file = lhe,
+                lheEvents = num_lhe_events
         ))
-   
-    print fh
+        # NOTE:  removed, seed1=seed1, seed2=seed2 (after detector)
+
+
+    #print "print write result:"   
+    print(fh)
+
+    # Put this in to take a look at the config files generated; not necessary anymore
+    logging.info("NOW TEST COPYING CONFIG")
+    os.system('cp -r %s %s' % (config_path, "/home/pmasterson/production/v12_signal/copied_configs/copied_config_{}_{}.py".format(seed1, seed2)))
+    logging.info("FILE COPIED TO /home/pmasterson/production/v12_signal")
 
     return config_path, rfile
 
@@ -49,6 +66,12 @@ def main():
     parser.add_argument('-p', '--prefix',      help='The file prefix.')
     parser.add_argument('-r', '--run',         help='The run number.') 
     parser.add_argument('-s', '--seed',        help='The seed number.') 
+
+    parser.add_argument('-l', '--lhe',         help='The signal LHE file.')
+    parser.add_argument('-m', '--mass',        help='The signal mass in GeV (must match lhe file).')
+    # NEW
+    parser.add_argument('-n', '--num_lhe_events', help='The number of lhe events to read (must match lhe file)')
+
     args = parser.parse_args()
 
     #if not args.env: 
@@ -67,12 +90,14 @@ def main():
     # Set run number and seeds
     run = int(args.run)
     seed1 = int(args.seed)
+    logging.info("USING RUN={}, SEED={}".format(args,run, args.seed))
+    print("All args:", args)
 
     if 'SLURM_ARRAY_TASK_ID' in os.environ:
         logging.info('SLURM_ARRAY_TASK_ID: %s', os.environ['SLURM_ARRAY_TASK_ID'])
         seed1 += int(os.environ['SLURM_ARRAY_TASK_ID'])
     seed2 = seed1 + 1
-    logging.info('Using seeds %d, %d' % (seed1, seed2))
+    #logging.info('Using seeds %d, %d' % (seed1, seed2))
 
     # First, create a user directory within scratch or locally
     if os.access('/tmp/', os.W_OK): 
@@ -115,14 +140,39 @@ def main():
 
     # Create a link to the config template
     os.symlink(args.config, 'config.py')
+    #os.system('touch config.py')
+    #logging.info("config touched, touching args.config...")
+    #os.system('touch {}'.format(args.config))
+    #logging.info("args.config touched")
 
     # Write config replacing template parameters
-    config_path, rfile = write_config('config.py', run, seed1, seed2, args.prefix, args.detector )
+    config_path, rfile = write_config('config.py', run, seed1, seed2, args.prefix, args.detector,
+                                      mass=args.mass, lhe=args.lhe, num_lhe_events=args.num_lhe_events)
+    logging.info("output file = "+rfile+", config_path = "+config_path)
+
+    logging.info("Checking contents of current directory")
+    os.system("pwd")
+    os.system("ls")
 
     # Run the config
-    print 'Using production image %s' % os.environ.get('LDMX_PRODUCTION_IMG')
-    command = "singularity run --no-home %s . %s" % (os.environ.get('LDMX_PRODUCTION_IMG'),config_path) 
+    print('Using production image %s' % os.environ.get('LDMX_PRODUCTION_IMG'))
+    if args.lhe:
+        lhe_path = os.path.dirname(args.lhe)
+        command = "singularity run --bind %s --no-home %s . %s" % (lhe_path,
+                     os.environ.get('LDMX_PRODUCTION_IMG'), config_path ) 
+    else:
+        command = "singularity run --no-home %s . %s" % (os.environ.get('LDMX_PRODUCTION_IMG'),config_path)
+    logging.info("COMMAND = " + command)
+    # NOTE NOTE NOTE:  Temporarily adding env
+    #os.system("module load singularity")
+    #print "Loaded singularity"
+    #my_env = os.environ.copy()
+    #print my_env
+    #my_env["PATH"] = ... + my_env["PATH"]
     subprocess.Popen(command, shell=True).wait()
+
+    logging.info("Checking current directory after sim")
+    os.system("ls")
 
     # Create output directory if needed and copy output file into it
     prod_dir = args.output_path

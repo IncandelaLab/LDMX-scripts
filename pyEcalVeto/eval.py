@@ -16,7 +16,7 @@ def main():
     inlist = pdict['inlist']
     outlist = pdict['outlist']
     group_labels = pdict['groupls']
-    maxEvent = pdict['maxEvent']
+    maxEvent = pdict['maxEvents']
 
     branches_info['discValue_EcalVeto'] = {'rtype': float, 'default': 0.5}
 
@@ -80,6 +80,8 @@ def event_process(self):
             self.tree.electronTerritoryHits     ,
             self.tree.photonTerritoryHits       ,
             self.tree.TerritoryRatio            ,
+            self.tree.epSep                     ,
+            self.tree.epDot                     ,
             # Longitudinal segment variables
             self.tree.energy_s1                 ,
             self.tree.nHits_s1                  ,

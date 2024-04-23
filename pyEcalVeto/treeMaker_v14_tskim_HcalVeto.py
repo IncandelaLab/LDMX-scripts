@@ -9,10 +9,10 @@ import sys
 import math
 import ROOT as r
 import numpy as np
-sys.path.insert(1, '/home/xinyi_xu/ldmx-sw_4_23_24/LDMX-scripts/pyEcalVeto/mods')
+sys.path.insert(1, '/home/xinyi_xu/ldmx-sw/ldmx-sw/LDMX-scripts/pyEcalVeto/mods')
 from mods import ROOTmanager as manager
 from mods import physTools, mipTracking
-cellMap = np.loadtxt('/home/xinyi_xu/ldmx-sw_4_23_24/LDMX-scripts/pyEcalVeto/mods/cellmodule.txt')
+cellMap = np.loadtxt('/home/xinyi_xu/ldmx-sw/ldmx-sw/LDMX-scripts/pyEcalVeto/mods/cellmodule.txt')
 r.gSystem.Load('libFramework.so')
 
 # TreeModel to build here
@@ -93,23 +93,13 @@ for i in range(1, physTools.nSegments + 1):
 for j in range(1, physTools.nRegions + 1):
     # Electron RoC variables
     branches_info['eContEnergy_x{}'.format(j)]    = {'rtype': float, 'default': 0.}
-    # branches_info['eContEnergy_x{}_0p5'.format(j)]    = {'rtype': float, 'default': 0.}
     # Photon RoC variables 
     branches_info['gContEnergy_x{}'.format(j)]    = {'rtype': float, 'default': 0.}
-    # branches_info['gContEnergy_x{}_0p5'.format(j)]    = {'rtype': float, 'default': 0.}
     # Outside RoC variables
     branches_info['oContEnergy_x{}'.format(j)]    = {'rtype': float, 'default': 0.}
     branches_info['oContNHits_x{}'.format(j)]     = {'rtype': int,   'default': 0 }
-    branches_info['oContXMean_x{}'.format(j)]     = {'rtype': float, 'default': 0.}
-    branches_info['oContYMean_x{}'.format(j)]     = {'rtype': float, 'default': 0.}
     branches_info['oContXStd_x{}'.format(j)]      = {'rtype': float, 'default': 0.}
     branches_info['oContYStd_x{}'.format(j)]      = {'rtype': float, 'default': 0.}
-    # branches_info['oContEnergy_x{}_0p5'.format(j)]    = {'rtype': float, 'default': 0.}
-    # branches_info['oContNHits_x{}_0p5'.format(j)]     = {'rtype': int,   'default': 0 }
-    # branches_info['oContXMean_x{}_0p5'.format(j)]     = {'rtype': float, 'default': 0.}
-    # branches_info['oContYMean_x{}_0p5'.format(j)]     = {'rtype': float, 'default': 0.}
-    # branches_info['oContXStd_x{}_0p5'.format(j)]      = {'rtype': float, 'default': 0.}
-    # branches_info['oContYStd_x{}_0p5'.format(j)]      = {'rtype': float, 'default': 0.}
 
 # Flatten tree variables
 branches_flatten = {
@@ -292,8 +282,8 @@ def main():
         os.chdir(proc.tmp_dir)
 
         # tag
-        tag = "sim"  # PN bkg
-        # tag = "signal"  # signal
+        #tag = "sim"  # PN bkg
+        tag = "signal"  # signal
         
         # Branches needed
         proc.ecalVeto     = proc.addBranch('EcalVetoResult', 'EcalVeto_{}'.format(tag))
@@ -304,7 +294,7 @@ def main():
         proc.ecalSimHits = proc.addBranch('SimCalorimeterHit', 'EcalSimHits_{}'.format(tag))
         proc.targetSimHits = proc.addBranch('SimCalorimeterHit', 'TargetSimHits_{}'.format(tag))
         proc.hcalRecHits = proc.addBranch('HcalHit', 'HcalRecHits_{}'.format(tag))
-        proc.hcalVeto = proc.addBranch('HcalVetoResult', 'HcalVeto_{}'.format(tag))
+        #proc.trigger = proc.addBranch('Trigger', 'TriggerSums20Layers_signal_{}'.format(tag))
 
         # Tree/Files(s) to make
         print('\nRunning %s'%(proc.ID))
@@ -337,14 +327,21 @@ def main():
         proc.run(strEvent=startEvent, maxEvents=maxEvents)
 
     # Remove scratch directory if there is one
-    if not batch_mode:     # Don't want to break other batch jobs when one finishes
-        manager.rmScratch()
+    #if not batch_mode:     # Don't want to break other batch jobs when one finishes
+    #    manager.rmScratch()
 
     print('\nDone!\n')
 
 
 # Process an event
 def event_process(self):
+    entry_num = self.tree.GetReadEntry()
+    passValue = self.tree.GetLeaf('TriggerSums20Layers_signal.pass_').GetValue(entry_num)
+    
+    # Check if passValue is not 1 and if so, skip this event
+    if passValue != 1:
+        #print("not pass trigger")
+        return 
 
     # Initialize BDT input variables w/ defaults
     feats = next(iter(self.tfMakers.values())).resetFeats()
@@ -571,26 +568,21 @@ def event_process(self):
     feats['ECalVeto_recoilX']                   = self.ecalVeto.getRecoilX()
     feats['ECalVeto_recoilY']                   = self.ecalVeto.getRecoilY()
     
-    ## HCalVeto collection
-    feats['HCalVeto_passesVeto']     = self.hcalVeto.passesVeto()
-    feats['HCalVeto_maxPEHit_id']    = self.hcalVeto.getMaxPEHit().getID()
-    feats['HCalVeto_maxPEHit_pe']    = self.hcalVeto.getMaxPEHit().getPE()
-    feats['HCalVeto_maxPEHit_layer'] = self.hcalVeto.getMaxPEHit().getLayer()
-    feats['HCalVeto_maxPEHit_strip'] = self.hcalVeto.getMaxPEHit().getStrip()
+
     
     ###################################
     # Determine event type
     ###################################
 
     # Get e position and momentum from EcalSP
-    e_ecalHit = physTools.electronEcalSPHit(self.ecalSPHits)
+    e_ecalHit = physTools.electronEcalSPHit(self.ecalSPHits) #have them in tracking info
     if e_ecalHit != None:
         e_ecalPos, e_ecalP = e_ecalHit.getPosition(), e_ecalHit.getMomentum()
 
     # Photon Info from targetSP
-    e_targetHit = physTools.electronTargetSPHit(self.targetSPHits)
+    e_targetHit = physTools.electronTargetSPHit(self.targetSPHits)  #have them in tracking info
     if e_targetHit != None:
-        g_targPos, g_targP = physTools.gammaTargetInfo(e_targetHit)
+        g_targPos, g_targP = physTools.gammaTargetInfo(e_targetHit)  #modified with tracking info
     else:  # Should about never happen -> division by 0 in g_traj
         print('no e at targ!')
         g_targPos = g_targP = np.zeros(3)
@@ -661,14 +653,7 @@ def event_process(self):
     recoilTheta = physTools.angle(e_ecalP, units='degrees') if recoilPMag > 0    else -1.0
 
     # Set electron RoC binnings0
-    ## v9 RoC
-    # e_radii = physTools.radius68_thetalt10_plt500
-    # if recoilTheta < 10 and recoilPMag >= 500: e_radii = physTools.radius68_thetalt10_pgt500
-    # elif recoilTheta >= 10 and recoilTheta < 20: e_radii = physTools.radius68_theta10to20
-    # elif recoilTheta >= 20: e_radii = physTools.radius68_thetagt20
-    
-    ## v14 RoC
-    
+    #v12RoC
     #e_radii = physTools.radius68_thetalt10
     #if recoilTheta >= 10 and recoilTheta < 15:
     #    e_radii = physTools.radius68_theta10to15
@@ -679,18 +664,85 @@ def event_process(self):
     #elif recoilTheta >= 30:
     #    e_radii = physTools.radius68_theta30to60
 
-    ## half v14 RoC
-    # e_radii = 0.5 * np.array(physTools.radius68_thetalt10)
-    # if recoilTheta >= 10 and recoilTheta < 15:
-    #     e_radii = 0.5 * np.array(physTools.radius68_theta10to15)
-    # elif recoilTheta >= 15 and recoilTheta < 20:
-    #     e_radii = 0.5 * np.array(physTools.radius68_theta15to20)
-    # elif recoilTheta >= 20 and recoilTheta < 30:
-    #     e_radii = 0.5 * np.array(physTools.radius68_theta20to30)
-    # elif recoilTheta >= 30:
-    #     e_radii = 0.5 * np.array(physTools.radius68_theta30to60)
+    # Always use default binning for photon RoC
+    #g_radii = physTools.radius68_thetalt10
+
     
-    #v14 8 gev
+    #v12RoC*0.5
+    #e_radii = physTools.radius68_thetalt10_05
+    #if recoilTheta >= 10 and recoilTheta < 15:
+    #    e_radii = physTools.radius68_theta10to15_05
+    #elif recoilTheta >= 15 and recoilTheta < 20:
+    #    e_radii = physTools.radius68_theta15to20_05
+    #elif recoilTheta >= 20 and recoilTheta < 30:
+    #    e_radii = physTools.radius68_theta20to30_05
+    #elif recoilTheta >= 30:
+    #    e_radii = physTools.radius68_theta30to60_05
+
+    # Always use default binning for photon RoC
+    #g_radii = physTools.radius68_thetalt10_05
+
+
+    #v12RoC*0.4
+    #e_radii = physTools.radius68_thetalt10_04
+    #if recoilTheta >= 10 and recoilTheta < 15:
+    #    e_radii = physTools.radius68_theta10to15_04
+    #elif recoilTheta >= 15 and recoilTheta < 20:
+    #    e_radii = physTools.radius68_theta15to20_04
+    #elif recoilTheta >= 20 and recoilTheta < 30:
+    #    e_radii = physTools.radius68_theta20to30_04
+    #elif recoilTheta >= 30:
+    #    e_radii = physTools.radius68_theta30to60_04
+
+    # Always use default binning for photon RoC
+    #g_radii = physTools.radius68_thetalt10_04
+
+
+    #v12RoC*0.6
+    #e_radii = physTools.radius68_thetalt10_06
+    #if recoilTheta >= 10 and recoilTheta < 15:
+    #    e_radii = physTools.radius68_theta10to15_06
+    #elif recoilTheta >= 15 and recoilTheta < 20:
+    #    e_radii = physTools.radius68_theta15to20_06
+    #elif recoilTheta >= 20 and recoilTheta < 30:
+    #    e_radii = physTools.radius68_theta20to30_06
+    #elif recoilTheta >= 30:
+    #    e_radii = physTools.radius68_theta30to60_06
+
+    # Always use default binning for photon RoC
+    #g_radii = physTools.radius68_thetalt10_06
+
+
+    '''
+    #v14RoC*0.5
+    e_radii = physTools.radius68_thetalt10_05
+    if recoilTheta >= 10 and recoilTheta < 15:
+        e_radii = physTools.radius68_theta10to15_05
+    elif recoilTheta >= 15 and recoilTheta < 20:
+        e_radii = physTools.radius68_theta15to20_05
+    elif recoilTheta >= 20 and recoilTheta < 30:
+        e_radii = physTools.radius68_theta20to30_05
+    elif recoilTheta >= 30:
+        e_radii = physTools.radius68_theta30to60_05
+
+    # Always use default binning for photon RoC
+    g_radii = physTools.radius68_thetalt10_05
+    '''
+   #v14RoC*0.4
+   # e_radii = physTools.radius68_thetalt10_04
+   # if recoilTheta >= 10 and recoilTheta < 15:
+   #     e_radii = physTools.radius68_theta10to15_04
+   # elif recoilTheta >= 15 and recoilTheta < 20:
+   #     e_radii = physTools.radius68_theta15to20_04
+   # elif recoilTheta >= 20 and recoilTheta < 30:
+   #     e_radii = physTools.radius68_theta20to30_04
+   # elif recoilTheta >= 30:
+   #     e_radii = physTools.radius68_theta30to60_04
+
+    # Always use default binning for photon RoC
+   # g_radii = physTools.radius68_thetalt10_04
+    
+    #v14 8GeV RoC
     e_radii = physTools.radius68_thetalt10
     if recoilTheta >= 10 and recoilTheta < 15:
         e_radii = physTools.radius68_theta10to15
@@ -704,15 +756,9 @@ def event_process(self):
         e_radii = physTools.radius68_theta40to50
 
     # Always use default binning for photon RoC
-    ## v9 RoC
-    # g_radii = physTools.radius68_thetalt10_plt500
-    ## v14 RoC
-    #g_radii = physTools.radius68_thetalt10
-    ## half v14 RoC
-    # g_radii = 0.5 * np.array(physTools.radius68_thetalt10)
-
-    #v14 8gev
     g_radii = physTools.radius68_thetalt10
+
+
     # Big data
     trackingHitList = []
 
@@ -720,7 +766,7 @@ def event_process(self):
     for hit in self.ecalRecHits:
         
         if hit.getEnergy() > 0:
-            
+
             layer = physTools.ecal_layer(hit)
             xy_pair = ( hit.getXPos(), hit.getYPos() )
 
@@ -740,10 +786,6 @@ def event_process(self):
                 xy_g_traj = ( g_traj[layer][0], g_traj[layer][1] )
                 distance_g_traj = physTools.dist(xy_pair, xy_g_traj)
             else: distance_g_traj = -1.0
-            
-            # Trigger energy
-            if layer <= 20:
-                feats['summedDetTrig'] += hit.getEnergy()
 
             # Decide which longitudinal segment the hit is in and add to sums
             for i in range(1, physTools.nSegments + 1):
@@ -792,24 +834,6 @@ def event_process(self):
                             feats['oContLayerMean_x{}_s{}'.format(j,i)] +=\
                                                                 layer*hit.getEnergy()
 
-                        # double granularity
-                        # if ((j - 1)*e_radii[layer]*0.5 <= distance_e_traj)\
-                        #   and (distance_e_traj < j*e_radii[layer]*0.5):
-                        #     feats['eContEnergy_x{}_0p5'.format(j)] += hit.getEnergy()
-                              
-                        # if ((j - 1)*g_radii[layer]*0.5 <= distance_g_traj)\
-                        #   and (distance_g_traj < j*g_radii[layer]*0.5):
-                        #     feats['gContEnergy_x{}_0p5'.format(j)] += hit.getEnergy()
-                        
-                        # if (distance_e_traj > j*e_radii[layer]*0.5)\
-                        #   and (distance_g_traj > j*g_radii[layer]*0.5):
-                        #     feats['oContEnergy_x{}_0p5'.format(j)] += hit.getEnergy()
-                        #     feats['oContNHits_x{}_0p5'.format(j)] += 1
-                        #     feats['oContXMean_x{}_0p5'.format(j)] +=\
-                        #                                         xy_pair[0]*hit.getEnergy()
-                        #     feats['oContYMean_x{}_0p5'.format(j)] +=\
-                        #                                         xy_pair[1]*hit.getEnergy()
-                        
             # Build MIP tracking hit list; (outside electron region or electron missing)
             if distance_e_traj >= e_radii[layer] or distance_e_traj == -1.0:
                 trackingHitList.append(hit) 
@@ -821,8 +845,6 @@ def event_process(self):
             feats['gContEnergy_x{}'.format(j)] += feats['gContEnergy_x{}_s{}'.format(j,i)]
             feats['oContEnergy_x{}'.format(j)] += feats['oContEnergy_x{}_s{}'.format(j,i)]
             feats['oContNHits_x{}'.format(j)] += feats['oContNHits_x{}_s{}'.format(j,i)]
-            feats['oContXMean_x{}'.format(j)] += feats['oContXMean_x{}_s{}'.format(j,i)]
-            feats['oContYMean_x{}'.format(j)] += feats['oContYMean_x{}_s{}'.format(j,i)]
 
     # If possible, quotient out the total energy from the means
     for i in range(1, physTools.nSegments + 1):
@@ -858,14 +880,6 @@ def event_process(self):
                 feats['oContLayerMean_x{}_s{}'.format(j,i)] /=\
                                                     feats['oContEnergy_x{}_s{}'.format(j,i)]
 
-    for j in range(1, physTools.nRegions + 1):
-        if feats['oContEnergy_x{}'.format(j)] > 0:
-            feats['oContXMean_x{}'.format(j)] /= feats['oContEnergy_x{}'.format(j)]
-            feats['oContYMean_x{}'.format(j)] /= feats['oContEnergy_x{}'.format(j)]
-        # if feats['oContEnergy_x{}_0p5'.format(j)] > 0:
-        #     feats['oContXMean_x{}_0p5'.format(j)] /= feats['oContEnergy_x{}_0p5'.format(j)]
-        #     feats['oContYMean_x{}_0p5'.format(j)] /= feats['oContEnergy_x{}_0p5'.format(j)]
-    
     # Loop over hits again to calculate the standard deviations
     for hit in self.ecalRecHits:
 
@@ -885,6 +899,10 @@ def event_process(self):
             distance_g_traj = physTools.dist(xy_pair, xy_g_traj)
         else:
             distance_g_traj = -1.0
+            
+        # Trigger energy
+            if layer <= 20:
+                feats['summedDetTrig'] += hit.getEnergy()
 
         # Decide which longitudinal segment the hit is in and add to sums
         for i in range(1, physTools.nSegments + 1):
@@ -927,25 +945,12 @@ def event_process(self):
                                 feats['oContYMean_x{}_s{}'.format(j,i)])**2)*hit.getEnergy()
                         feats['oContLayerStd_x{}_s{}'.format(j,i)] += ((layer -\
                             feats['oContLayerMean_x{}_s{}'.format(j,i)])**2)*hit.getEnergy()
-                        # Gabrielle
-                        feats['oContXStd_x{}'.format(j)] += ((xy_pair[0] -\
-                                feats['oContXMean_x{}'.format(j)])**2)*hit.getEnergy()
-                        feats['oContYStd_x{}'.format(j)] += ((xy_pair[1] -\
-                                feats['oContYMean_x{}'.format(j)])**2)*hit.getEnergy()
-                    
-                    # double granularity
-                    # if (distance_e_traj > j*e_radii[layer]*0.5)\
-                    #   and (distance_g_traj > j*g_radii[layer]*0.5):
-                    #     feats['oContXStd_x{}_0p5'.format(j)] += ((xy_pair[0] -\
-                    #             feats['oContXMean_x{}_0p5'.format(j)])**2)*hit.getEnergy()
-                    #     feats['oContYStd_x{}_0p5'.format(j)] += ((xy_pair[1] -\
-                    #             feats['oContYMean_x{}_0p5'.format(j)])**2)*hit.getEnergy()
 
     # Sum over segments to get total oContXStd, oContYStd per region
-    # for j in range(1, physTools.nRegions + 1):
-    #     for i in range(1, physTools.nSegments + 1):
-    #         feats['oContXStd_x{}'.format(j)] += feats['oContXStd_x{}_s{}'.format(j,i)]
-    #         feats['oContYStd_x{}'.format(j)] += feats['oContYStd_x{}_s{}'.format(j,i)]
+    for j in range(1, physTools.nRegions + 1):
+        for i in range(1, physTools.nSegments + 1):
+            feats['oContXStd_x{}'.format(j)] += feats['oContXStd_x{}_s{}'.format(j,i)]
+            feats['oContYStd_x{}'.format(j)] += feats['oContYStd_x{}_s{}'.format(j,i)]
 
     # Quotient out the total energies from the standard deviations if possible and take root
     for i in range(1, physTools.nSegments + 1):
@@ -994,19 +999,14 @@ def event_process(self):
                         feats['oContEnergy_x{}_s{}'.format(j,i)])
 
     for j in range(1, physTools.nRegions + 1):
-        if feats['oContEnergy_x{}'.format(j)] > 0:
+        if feats['oContXStd_x{}'.format(j)] > 0:
             feats['oContXStd_x{}'.format(j)] =\
                     math.sqrt(feats['oContXStd_x{}'.format(j)]/\
                     feats['oContEnergy_x{}'.format(j)])
+        if feats['oContEnergy_x{}'.format(j)] > 0:
             feats['oContYStd_x{}'.format(j)] =\
-                    math.sqrt(feats['oContYStd_x{}'.format(j)]/\
-                    feats['oContEnergy_x{}'.format(j)])
-            # feats['oContXStd_x{}_0p5'.format(j)] =\
-            #         math.sqrt(feats['oContXStd_x{}_0p5'.format(j)]/\
-            #         feats['oContEnergy_x{}_0p5'.format(j)])
-            # feats['oContYStd_x{}_0p5'.format(j)] =\
-            #         math.sqrt(feats['oContYStd_x{}_0p5'.format(j)]/\
-            #         feats['oContEnergy_x{}_0p5'.format(j)])
+                math.sqrt(feats['oContYStd_x{}'.format(j)]/\
+                feats['oContEnergy_x{}'.format(j)])
 
     # Find the first layer of the ECal where a hit near the projected photon trajectory
     # AND the total number of hits around the photon trajectory
@@ -1040,6 +1040,40 @@ def event_process(self):
     feats['straight4'], trackingHitList = mipTracking.findStraightTracks(
                                 trackingHitList, e_traj_ends, g_traj_ends,
                                 mst = 4, returnHitList = True)
+    
+    # calculate HcalVeto_passesVeto and HCalVeto_maxPEHit_pe
+    maxTime_ = 50  # maximum hit time considered valid
+    totalPEThreshold_ = 8  # Threshold for determining if the event passes the veto
+    backMinPE_ = 1   
+    backid=0
+
+    maxPE = -1000  
+    passesVeto = True  
+
+    # Loop over HCalRecHits
+    for hit in self.hcalRecHits:
+        hitTime = hit.getTime()
+        hitPE = hit.getPE()
+        hitMinPE = hit.getMinPE()
+        hitSection = hit.getSection()
+        
+        # Check hit time is within readout window
+        if hitTime >= maxTime_:
+            continue
+
+        # Check that both sides of the bar have a PE value above threshold. If not, don't consider the hit.  Double sided readout is only being used for the back HCal bars.  For the side HCal, just use the maximum PE as before.
+        if hitSection == backid and hitMinPE < backMinPE_:
+            continue
+
+        # maximum PE 
+        if hitPE > maxPE:
+            maxPE = hitPE
+
+    # Determine if the event passes the veto 
+    passesVeto = maxPE < totalPEThreshold_
+
+
+    feats['HCalVeto_passesVeto'] = int(passesVeto)  
 
     # Fill the tree (according to fiducial category) with values for this event
     if not self.separate:

@@ -166,8 +166,8 @@ def main():
         if n == '':
             continue
 
-        xvar = n[n.rindex('_')+1:]
-        yvar = n[0:n.index('_')]
+        xvar = n[n.rindex('vs_')+3:]
+        yvar = n[0:n.index('_vs')]
 
         if not xvar in binning or not yvar in binning:
             continue

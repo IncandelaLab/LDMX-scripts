@@ -3,7 +3,7 @@ import math
 import ROOT as r
 import numpy as np
 from mods import ROOTmanager as manager
-from mods import physTools, mipTracking
+from mods import physTools_wab, mipTracking
 cellMap = np.loadtxt( 'mods/cellmodule.txt' )
 #np.loadtxt('/nfs/slac/g/ldmx/users/aechavez/ldmx-sw-v3.0.0/LDMX-scripts/pyEcalVeto/mods/cellmodule.txt')
 r.gSystem.Load(

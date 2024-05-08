@@ -12,9 +12,7 @@ Before you dive into the more in depth tutorials located in the sidebar on the r
 cd ~
 git clone --recursive https://github.com/LDMX-Software/ldmx-sw.git 
 source ldmx-sw/scripts/ldmx-env.sh
-cd ldmx-sw; mkdir build; cd build;
-ldmx cmake ..
-ldmx make install
+ldmx compile
 ```
 NOTE: You will need to run the source command every time you start a new terminal and want to use ldmx-sw, or you can add it to your ```.bashrc``` file (runs on startup) using ```vim```. You will also need your Docker desktop app running. 
 * Now download LDMX-scripts

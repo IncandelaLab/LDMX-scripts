@@ -622,7 +622,7 @@ def electronSPHits(ecalSPHits, targetSPHits):
 # Return photon position and momentum at target
 def gammaTargetInfo(eTargetSPHit):
     
-    gTarget_pvec = np.array([0,0,4000]) - np.array(eTargetSPHit.getMomentum())
+    gTarget_pvec = np.array([0,0,8000]) - np.array(eTargetSPHit.getMomentum())
 
     return eTargetSPHit.getPosition(), gTarget_pvec
 

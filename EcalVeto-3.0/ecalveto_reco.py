@@ -3,7 +3,7 @@ import argparse
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-i','--indir', action='store', dest='indir', help='Directory of input file, absolute path')
 parser.add_argument('-o','--outdir', action='store', dest='outdir', help='Directory of output files, absolute path')
-parser.add_argument('-m','--maxEvent', action='store', dest='maxEvent', help='Maximum number of events to process')
+parser.add_argument('-m','--maxEvent', type=int, action='store', dest='maxEvent', help='Maximum number of events to process')
 args = parser.parse_args()
 
 from LDMX.Framework import ldmxcfg

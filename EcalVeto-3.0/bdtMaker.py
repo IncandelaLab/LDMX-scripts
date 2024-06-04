@@ -43,6 +43,8 @@ class sampleContainer:
         self.trainFrac = trainFrac
         self.isSig   = isSig
         self.ecalVeto = addBranch(self.tree, 'EcalVetoResult', 'EcalVeto_{}'.format('SegmipBDTReco'))
+        if self.isSig:
+            self.trigger = addBranch(self.tree, 'TriggerResult', 'TriggerSums20Layers_{}'.format('signal'))
 
     def root2PyEvents(self):
         self.events =  []
@@ -53,6 +55,9 @@ class sampleContainer:
             
             if len(self.events) >= self.maxEvts:
                 continue
+            
+            if self.isSig:
+                if not self.trigger.passed(): continue
             
             result = self.ecalVeto
 

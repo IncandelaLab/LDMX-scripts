@@ -1,0 +1,158 @@
+LDMX_EVENTS
+-removing formal collections
+-add suffix to indicate vector quantities?
+-remove genStatus and charge from SimParticles
+-remove pathLength, preStep info, and postStep info from SimHit collections
+
+SimParticles "collection" -> actually variables prefix, everything is a vector of size # of simParticles
+SimParticles.trackID
+SimParticles.energy
+SimParticles.pdgID
+SimParticles.x
+SimParticles.y
+SimParticles.z
+SimParticles.time
+SimParticles.endX
+SimParticles.endY
+SimParticles.endZ
+SimParticles.px
+SimParticles.py
+SimParticles.pz
+SimParticles.endPX
+SimParticles.endPY
+SimParticles.endPZ
+SimParticles.mass
+SimParticles.daughters     (vector of vectors, contains trackIDs)
+SimParticles.parents       (also vector of vectors of trackIDs)
+SimParticles.processType   (https://github.com/LDMX-Software/SimCore/blob/e3c8bdc6ceb824979e0786a9295836e14e999a3b/src/SimCore/Event/SimParticle.cxx#L11)
+SimParticles.vertexVolume  (convert to a string?)
+SimParticles.size
+
+EcalSimHits "collection" -> everything is a vector of size # of EcalHits, remove *incidentIDContribs since can use SimParticles?
+EcalSimHits.id
+EcalSimHits.edep
+EcalSimHits.x
+EcalSimHits.y
+EcalSimHits.z
+EcalSimHits.time
+EcalSimHits.trackIDContribs      (vector of vectors, can have multiple contribs per hit)
+*EcalSimHits.incidentIDContribs   (https://github.com/LDMX-Software/SimCore/blob/d034a3938257e96c770933ec56bbb204aaaca8e4/include/SimCore/Event/SimCalorimeterHit.h#L241)
+EcalSimHits.pdgIDContribs
+EcalSimHits.edepContribs
+EcalSimHits.timeContribs
+EcalSimHits.nContribs
+EcalSimHits.velocity
+EcalSimHits.size
+
+TargetSimHits "collection" -> everything is a vector of size # of TargetSimHits
+TargetSimHits.id
+TargetSimHits.edep
+TargetSimHits.x
+TargetSimHits.y
+TargetSimHits.z
+TargetSimHits.time
+TargetSimHits.trackIDContribs
+*TargetSimHits.incidentIDContribs
+TargetSimHits.pdgIDContribs
+TargetSimHits.edepContribs
+TargetSimHits.timeContribs
+TargetSimHits.nContribs
+TargetSimHits.velocity
+TargetSimHits.size
+
+EcalScoringPlaneHits.id
+EcalScoringPlaneHits.layerID
+EcalScoringPlaneHits.moduleID
+EcalScoringPlaneHits.edep
+EcalScoringPlaneHits.energy
+EcalScoringPlaneHits.x
+EcalScoringPlaneHits.y
+EcalScoringPlaneHits.z
+EcalScoringPlaneHits.time
+EcalScoringPlaneHits.px
+EcalScoringPlaneHits.py
+EcalScoringPlaneHits.pz
+EcalScoringPlaneHits.trackID
+EcalScoringPlaneHits.pdgID
+EcalScoringPlaneHits.size
+
+TargetScoringPlaneHits.id
+TargetScoringPlaneHits.layerID
+TargetScoringPlaneHits.moduleID
+TargetScoringPlaneHits.edep
+TargetScoringPlaneHits.energy
+TargetScoringPlaneHits.x
+TargetScoringPlaneHits.y
+TargetScoringPlaneHits.z
+TargetScoringPlaneHits.time
+TargetScoringPlaneHits.px
+TargetScoringPlaneHits.py
+TargetScoringPlaneHits.pz
+TargetScoringPlaneHits.trackID
+TargetScoringPlaneHits.pdgID
+TargetScoringPlaneHits.size
+
+EcalRecHits.id
+EcalRecHits.amplitude
+EcalRecHits.energy
+EcalRecHits.time
+EcalRecHits.x
+EcalRecHits.y
+EcalRecHits.z
+EcalRecHits.isNoise
+EcalRecHits.size
+
+HCalRecHits.id
+HCalRecHits.amplitude
+HCalRecHits.energy
+HCalRecHits.time
+HCalRecHits.x
+HCalRecHits.y
+HCalRecHits.z
+HCalRecHits.isNoise
+HCalRecHits.pe
+HCalRecHits.minpe
+HCalRecHits.section
+HCalRecHits.layer
+HCalRecHits.strip
+HCalRecHits.end
+HCalRecHits.isADC
+HCalRecHits.size
+
+ECalVeto..... (all the things! including more from treemaker!)
+ECalVeto.passesVeto
+ECalVeto.nReadoutHits
+ECalVeto.deepestLayerHit
+ECalVeto.summedDet
+ECalVeto.summedTightIso
+ECalVeto.maxCellDep
+ECalVeto.showerRMS
+ECalVeto.xStd
+ECalVeto.yStd
+ECalVeto.avgLayerHit
+ECalVeto.stdLayerHit
+ECalVeto.ecalBackEnergy
+ECalVeto.nStraightTracks
+ECalVeto.nLinregTracks
+ECalVeto.firstNearPhLayer
+ECalVeto.epAng
+ECalVeto.epSep
+ECalVeto.electronContainmentEnergy
+ECalVeto.photonContainmentEnergy
+ECalVeto.outsideContainmentEnergy
+ECalVeto.outsideContainmentNHits
+ECalVeto.outsideContainmentXStd
+ECalVeto.outsideContainmentYStd
+ECalVeto.discValue
+ECalVeto.recoilPx
+ECalVeto.recoilPy
+ECalVeto.recoilPz
+ECalVeto.recoilX
+ECalVeto.recoilY
+
+HCalVeto.passesVeto
+HCalVeto.maxPEHit_id
+HCalVeto.maxPEHit_pe
+HCalVeto.maxPEHit_layer
+HCalVeto.maxPEHit_strip
+(I'm less sure here... I think the only ones that should be frequently used are pe, layer, and strip. The rest can use the id to connect with HCalRecHits?)

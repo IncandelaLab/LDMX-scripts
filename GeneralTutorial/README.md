@@ -12,7 +12,16 @@ https://ldmx-software.github.io/developing/getting-started.html#install-just
 # Running on ROOT files containing events
 
 There is two way to do this:
-1) The traditional way of looping through events and objects. An example config can be found here
-2) Putting objects into data frames and have vectorized oparations. This is faster but can be harder to conseptualize. 
+1) The traditional way of looping through events and objects. 
+An example config can be found here [runEventLoop](https://github.com/IncandelaLab/LDMX-scripts/blob/master/GeneralTutorial/runEventLoop.py)
+Run it with the following (in case of not needing to change ldmx-sw)
+```
+mkdir myProject
+cd myProject
+denv init ldmx/pro:v4.1.0
+wget https://raw.githubusercontent.com/IncandelaLab/LDMX-scripts/master/GeneralTutorial/runEventLoop.py
+denv python3 runEventLoop.py  
+```
+3) Putting objects into data frames and have vectorized oparations. This is faster but can be harder to conseptualize. 
 We have several examples in this repo, but also look at
 https://ldmx-software.github.io/using/analysis/python.html

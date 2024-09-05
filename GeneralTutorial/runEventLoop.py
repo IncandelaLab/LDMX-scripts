@@ -15,8 +15,7 @@ if not tree:
     exit(1)
 
 # Get the number of entries in the tree
-# n_entries = tree.GetEntries()
-n_entries = 1
+n_entries = tree.GetEntries()
 print(f"Number of entries in the tree: {n_entries}")
 
 # Loop over the events

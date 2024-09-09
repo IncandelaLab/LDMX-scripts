@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float64)
 
 import tqdm
 import glob
@@ -19,10 +19,10 @@ import os
 import datetime
 import argparse
 
-from utils.ParticleNet import ParticleNet
-from utils.SplitNet import SplitNet
-from dataset import ECalHitsDataset
-from dataset import collate_wrapper as collate_fn
+from utils.ParticleNetX import ParticleNetX
+from utils.SplitNetX import SplitNetX
+from datasetX import XCalHitsDataset
+from datasetX import collate_wrapper as collate_fn
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--test-sig', type=str, default='')
@@ -36,6 +36,8 @@ parser.add_argument('--num-workers', type=int, default=2)
 parser.add_argument('--batch-size', type=int, default=1024)
 parser.add_argument('--device', type=str, default='cuda:0')
 parser.add_argument('--num-regions', type=int, default=1)
+parser.add_argument('-X', '--extended', action='store_true', default=False,
+                    help='Use extended ParticleNet (ECal + HCal)')
 args = parser.parse_args()
 
 obs_branches = []
@@ -49,6 +51,7 @@ if args.save_extra:
         'recoilX_',
         'recoilY_',
         'TargetSPRecoilE_pt',
+        'maxPE'
         ]
 
     # NEW:  EcalVeto branches must be handled separately in v2.2.1+.
@@ -94,7 +97,7 @@ print('fc_params: %s' % fc_params)
 dev = torch.device(args.device)
 
 # load data
-input_dims = 5
+input_dims = 6 #4 # WAS: 5 (removed layer_id)
 
 # model
 
@@ -103,12 +106,13 @@ input_dims = 5
 #                    fc_params=fc_params,
 #                    use_fusion=True)
 print("Initializing model")
-model = SplitNet(input_dims=input_dims, num_classes=2,
+model = SplitNetX(input_dims=input_dims, num_classes=2,
                  conv_params=conv_params,
                  fc_params=fc_params,
                  use_fusion=True,
                  nRegions=args.num_regions)
 model = model.to(dev)
+#model.particle_nets_to(dev) # NOTE: no longer necessary, removed from SplitNet.py 
 
 
 def evaluate(model, test_loader, dev, return_scores=False):
@@ -128,7 +132,11 @@ def evaluate(model, test_loader, dev, return_scores=False):
                 _, preds = logits.max(1)
 
                 if return_scores:
-                    scores.append(torch.softmax(logits, dim=1).cpu().detach().numpy())
+                    log_scores = torch.nn.functional.log_softmax(logits, dim=1).cpu().detach().numpy()
+                    scores.append(np.exp(np.longdouble(log_scores)))
+                    #log_scores = torch.nn.functional.log_softmax(logits, dim=1)
+                    #scores.append(torch.exp(log_scores).cpu().detach().numpy())
+                    #scores.append(torch.softmax(logits, dim=1).cpu().detach().numpy())
 
                 correct = (preds == label).sum().item()
                 total_correct += correct
@@ -171,7 +179,7 @@ def run_one_file(filepath, extra_label=0):
         siglist = {extra_label:(filepath, -1)}
 
     test_frac = (0, 1) if args.test_sig or args.test_bkg else (0, 0.2)
-    test_data = ECalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, obs_branches=obs_branches, nRegions=args.num_regions)
+    test_data = XCalHitsDataset(siglist=siglist, bkglist=bkglist, load_range=test_frac, obs_branches=obs_branches, nRegions=args.num_regions, extended=args.extended)
                                 #, veto_branches=veto_branches, coord_ref=args.coord_ref)
     test_loader = DataLoader(test_data, num_workers=args.num_workers, batch_size=args.batch_size,
                             collate_fn=collate_fn, shuffle=False, drop_last=False, pin_memory=True)
@@ -193,7 +201,7 @@ def run_one_file(filepath, extra_label=0):
     #print("PRINTING BRANCHES")
     #for branch in out_data:
     #    print(out_data[branch][:10])
-    out_data['ParticleNet_disc'] = test_preds[:, 1]
+    out_data['ParticleNet_disc'] = test_preds[:, 1].astype(np.float64)
     #print("Test preds", out_data['ParticleNet_disc'][:20])
     # OLD:
     #awkward.save(pred_file, out_data, mode='w')

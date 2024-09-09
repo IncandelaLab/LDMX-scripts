@@ -18,10 +18,15 @@ import ROOT as r
 # Note:  Number of threads has not been optimized for lazy-loading; it may be worth experimenting w/ lower values.
 #executor = concurrent.futures.ThreadPoolExecutor(12)
 
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float64)
+
+# this will simply change E_beam and eventually RoC (new RoC for 8gev not added yet)...set to False for 4gev
+beam_8gev = True 
 
 # Should match value in the preselection.  Determines size of ParticleNet position arrays.
-MAX_NUM_ECAL_HITS = 60  #110  # NOW REDUCED!
+# going to leave this hard coded seperately since it relies on detector version as well as beam energy
+# v14 settings: 90 for 8gev, 50 for 4gev
+MAX_NUM_ECAL_HITS = 90 #50 #60  #110  # NOW REDUCED!
 
 # NEW: Radius of containment data
 # Note:  Should still be valid for 2e ParticleNet unless the shower shape has changed
@@ -34,16 +39,59 @@ radius_beam_68 = [4.73798004, 4.80501156, 4.77108164, 4.53839401, 4.73273021,
 119.06854141, 121.20048803, 127.5236134, 121.99024095]
 
 #from 1e
-radius_recoil_68_p_0_500_theta_0_10 = [4.045666158618167, 4.086393662224346, 4.359141107602775, 4.666549994726691, 5.8569181911416015, 6.559716356124256, 8.686967529043072, 10.063482736354674, 13.053528344041274, 14.883496407943747, 18.246694748611368, 19.939799900443724, 22.984795944506224, 25.14745829663406, 28.329169392203216, 29.468032123356345, 34.03271241527079, 35.03747443690781, 38.50748727211848, 39.41576583301171, 42.63622296033334, 45.41123601592071, 48.618139095742876, 48.11801717451056, 53.220539860213655, 58.87753380915155, 66.31550881539764, 72.94685877928593, 85.95506228335348, 89.20607201266672, 93.34370253818409, 96.59471226749734, 100.7323427930147, 103.98335252232795]
+#radius_recoil_68_p_0_500_theta_0_10 = [4.045666158618167, 4.086393662224346, 4.359141107602775, 4.666549994726691, 5.8569181911416015, 6.559716356124256, 8.686967529043072, 10.063482736354674, 13.053528344041274, 14.883496407943747, 18.246694748611368, 19.939799900443724, 22.984795944506224, 25.14745829663406, 28.329169392203216, 29.468032123356345, 34.03271241527079, 35.03747443690781, 38.50748727211848, 39.41576583301171, 42.63622296033334, 45.41123601592071, 48.618139095742876, 48.11801717451056, 53.220539860213655, 58.87753380915155, 66.31550881539764, 72.94685877928593, 85.95506228335348, 89.20607201266672, 93.34370253818409, 96.59471226749734, 100.7323427930147, 103.98335252232795]
 
-radius_recoil_68_p_500_1500_theta_0_10 = [4.081926458777424, 4.099431732299409, 4.262428482867968, 4.362017581473145, 4.831341579961153, 4.998346041276382, 6.2633736512415705, 6.588371889265881, 8.359969947444522, 9.015085558044309, 11.262722588206483, 12.250305471269183, 15.00547660437276, 16.187264014640103, 19.573764900578503, 20.68072032434797, 24.13797140783321, 25.62942209291236, 29.027596514735617, 30.215039667389316, 33.929540248019585, 36.12911729771914, 39.184563500620946, 42.02062468386282, 46.972125628650204, 47.78214816041894, 55.88428562462974, 59.15520134927332, 63.31816666637158, 66.58908239101515, 70.75204770811342, 74.022963432757, 78.18592874985525, 81.45684447449884]
+#radius_recoil_68_p_500_1500_theta_0_10 = [4.081926458777424, 4.099431732299409, 4.262428482867968, 4.362017581473145, 4.831341579961153, 4.998346041276382, 6.2633736512415705, 6.588371889265881, 8.359969947444522, 9.015085558044309, 11.262722588206483, 12.250305471269183, 15.00547660437276, 16.187264014640103, 19.573764900578503, 20.68072032434797, 24.13797140783321, 25.62942209291236, 29.027596514735617, 30.215039667389316, 33.929540248019585, 36.12911729771914, 39.184563500620946, 42.02062468386282, 46.972125628650204, 47.78214816041894, 55.88428562462974, 59.15520134927332, 63.31816666637158, 66.58908239101515, 70.75204770811342, 74.022963432757, 78.18592874985525, 81.45684447449884]
 
-radius_recoil_68_theta_10_20 = [4.0251896715647115, 4.071661598616328, 4.357690094817289, 4.760224640141712, 6.002480766325418, 6.667318981016246, 8.652513285172342, 9.72379373302137, 12.479492693251478, 14.058548828317289, 17.544872909347912, 19.43616066939176, 23.594162859513734, 25.197329065282954, 29.55995803074302, 31.768946746958296, 35.79247330197688, 37.27810357669942, 41.657281051476545, 42.628141392692626, 47.94208483539388, 49.9289473559796, 54.604030254423975, 53.958762417361655, 53.03339560920388, 57.026277390001425, 62.10810455035879, 66.10098633115634, 71.1828134915137, 75.17569527231124, 80.25752243266861, 84.25040421346615, 89.33223137382352, 93.32511315462106]
+#radius_recoil_68_theta_10_20 = [4.0251896715647115, 4.071661598616328, 4.357690094817289, 4.760224640141712, 6.002480766325418, 6.667318981016246, 8.652513285172342, 9.72379373302137, 12.479492693251478, 14.058548828317289, 17.544872909347912, 19.43616066939176, 23.594162859513734, 25.197329065282954, 29.55995803074302, 31.768946746958296, 35.79247330197688, 37.27810357669942, 41.657281051476545, 42.628141392692626, 47.94208483539388, 49.9289473559796, 54.604030254423975, 53.958762417361655, 53.03339560920388, 57.026277390001425, 62.10810455035879, 66.10098633115634, 71.1828134915137, 75.17569527231124, 80.25752243266861, 84.25040421346615, 89.33223137382352, 93.32511315462106]
 
-radius_recoil_68_theta_20_end = [4.0754238481177705, 4.193693485630508, 5.14209420056253, 6.114996249971468, 7.7376807326481645, 8.551663213602291, 11.129110612057813, 13.106293737495639, 17.186617323282082, 19.970887612094604, 25.04088272634407, 28.853696411302344, 34.72538105333071, 40.21218694947545, 46.07344239520299, 50.074953583805346, 62.944045771758645, 61.145621459396814, 69.86940198299047, 74.82378572939959, 89.4528387422834, 93.18228303096758, 92.51751129204555, 98.80228884380018, 111.17537347472128, 120.89712563907408, 133.27021026999518, 142.99196243434795, 155.36504706526904, 165.08679922962185, 177.45988386054293, 187.18163602489574, 199.55472065581682, 209.2764728201696]
+#radius_recoil_68_theta_20_end = [4.0754238481177705, 4.193693485630508, 5.14209420056253, 6.114996249971468, 7.7376807326481645, 8.551663213602291, 11.129110612057813, 13.106293737495639, 17.186617323282082, 19.970887612094604, 25.04088272634407, 28.853696411302344, 34.72538105333071, 40.21218694947545, 46.07344239520299, 50.074953583805346, 62.944045771758645, 61.145621459396814, 69.86940198299047, 74.82378572939959, 89.4528387422834, 93.18228303096758, 92.51751129204555, 98.80228884380018, 111.17537347472128, 120.89712563907408, 133.27021026999518, 142.99196243434795, 155.36504706526904, 165.08679922962185, 177.45988386054293, 187.18163602489574, 199.55472065581682, 209.2764728201696]
 
-radius_68 = [radius_beam_68,radius_recoil_68_p_0_500_theta_0_10, radius_recoil_68_p_500_1500_theta_0_10,radius_recoil_68_theta_10_20,radius_recoil_68_theta_20_end]
+#radius_68 = [radius_beam_68,radius_recoil_68_p_0_500_theta_0_10, radius_recoil_68_p_500_1500_theta_0_10,radius_recoil_68_theta_10_20,radius_recoil_68_theta_20_end]
 
+#NEW: RoC bins for v14 1e
+#NOTE: this is still for 4gev (must update for 8gev if doing multiple ECal regions)
+radius68_thetalt10 = [  10.12233413, 9.921772, 11.38255086, 11.67991867, 13.14337347, 
+                                13.17120624, 16.80994665, 17.83787244, 22.44684374, 23.74239886, 
+                                28.60564083, 30.27889678, 34.86404888, 36.39009394, 41.29309474, 
+                                43.34682279, 48.55982854, 50.80565589, 55.29496257, 57.92737879, 
+                                60.64828824, 65.51760517, 68.26709803, 76.32877518, 84.61219467, 
+                                103.3649691, 111.1692293, 119.2928089, 127.7357081, 136.4979268, 
+                                145.579465, 154.9803228, 164.7005, 174.7399968 ]
+
+radius68_theta10to15 = [ 10.82307758, 11.17850518, 16.2185281, 18.62488713, 22.63408229, 
+                                24.71769042, 30.11217538, 32.69939046, 37.99753196, 40.81619543, 
+                                45.89054775, 49.03066318, 54.00440948, 59.31733555, 63.40789682, 
+                                64.77580021, 73.00113678, 73.25561396, 78.8914776, 86.73962133, 
+                                97.05926327, 96.6932739, 111.6226151, 106.5960265, 109.477541, 
+                                144.2545942, 153.7581461, 163.5921179, 173.7565094, 184.2513208, 
+                                195.076552, 206.2322029, 217.7182737, 229.5347642 ]
+
+radius68_theta15to20 = [ 12.79450901, 13.02698578, 21.27450933, 25.66008312, 31.78592103, 
+                                35.99689874, 44.37101115, 48.82709363, 55.05972458, 59.68948687, 
+                                65.39866214, 70.59280337, 76.06007787, 82.22695257, 87.50371819, 
+                                90.60099831, 96.34848268, 101.4928478, 106.7157092, 105.0540604, 
+                                110.0653355, 148.3428736, 133.1449443, 146.997265, 173.3954389, 
+                                185.1307166, 196.1408667, 207.4772729, 219.1399351, 231.1288534, 
+                                243.4440277, 256.085458, 269.0531444, 282.3470868 ]
+
+radius68_theta20to30 = [ 14.16989595, 15.4488322, 28.31044668, 37.54285657, 48.57288885, 
+                                57.04243339, 68.99836079, 75.33388728, 85.00572867, 91.52574074, 
+                                102.5044698, 106.5315986, 116.2341378, 127.1121442, 133.8866375, 
+                                144.5121759, 162.1726963, 160.2986579, 171.386638, 182.5653112, 
+                                205.5853241, 196.3113071, 200.5907513, 228.7275694, 234.0298491, 
+                                253.7990618, 263.6872702, 273.5754785, 283.4636869, 293.3518953, 
+                                303.2401036, 313.128312, 323.0165203, 332.9047287 ]
+
+radius68_theta30to60 = [ 22.50983127, 26.44537503, 58.24642887, 90.59076279, 130.0592014, 
+                                157.4611392, 184.2187293, 202.6994588, 225.3488816, 243.3454167, 
+                                269.2456428, 280.6119298, 303.8591523, 322.0522722, 335.1780181, 
+                                350.3398234, 353.7763544, 373.9942362, 382.9453608, 401.9703438, 
+                                441.6281859, 432.5241826, 455.2878243, 492.2888656, 502.6653722, 
+                                519.9101788, 539.1604349, 558.410691, 577.6609471, 596.9112032, 
+                                616.1614593, 635.4117154, 654.6619715, 673.9122276 ]
+
+radius_68 = [radius_beam_68, radius68_thetalt10, radius68_theta10to15, radius68_theta15to20, radius68_theta20to30, radius68_theta30to60]
 
 
 def _concat(arrays, axis=0):
@@ -56,11 +104,11 @@ def _concat(arrays, axis=0):
 
 
 
-class ECalHitsDataset(Dataset):
+class XCalHitsDataset(Dataset):
 
-    def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v13', nRegions=1, regSizes=None):
-        super(ECalHitsDataset, self).__init__()
-        print("Initializing EcalHitsDataset")
+    def __init__(self, siglist, bkglist, load_range=(0, 1), obs_branches=[], coord_ref=None, detector_version='v14', nRegions=None, regSizes=None, extended=False):
+        super(XCalHitsDataset, self).__init__()
+        print("Initializing XCalHitsDataset")
         # load cell map (for calculating xyz+layer from hit IDs)
         self._load_cellMap(version=detector_version)
         self.detector_version = detector_version
@@ -68,10 +116,15 @@ class ECalHitsDataset(Dataset):
         self._id_branch = 'id_rec_'  # load from 'EcalRecHits_v12.id_'
         self._pos_branch = '{}pos_rec_'
         self._energy_branch = 'energy_rec_'  # load from 'EcalRecHits_v12.energy_'
+        self._h_pos_branch = '{}pos_hrec_'
+        self._h_energy_branch = 'energy_hrec_'
+        self._h_id_branch = 'id_hrec_'
         if detector_version == 'v12':
             self._branches = [self._id_branch, self._energy_branch]
         else:
-            self._branches = [self._id_branch] + [self._pos_branch.format(v) for v in ['x', 'y', 'z']]
+            self._branches = [self._energy_branch] + [self._pos_branch.format(v) for v in ['x', 'y', 'z']]  \
+                           + [self._h_energy_branch] + [self._h_pos_branch.format(v) for v in ['x', 'y', 'z']] \
+                           + [self._h_id_branch]
 
         self.obs_branches = obs_branches
         # NOTE:  Need to explicitly keep track of and save all obs_dict data!  Fortunately, order doesn't matter.
@@ -84,6 +137,7 @@ class ECalHitsDataset(Dataset):
         assert(detector_version != 'v9')  # v9 compatibility would be nontrivial to add, and is probably unnecessary
 
         self.nRegions = nRegions
+        self.extended = extended
 
         # General approach to init():
         # - Input events have all been preselected.
@@ -124,7 +178,7 @@ class ECalHitsDataset(Dataset):
                     self.extra_labels.append(extra_label)
                     num_loaded_events += 1
                     f_event += 1
-                #print("      {} events in file, {} total for current mass".format(f_event, num_loaded_events))
+                 #print("      {} events in file, {} total for current mass".format(f_event, num_loaded_events))
             print("   Loaded m={}:  using {} events".format(extra_label, num_loaded_events))
 
         self.extra_labels = np.array(self.extra_labels)
@@ -140,7 +194,12 @@ class ECalHitsDataset(Dataset):
     @property
     def num_features(self):
         # Hard-coded; not worried about generalizing atm
-        return 5
+        #return 5
+        #return 4 # removed layer id
+        if self.extended:
+            return 6 # restored layer id, added strip id
+        else:
+            return 5
 
     def __len__(self):
         return len(self.event_list)
@@ -178,8 +237,12 @@ class ECalHitsDataset(Dataset):
         # create features and coordinates:
         # NOTE:  Always 3-dimensional!  [[a, b...]] for 1-region PN
         coordinates = np.stack((var_data['x_'], var_data['y_'], var_data['z_']), axis=1)
-        features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
-                                var_data['layer_id_'], var_data['log_energy_']), axis=1)
+        if self.extended:
+            features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
+                                    var_data['log_energy_'], var_data['layer_id_'], var_data['strip_id_']), axis=1)  
+        else:
+             features    = np.stack((var_data['x_'], var_data['y_'], var_data['z_'],
+                                    var_data['log_energy_'], var_data['layer_id_']), axis=1)             
         return coordinates, features, label
 
 
@@ -210,7 +273,7 @@ class ECalHitsDataset(Dataset):
         r_tsp = 0
         pmax_tsp = 0
         for j in range(pdgID_leaf_tsp.GetLen()):
-            if pdgID_tsp_[j] == 11 and z_tsp_[j] > 4.4 and z_tsp_[j] < 4.6 and pz_tsp_[j] > pmax_tsp:
+            if pdgID_tsp_[j] == 11 and z_tsp_[j] > 0.176 and z_tsp_[j] < 0.178 and pz_tsp_[j] > pmax_tsp:
                 r_tsp = j
                 pmax_tsp = pz_tsp_[j]
 
@@ -218,13 +281,13 @@ class ECalHitsDataset(Dataset):
         r_ecal = 0
         pmax_ecal = 0
         for j in range(pdgID_leaf.GetLen()):
-            if pdgID_[j] == 11 and z_[j] > 240 and z_[j] < 241 and pz_[j] > pmax_ecal:
+            if pdgID_[j] == 11 and z_[j] > 239 and z_[j] < 240 and pz_[j] > pmax_ecal:
                 pmax_ecal = pz_[j]
                 r_ecal = j
         has_e = pmax_ecal != 0  # Check whether event has a SP electron
         
         etraj_ecal = {v+'_':  self.ttree.GetLeaf(v+'_').GetValue(r_ecal)     for v in ['x', 'y', 'z', 'px', 'py', 'pz']}
-        etraj_tsp  = {v+'_':  self.ttree.GetLeaf(v+'_tsp_').GetValue(r_ecal) for v in ['x', 'y', 'z', 'px', 'py', 'pz']}
+        etraj_tsp  = {v+'_':  self.ttree.GetLeaf(v+'_tsp_').GetValue(r_tsp) for v in ['x', 'y', 'z', 'px', 'py', 'pz']}
         #etraj_x_sp  = self.ttree.GetLeaf('x_').GetValue(el_)
         #etraj_y_sp  = self.ttree.GetLeaf('y_').GetValue(el_)
         #etraj_z_sp  = self.ttree.GetLeaf('z_').GetValue(el_)
@@ -236,8 +299,11 @@ class ECalHitsDataset(Dataset):
 
         # Create vectors holding the electron/photon momenta so the trajectory projections can be found later
         # Set xtraj_p_norm relative to z=1 to make projecting easier:
-        E_beam = 4000.0  # In MeV
-        target_dist = 241.5 # distance from ecal to target, mm
+        if beam_8gev:
+            E_beam = 8000.0 # in MeV
+        else:
+            E_beam = 4000.0
+        target_dist = 240.5 # distance from ecal to target, mm
         
         # Compute and store trajectories:
         if has_e:
@@ -275,10 +341,18 @@ class ECalHitsDataset(Dataset):
             (x, y, z), layer_id = self._parse_cid(eid)  # layer_id > 0, so can use layer_id-1 to index e/ptraj_ref
         else:
             xyz_leaves = [self.ttree.GetLeaf(self._pos_branch.format(v)) for v in ['x', 'y', 'z']]
-            (x, y, z) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float32') for lf in xyz_leaves]
+            (x, y, z) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float64') for lf in xyz_leaves]
             energy_leaf = self.ttree.GetLeaf(self._energy_branch)
-            energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float32')
+            energy = np.array([energy_leaf.GetValue(i) for i in range(energy_leaf.GetLen())], dtype='float64')
             layer_id = self._getlayer(z)
+            if self.extended:
+                h_xyz_leaves = [self.ttree.GetLeaf(self._h_pos_branch.format(v)) for v in ['x', 'y', 'z']]
+                (hx, hy, hz) = [np.array([lf.GetValue(i) for i in range(lf.GetLen())], dtype='float64') for lf in h_xyz_leaves]
+                h_energy_leaf = self.ttree.GetLeaf(self._h_energy_branch)
+                h_energy = np.array([h_energy_leaf.GetValue(i) for i in range(h_energy_leaf.GetLen())], dtype='float64')
+                hid_leaf = self.ttree.GetLeaf(self._h_id_branch)
+                hid = np.array([hid_leaf.GetValue(i) for i in range(hid_leaf.GetLen())], dtype='int')
+                (hcal_section, hcal_layer, hcal_strip) = self._parse_hid(hid)
 
 
         # Now, work with table['etraj_ref'] and table['ptraj_ref'].
@@ -286,16 +360,18 @@ class ECalHitsDataset(Dataset):
         # For each event, look through all hits.
         # - Determine whether hit falls inside either the e or p RoCs
         # - If so, fill corresp xyzlayer, energy, eid lists...
-        x_          = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
-        y_          = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
-        z_          = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
-        log_energy_ = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
-        layer_id_   = np.zeros((self.nRegions, MAX_NUM_ECAL_HITS), dtype='float32')
+        x_          = np.zeros((self.nRegions, 300), dtype='float64')
+        y_          = np.zeros((self.nRegions, 300), dtype='float64')
+        z_          = np.zeros((self.nRegions, 300), dtype='float64')
+        log_energy_ = np.zeros((self.nRegions, 300), dtype='float64')
+        layer_id_   = np.zeros((self.nRegions, 300), dtype='float64')
+        if self.extended:
+            strip_id_   = np.zeros((self.nRegions, 300), dtype='float64')
 
-        regionIndices = [0, 0, 0]  # Indices of last hit added to feature arrays
+        #regionIndices = [0, 0, 0]  # Indices of last hit added to feature arrays
 
-        for j in range(len(layer_id)):  #eid_leaf.GetLen()):  # For every hit...
 
+        for j in range(len(energy)):  #eid_leaf.GetLen()):  # For every hit...
             # Calculate xy coord of point on projected trajectory in same layer
             delta_z = z[j] - self.etraj_sp[2]
             if self.etraj_sp[2] != -999:  # If fiducial
@@ -313,77 +389,117 @@ class ECalHitsDataset(Dataset):
             ir = -1
             #if recoilangle==-1 or recoil_p==-1:  ir = 1  # Not used for now
             # Select the class of containment radii based on trajectory angle/energy:
-            if recoilangle < 10 and recoil_p < 500:
-                ir = 1
-            elif recoilangle < 10 and recoil_p >= 500:
-                ir = 2
-            elif recoilangle <= 20:
-                ir = 3
-            else:
-                ir = 4
+            # Note: v14 8 gev RoC not added yet so this is still just for 4gev
+            if self.detector_version=='v14':
+                if recoilangle < 10:
+                    ir = 1
+                elif 10 <= recoilangle < 15:
+                    ir = 2
+                elif 15 <= recoilangle < 20:
+                    ir = 3
+                elif 20 <= recoilangle < 30:
+                    ir = 4
+                else:
+                    ir = 5
+            else: # version v13 or v13
+                if recoilangle < 10 and recoil_p < 500:
+                    ir = 1
+                elif recoilangle < 10 and recoil_p >= 500:
+                    ir = 2
+                elif recoilangle <= 20:
+                    ir = 3
+                else:
+                    ir = 4
             # Determine what regions the hit falls into:
             insideElectronRadius = np.sqrt((etraj_point[0] - x[j])**2 + \
                     (etraj_point[1] - y[j])**2) < 2.0 * radius_68[ir][layer_id[j]]
             insidePhotonRadius   = np.sqrt((ptraj_point[0] - x[j])**2 + \
                     (ptraj_point[1] - y[j])**2) < 2.0 * radius_68[ir][layer_id[j]]
-            # If an SP electron hit is missing, place all hits in the event into the ~~"other"~~ PHOTON region
+            # NEW:  If an SP electron hit is missing, place all hits in the event into the "other" region
             # 3-region:
             if self.enorm_sp[2] == -999:
                 insideElectronRadius = False
                 insidePhotonRadius   = True
             
-            regions = []  # Regions hit falls inside
-            if self.nRegions == 1:
-                regions.append(0)
-            elif self.nRegions == 2:
+            ecal_regions = []  # Regions ecal hit falls inside
+            if (self.nRegions == 1 and not self.extended) or ((self.nRegions == 2 or self.nRegions == 6) and self.extended):
+                ecal_regions.append(0)
+            elif (self.nRegions == 2 and not self.extended) or ((self.nRegions == 3 or self.nRegions == 7) and self.extended):
                 if insideElectronRadius:
-                    regions.append(0)
+                    ecal_regions.append(0)
                 else:
-                    regions.append(1)
-            elif self.nRegions == 3:
+                    ecal_regions.append(1)
+            elif (self.nRegions == 3 and not self.extended) or ((self.nRegions == 4 or self.nRegions == 8) and self.extended):
                 if insideElectronRadius:
-                    regions.append(0)
+                    ecal_regions.append(0)
                 if insidePhotonRadius:
-                    regions.append(1)
+                    ecal_regions.append(1)
                 if not insideElectronRadius and not insidePhotonRadius:
-                    regions.append(2)
+                    ecal_regions.append(2)
             # Add to each region (need multiple in case inside electron and photon in 3-region)
-
-            
             for r in range(self.nRegions):
-                if r in regions:
+                if r in ecal_regions:
                     x_[r][j] = x[j] - etraj_point[0]  # Store relative to xy distance from trajectory
                     y_[r][j] = y[j] - etraj_point[1]
                     z_[r][j] = z[j]  # - self._layerZs[0]  # Used to be defined relative to the ecal face; changed to absolute bc of Huilin's old results
                     layer_id_[r][j] = layer_id[j]
-                    log_energy_[r][j] = np.log(energy[j]) if energy[j] > 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
-            """
-            for r in range(self.nRegions):
-                # Note location of previous hit added to array.  Add after it.
-                if r in regions:  # if hit belongs in region r:
-                    k = regionIndices[r]
-                    x_[r][k] = x[j] - etraj_point[0]  # Store relative to xy distance from trajectory
-                    y_[r][k] = y[j] - etraj_point[1]
-                    z_[r][k] = z[j]  # - self._layerZs[0]  # Used to be defined relative to the ecal face; changed to absolute bc of Huilin's old results
-                    layer_id_[r][k] = layer_id[j]
-                    log_energy_[r][k] = np.log(energy[j]) if energy[j] > 0 else -1  # Note:  E<1 is very uncommon, so -1 is okay to round to.
-                    regionIndices[r] += 1
-            """
-        # NOTE:  TESTING
-        #print("current x_1: (should be 0-padded) "+str(x_[0]))
+                    if self.extended:
+                        strip_id_[r][j] = 0
+                    if energy[j] > 0:
+                        log_energy_[r][j] = np.log(energy[j]) 
+                    elif energy[j] == 0:
+                        log_energy_[r][j] = -2
+                    else: # else E<0
+                        log_energy_[r][j] = -1  # Note:  E<0 is very uncommon, so -1 is okay to round to.
+                
+        if self.extended:
+            for k in range(len(h_energy)):
+                
+                hcal_regions = []
+                if self.nRegions == 2 or self.nRegions == 3 or self.nRegions == 4:
+                    hcal_regions.append(self.nRegions - 1) # ANY HCAL
+                elif self.nRegions == 6 or self.nRegions == 7 or self.nRegions == 8:
+                    if hcal_section[k] == 0: # BACK HCAL
+                        hcal_regions.append(self.nRegions - 5)
+                    elif hcal_section[k] == 1: # TOP SIDE-HCAL
+                        hcal_regions.append(self.nRegions - 4)
+                    elif hcal_section[k] == 2: # BOTTOM SIDE-HCAL
+                        hcal_regions.append(self.nRegions - 3) 
+                    elif hcal_section[k] == 3: # RIGHT SIDE-HCAL
+                        hcal_regions.append(self.nRegions - 2)
+                    elif hcal_section[k] == 4: # LEFT SIDE-HCAL
+                        hcal_regions.append(self.nRegions - 1)
 
+
+                for r in range(self.nRegions):
+                    if r in hcal_regions:
+                        x_[r][k] = hx[k]
+                        y_[r][k] = hy[k]
+                        z_[r][k] = hz[k]  
+                        layer_id_[r][k] = hcal_layer[k]
+                        strip_id_[r][k] = hcal_strip[k]
+                        if h_energy[k] > 0:
+                            log_energy_[r][k] = np.log(h_energy[k])
+                        elif h_energy[k] == 0:
+                            log_energy_[r][k] = -2
+                        else: # else E<0
+                            log_energy_[r][k] = -1 
 
         # Create and fill var_dict w/ feature information:
-        var_dict = {'x_':x_, 'y_':y_, 'z_':z_,
-                    'layer_id_':layer_id_,
-                    'log_energy_':log_energy_,
-                   }
+        if self.extended:
+            var_dict = {'x_':x_, 'y_':y_, 'z_':z_,        
+                        'log_energy_':log_energy_, 'layer_id_': layer_id_, 'strip_id_': strip_id_
+                        }
+        else:
+            var_dict = {'x_':x_, 'y_':y_, 'z_':z_,        
+                        'log_energy_':log_energy_, 'layer_id_': layer_id_
+                        }
 
         # Lastly, create and fill obs_dict w/ branches specified in train.py:
         o_dict = {}
         for branch in self.obs_branches:
             o_leaf = self.ttree.GetLeaf(branch)
-            o_arr = np.array([o_leaf.GetValue(i) for i in range(o_leaf.GetLen())], dtype='float32')
+            o_arr = np.array([o_leaf.GetValue(i) for i in range(o_leaf.GetLen())], dtype='float64')
             o_dict[branch] = o_arr
 
         return var_dict, o_dict
@@ -401,13 +517,13 @@ class ECalHitsDataset(Dataset):
         return self.obs_dict
 
 
-    def _load_cellMap(self, version='v13'):
+    def _load_cellMap(self, version='v14'):
         self._cellMap = {}  # cellMap used for v12 only
         if version=='v12':
             for i, x, y in np.loadtxt('data/%s/cellmodule.txt' % version):
                 self._cellMap[i] = (x, y)
             self._layerZs = np.loadtxt('data/%s/layer.txt' % version)
-        if version=='v13':
+        if version=='v13' or version=='v14':
             zd = np.loadtxt('data/%s/layer.txt' % version)
             self._layerZs = {round(zd[i]):i for i in range(len(zd))}
         print("Loaded geometry info")
@@ -420,30 +536,41 @@ class ECalHitsDataset(Dataset):
             return self._layerZs[round(val)]
         return list(map(roundreturn, zarr))  #self._layerZs.__getitem__, zarr))
 
+
     def _parse_cid(self, cid):  # Retooled for v12
         # Translate hit IDs into xyz+layer data
         # For id details, see (?):  ldmx-sw/DetDescr/src/EcalID.cxx
-
+        
         cell   = (cid >> 0)  & 0xFFF #(awkward.to_numpy(awkward.flatten(cid)) >> 0)  & 0xFFF
         module = (cid >> 12) & 0x1F  #(awkward.to_numpy(awkward.flatten(cid)) >> 12) & 0x1F
         layer  = (cid >> 17) & 0x3F  #(awkward.to_numpy(awkward.flatten(cid)) >> 17) & 0x3F
         mcid = 10 * cell + module
-        #if len(mcid) == 1:
-        #    print("FOUND ONE-HIT EVENT...{}".format(mcid))
-        #if len(mcid) == 0:
-        #    print("FOUND ZERO-HIT EVENT, this shouldn't happen...{}".format(mcid))
         x, y = zip(*map(self._cellMap.__getitem__, mcid))
         z = list(map(self._layerZs.__getitem__, layer))
         return (x, y, z), layer
+
+    def _parse_hid(self, hid):
+         SECTION_MASK = 0x7  # space for up to 7 sections
+         SECTION_SHIFT = 18
+         LAYER_MASK = 0xFF  # space for up to 255 layers
+         LAYER_SHIFT = 10
+         STRIP_MASK = 0xFF  # space for 255 strips/layer
+         STRIP_SHIFT = 0 
+
+         hcal_section = np.bitwise_and(np.right_shift(hid.astype(np.uint64), SECTION_SHIFT), SECTION_MASK)
+         hcal_layer = np.bitwise_and(np.right_shift(hid.astype(np.uint64), LAYER_SHIFT), LAYER_MASK)
+         hcal_strip = np.bitwise_and(np.right_shift(hid.astype(np.uint64), STRIP_SHIFT), STRIP_MASK)
+
+         return (hcal_section, hcal_layer, hcal_strip)
 
 
 class _SimpleCustomBatch:
 
     def __init__(self, data, min_nodes=None):
         pts, fts, labels = list(zip(*data))
-        self.coordinates = torch.tensor(pts)
-        self.features = torch.tensor(fts)
-        self.label = torch.tensor(labels)
+        self.coordinates = torch.from_numpy(np.array(pts)) #torch.tensor(pts)
+        self.features = torch.from_numpy(np.array(fts)) #torch.tensor(fts)
+        self.label = torch.from_numpy(np.array(labels)) #torch.tensor(labels)
 
     def pin_memory(self):
         self.coordinates = self.coordinates.pin_memory()

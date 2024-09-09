@@ -4,13 +4,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from utils.ParticleNet import *
+from utils.ParticleNetX import *
 
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float64)
 
-class SplitNet(nn.Module):
+class SplitNetX(nn.Module):
     # SplitNet class:
-    # Consists of 3 ordinary ParticleNets, each one only examining data fom a single reigon of the ecal.
+    # Consists of 4 ordinary ParticleNets, each one only examining data fom a single reigon of the detector (3 ecal regions + 1 hcal).
     # Hits from region 1 are fed to ParticleNet 1, hits from region 2 are fed to ParticleNet 2, etc.
     # The fully connected layer of each PN is replaced by a single fully connected layer that aggregates
     # the results of the one-to-three ParticleNets.
@@ -26,14 +26,14 @@ class SplitNet(nn.Module):
                  nRegions=1,
                  regSizes = None, # List w/ len==nRegions
                  **kwargs):
-        super(SplitNet, self).__init__(**kwargs)
-        print("INITIALIZING SPLITNET")
+        super(SplitNetX, self).__init__(**kwargs)
+        print("INITIALIZING SPLITNETX")
 
         self.nRegions = nRegions
 
         # Particle nets:  named pn1, pn2, etc.
         for i in range(self.nRegions):
-            pn = ParticleNet(input_dims=input_dims, num_classes=2,           conv_params=conv_params,
+            pn = ParticleNetX(input_dims=input_dims, num_classes=2,           conv_params=conv_params,
                              fc_params=fc_params,   use_fusion=use_fusion,   return_softmax = return_softmax)
             setattr(self, 'pn{}'.format(i), pn)
 

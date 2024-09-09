@@ -1,9 +1,0 @@
-#!/bin/bash
-#SBATCH -n 20
-#SBATCH --output=slurm_file_processor.out
-
-cd $SLURM_SUBMIT_DIR
-
-/bin/hostname
-
-python file_processor.py

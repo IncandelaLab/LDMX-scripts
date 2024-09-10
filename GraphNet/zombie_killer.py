@@ -11,8 +11,7 @@ executor = concurrent.futures.ThreadPoolExecutor(30)
 
 filepath = '/home/duncansw/GraphNet_input/v14/v3_tskim/XCal_total/*.root'
 
-zombie_kills = 0
-vampire_kills = 0
+kills = 0
 filelist = glob.glob(filepath)
 nFiles = len(filelist)
 for filename in tqdm(filelist, total=nFiles):

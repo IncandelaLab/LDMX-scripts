@@ -1,16 +1,16 @@
 #!/bin/bash
 #SBATCH -N 1 --partition=gpu --ntasks-per-node=1
 #SBATCH --gres=gpu:1
-#SBATCH --output=slurm_prediction_v13_1r.out
+#SBATCH --output=slurm_prediction.out
 
-export MODEL_NAME=v13_1r
-export DATA_NAME=v13_1r
-export BASE_DIRECTORY=/home/pmasterson/ParticleNet/LDMX-scripts/GraphNet
+export MODEL_NAME=my_model
+export DATA_NAME=my_model
+export BASE_DIRECTORY=/home/duncansw/LDMX-scripts/GraphNet
 
 cd $SLURM_SUBMIT_DIR
 
 /bin/hostname
-srun --gres=gpu:1 python -u train.py --predict --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME/output --num-workers 16 --device 'cuda:0' --num-regions 1
+srun --gres=gpu:1 python -u trainX.py --predict --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME/output --num-workers 16 --device 'cuda:0' --num-regions 1
 
 
 

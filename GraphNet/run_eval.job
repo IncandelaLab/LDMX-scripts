@@ -1,19 +1,17 @@
 #!/bin/bash
 #SBATCH -N 1 --partition=gpu --ntasks-per-node=1
 #SBATCH --gres=gpu:1
-#SBATCH --output=slurm_eval_v13_1r.out
+#SBATCH --output=slurm_eval.out
 
-export MODEL_NAME=v13_1r
-export DATA_NAME=v13_1r
-export BASE_DIRECTORY=/home/pmasterson/ParticleNet/LDMX-scripts/GraphNet
+export MODEL_NAME=my_model
+export DATA_NAME=my_model
+export BASE_DIRECTORY=/home/duncansw/LDMX-scripts/GraphNet
 
 cd $SLURM_SUBMIT_DIR
 
 /bin/hostname
-srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/pmasterson/GraphNet_input/v13/evaluation/bkg/*.root' --test-sig '/home/pmasterson/GraphNet_input/v13/evaluation/sig/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 1
+srun --gres=gpu:1 python -u evalX.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/pn_full/bkg_eval/*.root' --test-sig '/home/duncansw/GraphNet_input/v14/8gev/v3_tskim/XCal_total/sig_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 1
+# Kaons:
+#srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-18_acc-*.pt --test-bkg '/home/pmasterson/GraphNet_input/v12/processed/*kaon*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 3
 
-#srun --gres=gpu:1 python -u eval.py --save-extra --network particle-net-lite --batch-size 128 --load-model-path $BASE_DIRECTORY/models/$MODEL_NAME/model_state_epoch-19_acc-*.pt --test-bkg '/home/pmasterson/GraphNet_input/v12/v300/background/evaluation/*.root' --test-sig '/home/pmasterson/GraphNet_input/v12/v300/signal/evaluation*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 16 --device 'cuda:0' --num-regions 1
-
-# --test-sig '/home/pmasterson/GraphNet_input/v12/processed_eval/signal/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 8 --device 'cuda:0'
-
-
+# --test-sig '/home/duncansw/GraphNet_input/v13/v3.0.0_trigger/fiducial/sig_eval/*.root' --test-output-path $BASE_DIRECTORY/plot_data/$DATA_NAME --num-workers 8 --device 'cuda:0'

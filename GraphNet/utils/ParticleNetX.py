@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 # NEW:  32-bit float resolution (23 for decimal) isn't enough for PN scores ~ 1 - 1e-6.
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float64)
 
 '''Based on https://github.com/WangYueFt/dgcnn/blob/master/pytorch/model.py.'''
 
@@ -116,7 +116,7 @@ class EdgeConvBlock(nn.Module):
         return self.sc_act(sc + fts)  # (N, C_out, P)
 
 
-class ParticleNet(nn.Module):
+class ParticleNetX(nn.Module):
 
     def __init__(self,
                  input_dims,
@@ -126,7 +126,7 @@ class ParticleNet(nn.Module):
                  use_fusion=False,
                  return_softmax=False,
                  **kwargs):
-        super(ParticleNet, self).__init__(**kwargs)
+        super(ParticleNetX, self).__init__(**kwargs)
 
         self.bn_fts = nn.BatchNorm1d(input_dims)
 
@@ -159,9 +159,9 @@ class ParticleNet(nn.Module):
         if mask is None:
             mask = (features.abs().sum(dim=1, keepdim=True) != 0)  # (N, 1, P)
         coord_shift = (mask == 0) * 9999.
-        counts = mask.float().sum(dim=-1)  # Using floats instead here...?
+        counts = mask.sum(dim=-1)  # Using floats instead here...?
         counts = torch.max(counts, torch.ones_like(counts))  # >=1
-        fts = self.bn_fts(features.float())  # Changed this from double -> float too
+        fts = self.bn_fts(features)  # Changed this from double -> float too
         outputs = []
         for idx, conv in enumerate(self.edge_convs):
             pts = (points if idx == 0 else fts) + coord_shift

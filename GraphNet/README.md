@@ -1,4 +1,4 @@
-# ParticleNet for the LDMX ECal veto (stable, detector v13)
+# ParticleNet for the LDMX ECal veto
 ------
 
 ## Introduction
@@ -78,7 +78,7 @@ conda activate pytorch
 The [train.py](train.py) is the main script to run the training. If you're running ParticleNet directly on a machine with GPUs, such as pod-gpu, you can run a demo version in the command line with:
 
 ```bash
-python -u train.py --optimizer ranger --start-lr 5e-3 --focal-loss-gamma 2 --network particle-net-lite --batch-size 128 --save-model-path models/ecal_particlenet-lite_focal2_ranger_lr5e-3/model --test-output-path test-output/ecal_particlenet-lite_focal2_ranger_lr5e-3/output --num-epochs 20 --num-workers 16 --device 'cuda:0' --demo | tee ecal_particlenet-lite_focal2_ranger_lr5e-3.log
+python -u train.py --coord-ref none --optimizer ranger --start-lr 5e-3 --focal-loss-gamma 2 --network particle-net-lite --batch-size 128 --save-model-path models/ecal_coord-ref-none_particlenet-lite_focal2_ranger_lr5e-3/model --test-output-path test-output/ecal_coord-ref-none_particlenet-lite_focal2_ranger_lr5e-3/output --num-epochs 20 --num-workers 16 --device 'cuda:0' --demo | tee ecal_coord-ref-none_particlenet-lite_focal2_ranger_lr5e-3.log
 ```
 
 Note that the `--demo` option runs the training on a very small sample of events instead of the full ~400k per category.  Since it takes much longer to run the full training, full training jobs should be submitted to the batch system instead.  To do this, modify the model names/paths in [run\_training.job](run_training.job) to something descriptive and run:
@@ -97,6 +97,8 @@ The training is performed for 20 epochs (set by `--num-epochs`), w/ each epoch g
 After training, the next step for generating ROC curves and other plots is to run [train.py](train.py) in prediction mode.  This is most easily done by using the corresponding slurm script ([run\_prediction.job](run_prediction.job)).
 
 The [eval.py](eval.py) script can also be used to apply the trained network to the input files. Unlike the [train.py](train.py) file, `eval.py` will not load all signal and background files in the same data set together, but will run over each file separately (and write a separate output for each input file). The command line options are very similar as those for the `train.py` script.  On POD, it's once again easiest to use one of the slurm job scripts, [run\_eval.job](run_eval.py).
+
+The filepath for `model_state_epoch-19_acc-*.pt` in `run_prediction.job` and `run_training.job` must be completed to correspond to your trained model (e.g., `model_state_epoch-19_acc-0.9874.pt`). The number indicates the model accuracy for the final epoch (if the maximum of accuracy occurs at say, epoch 18, you should choose that). 
 
 ## Plotting with Jupyter (on POD)
 

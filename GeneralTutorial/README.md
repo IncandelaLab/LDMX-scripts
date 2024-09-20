@@ -22,6 +22,6 @@ denv init ldmx/pro:v4.1.0
 wget https://raw.githubusercontent.com/IncandelaLab/LDMX-scripts/master/GeneralTutorial/runEventLoop.py
 denv python3 runEventLoop.py  
 ```
-3) Putting objects into data frames and have vectorized oparations. This is faster but can be harder to conseptualize. 
+3) Putting objects into data frames and have vectorized oparations. This is faster but can be harder to conceptualize. 
 We have several examples in this repo, but also look at
 https://ldmx-software.github.io/using/analysis/python.html

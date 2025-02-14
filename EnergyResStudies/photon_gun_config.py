@@ -49,7 +49,7 @@ mpgGen.enablePoisson = False #True
 # pz= beamEnergyMeV*math.cos(theta)
 px = 0.
 py = 0.
-pz= 4000.
+pz= 3000.
 mpgGen.momentum = [ px, py, pz ]
 
 # Set the multiparticle gun as generator
@@ -58,8 +58,25 @@ sim.generators = [ mpgGen ]
 #Ecal and Hcal geometry stuff
 from LDMX.Ecal import EcalGeometry
 from LDMX.Hcal import HcalGeometry
-import LDMX.Ecal.ecal_hardcoded_conditions
+from LDMX.Ecal.ecal_hardcoded_conditions import EcalTrigPrimConditionsHardcode
+from LDMX.Ecal.ecal_hardcoded_conditions import EcalReconConditionsHardcode
+from LDMX.Conditions.SimpleCSVTableProvider import SimpleCSVIntegerTableProvider, SimpleCSVDoubleTableProvider
 
+# this used to be 0.6
+noise_in_ADC = 1.6
+
+EcalHgcrocConditionsHardcode.validForAllRows([
+    50. , #PEDESTAL - ADC
+    noise_in_ADC, #NOISE - ADC
+    0.0, #MEAS_TIME - ns
+    20., #PAD_CAPACITANCE - pF
+    200., #TOT_MAX - ns - maximum time chip would be in TOT mode
+    10240. / 200., #DRAIN_RATE - fC/ns
+    320./1024/20., #GAIN - 320. fC / 1024. counts / 20 pF - conversion from ADC to mV
+    50. + 3., #READOUT_THRESHOLD - 3 ADC counts above pedestal
+    50.*320./1024/20. + 5 *37*0.1602/20., #TOA_THRESHOLD - mV - ~5  MIPs above pedestal
+    50.*320./1024/20. + 50*37*0.1602/20., #TOT_THRESHOLD - mV - ~50 MIPs above pedestal
+    ])
 
 # ecal digi chain
 from LDMX.Ecal import digi as eDigi
@@ -68,8 +85,7 @@ from LDMX.DQM import dqm
 
 avgGain = 0.3125/20.
 ecalDigi   =eDigi.EcalDigiProducer('EcalDigis')
-# ecalDigi.avgNoiseRMS = 0.6*avgGain # default
-ecalDigi.avgNoiseRMS = 1.6*avgGain
+ecalDigi.avgNoiseRMS = noise_in_ADC*avgGain
 ecalReco   =eDigi.EcalRecProducer('ecalRecon')
 ecalDigiVerDQM = dqm.EcalDigiVerify()
 

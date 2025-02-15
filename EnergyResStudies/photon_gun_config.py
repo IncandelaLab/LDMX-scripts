@@ -65,6 +65,19 @@ from LDMX.Conditions.SimpleCSVTableProvider import SimpleCSVIntegerTableProvider
 # this used to be 0.6
 noise_in_ADC = 1.6
 
+EcalHgcrocConditionsHardcode=SimpleCSVDoubleTableProvider("EcalHgcrocConditions", [
+            "PEDESTAL",
+            "NOISE",
+            "MEAS_TIME",
+            "PAD_CAPACITANCE",
+            "TOT_MAX",
+            "DRAIN_RATE",
+            "GAIN",
+            "READOUT_THRESHOLD",
+            "TOA_THRESHOLD",
+            "TOT_THRESHOLD"
+        ])
+
 EcalHgcrocConditionsHardcode.validForAllRows([
     50. , #PEDESTAL - ADC
     noise_in_ADC, #NOISE - ADC

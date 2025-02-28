@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import glob
 import argparse
 import ROOT as r
 import numpy as np
@@ -29,34 +30,40 @@ def addBranch(tree, ldmx_class, branch_name):
     elif ldmx_class == 'SimParticle': branch = r.std.map(int, 'ldmx::'+ldmx_class)()
     else: branch = r.std.vector('ldmx::'+ldmx_class)()
 
-    tree.SetBranchAddress(branch_name,r.AddressOf(branch))
+    tree.SetBranchAddress(branch_name,r.AddressOf(branch)) # sets relevant branch addresses in the TTrees
 
     return branch
 
 class sampleContainer:
-    def __init__(self,filename,maxEvts,trainFrac,isSig):
+    def __init__(self,filenames,maxEvts,trainFrac,isSig):
 
         print("Initializing Container!")
-        self.tree = r.TChain("LDMX_Events")
-        self.tree.Add(filename)
+        self.tree = r.TChain("LDMX_Events") # initialize TChain of TTrees which have name "LDMX_Events"
+        for file in filenames:
+            self.tree.Add(file) # adds input file trees to TChain
         self.maxEvts = maxEvts
         self.trainFrac = trainFrac
         self.isSig   = isSig
+        print(f'Assigning branch address to EcalVetoResult')
         self.ecalVeto = addBranch(self.tree, 'EcalVetoResult', 'EcalVeto_{}'.format('SegmipBDTReco'))
         if self.isSig:
-            self.trigger = addBranch(self.tree, 'TriggerResult', 'TriggerSums20Layers_{}'.format('signal'))
+            print(f'Assigning branch address to TriggerResult')
+            self.trigger = addBranch(self.tree, 'TriggerResult', '2eTrigger_{}'.format('overlay'))
 
     def root2PyEvents(self):
         self.events =  []
-        for event_count in range(self.tree.GetEntries()):
+        print(f'Loading {self.tree.GetEntries()} events')
+        # TChain.GetEntries() should return all entries across all TTrees in the TChain
+        for event_count in range(self.tree.GetEntries()): # iterates through no. of events
             
-            # load event
+            # load event indexed by event_count
             self.tree.GetEntry(event_count)
             
-            if len(self.events) >= self.maxEvts:
-                continue
+            if len(self.events) >= self.maxEvts: # skips rest of for loop past maxEvts
+                break
             
-            if self.isSig:
+            if self.isSig: # skips signal events which failed the trigger
+                print(f'Event {event_count} : failed trigger; skipped')
                 if not self.trigger.passed(): continue
             
             result = self.ecalVeto
@@ -118,6 +125,7 @@ class sampleContainer:
             ]
 
             self.events.append(evt)
+            print(f'Event {event_count} : event data loaded successfully')
 
         new_idx=np.random.permutation(np.arange(np.shape(self.events)[0]))
         self.events = np.array(self.events)
@@ -155,10 +163,26 @@ if __name__ == "__main__":
     parser.add_option('--eta', dest='eta',type="float",  default=0.15, help='Learning Rate')
     parser.add_option('--tree_number', dest='tree_number',type="int",  default=1000, help='Tree Number')
     parser.add_option('--depth', dest='depth',type="int",  default=10, help='Max Tree Depth')
-    parser.add_option('-b', dest='bkg_file', default='./bdt_0/bkg_train.root', help='name of background file')
-    parser.add_option('-s', dest='sig_file', default='./bdt_0/sig_train.root', help='name of signal file')
-    parser.add_option('-o', dest='out_name',  default='bdt_test', help='Output Pickle Name')
+    parser.add_option('-b', dest='bkg_path', help='Absolute path to background file(s)')
+    parser.add_option('-s', dest='sig_path', help='Absolute path to signal file(s)')
+    parser.add_option('-o', dest='out_name',  default='bdt_test', help='Output Pickle Name (excluding file extension)')
     (options, args) = parser.parse_args()
+
+    # pulls all files from the indicated input directories
+    if os.path.isdir(options.bkg_path):
+        bkg_files = glob.glob(os.path.join(options.bkg_path, '*.root'))
+    elif os.path.isfile(options.bkg_path):
+        bkg_files = [options.bkg_path]
+    else:
+        print(f'os.path cannot read bkg_path as either a file or directory')
+        sys.exit(f'Problem reading bkg_path\nbkg_path = {options.bkg_path}\nPlease check inputted parameters!')
+    if os.path.isdir(options.sig_path):
+        sig_files = glob.glob(os.path.join(options.sig_path, '*.root'))
+    elif os.path.isfile(options.sig_path):
+        sig_files = [options.sig_path]
+    else:
+        print(f'os.path cannot read sig_path as either a file or directory')
+        sys.exit(f'Problem reading sig_path\nsig_path = {options.sig_path}\nPlease check inputted parameters!')
 
     # Seed numpy's randomness
     np.random.seed(options.seed)
@@ -184,14 +208,14 @@ if __name__ == "__main__":
     print( 'You set eta = {}'.format(options.eta)                 )
 
     # Make Signal Container
-    print( 'Loading sig_file = {}'.format(options.sig_file) )
-    sigContainer = sampleContainer(options.sig_file,options.max_evt,options.train_frac,True)
+    print( 'Loading sig_path = {}'.format(options.sig_path) )
+    sigContainer = sampleContainer(sig_files,options.max_evt,options.train_frac,True)
     sigContainer.root2PyEvents()
     sigContainer.constructTrainAndTest()
 
     # Make Background Container
-    print( 'Loading bkg_file = {}'.format(options.bkg_file) )
-    bkgContainer = sampleContainer(options.bkg_file,options.max_evt,options.train_frac,False)
+    print( 'Loading bkg_path = {}'.format(options.bkg_path) )
+    bkgContainer = sampleContainer(bkg_files,options.max_evt,options.train_frac,False)
     bkgContainer.root2PyEvents()
     bkgContainer.constructTrainAndTest()
 

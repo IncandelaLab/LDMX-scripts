@@ -63,8 +63,9 @@ class sampleContainer:
                 break
             
             if self.isSig: # skips signal events which failed the trigger
-                print(f'Event {event_count} : failed trigger; skipped')
-                if not self.trigger.passed(): continue
+                if not self.trigger.passed(): 
+                    print(f'Event {event_count} : failed trigger; skipped')
+                    continue
             
             result = self.ecalVeto
 

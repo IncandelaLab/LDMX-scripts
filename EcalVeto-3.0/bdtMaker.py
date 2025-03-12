@@ -48,7 +48,7 @@ class sampleContainer:
         self.ecalVeto = addBranch(self.tree, 'EcalVetoResult', 'EcalVeto_{}'.format('SegmipBDTReco'))
         if self.isSig:
             print(f'Assigning branch address to TriggerResult')
-            self.trigger = addBranch(self.tree, 'TriggerResult', '2eTrigger_{}'.format('2e-signal10mevOverlay-8gev-1M'))
+            self.trigger = addBranch(self.tree, 'TriggerResult', '2eTrigger_{}'.format('overlay'))
 
 
     def root2PyEvents(self):

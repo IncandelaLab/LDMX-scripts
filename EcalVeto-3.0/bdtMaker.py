@@ -276,7 +276,7 @@ def plotShap(evt_container:mergedContainer, shap_values, out_dir:str):
 
     shap_container = shap.Explanation(shap_values, data=data, feature_names=data.columns)
 
-    bar_mean_outpath = os.path.join(out_dir, 'model_bar_shapMeanAbs.jpg')
+    bar_mean_outpath = os.path.join(out_dir, 'model_bar_shapMeanAbs.png')
     shap.plots.bar(shap_container, max_display=num_features, show=False)
     plt.pyplot.savefig(bar_mean_outpath, bbox_inches='tight', dpi=500)
     plt.pyplot.close()

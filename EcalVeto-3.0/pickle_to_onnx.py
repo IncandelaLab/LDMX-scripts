@@ -17,8 +17,6 @@ with open(args.infile, "rb") as f:
     outfilename = os.path.basename(args.infile).replace('.pkl', '.onnx')
     feature_names = clf.feature_names
 
-print(f'Feature names before conversion:\n{feature_names}')
-
 # the xgboost converter in onnxmltools can only parse default feature names assigned
 # by xgboost, i.e. f0, f1, f2, etc. The below block of code checks whether the feature
 # names assigned in the process of training the model are default or otherwise out of
@@ -36,12 +34,9 @@ if not all(feat == 'f%d' % i for i, feat in enumerate(feature_names)):
 else:
     print('Feature names are default and in the correct order.')
 
-print(f'Feature names after conversion:\n{clf.feature_names}')
-
 outfilepath = os.path.join(args.outdir, outfilename)
 
 n_features = clf.num_features()
-print(f'num_features = {n_features}')
 onnx_model = onnxmltools.convert_xgboost(clf, initial_types=[('input', FloatTensorType([None, n_features]))])
 
 with open(outfilepath, "wb") as f:

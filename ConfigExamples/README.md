@@ -38,8 +38,33 @@ This repo has a few example config files to run
 
 ## Hard brem process
 
-HardBremOnly.py has a trigger skim with settings of
+The `hard_brem_only_config.py` has a trigger skim with settings of
 ```
 recoil_max_p = 3000.,brem_min_e = 5000.
 ```
 This has an efficiency of 1/10k (0.01%) events and timing of 1 event/100min 
+
+
+## Electron gun
+
+The `electron_gun_config.py` shoots an electron in front of the ECAL into the ECAL. The main settings are in
+```
+mpgGen = generators.multi( "mgpGen" )                                                                           
+mpgGen.vertex = [ 0., 0., 200. ] # mm                                                                                                                              
+mpgGen.nParticles = 1
+mpgGen.pdgID = 11
+mpgGen.enablePoisson = False #True                                                                                     
+
+# import math
+# import numpy as np
+# theta = math.radians(5.65)
+# beamEnergyMeV=1000*beamEnergy
+# px = beamEnergyMeV*math.sin(theta)
+# py = 0.;
+# pz= beamEnergyMeV*math.cos(theta)
+px = 0.
+py = 0.
+pz= 3000.
+mpgGen.momentum = [ px, py, pz ]
+```
+

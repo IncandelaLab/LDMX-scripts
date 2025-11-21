@@ -1,5 +1,11 @@
 import ROOT
-ROOT.gSystem.Load('libFramework.so')
+#ROOT.gSystem.Load('libFramework.so')
+ROOT.gSystem.Load('libTracking_Event.so') 
+ROOT.gSystem.Load('libRecon_Event.so')
+ROOT.gSystem.Load('libEcal_Event.so') 
+ROOT.gSystem.Load('libHcal_Event.so') 
+ROOT.gSystem.Load('libTrigger_Event.so') 
+ROOT.gSystem.Load('libSimCore_Event.so')
 
 # Open the ROOT file
 file_name = "../CutBasedDM/ecalPnIn.root"

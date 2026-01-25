@@ -8,7 +8,14 @@ import matplotlib as plt
 import pandas as pd
 from optparse import OptionParser
 import shap
-r.gSystem.Load('libFramework.so')
+
+# Load necessary LDMX libraries
+r.gSystem.Load('libTracking_Event.so') 
+r.gSystem.Load('libRecon_Event.so')
+r.gSystem.Load('libEcal_Event.so') 
+r.gSystem.Load('libHcal_Event.so') 
+r.gSystem.Load('libTrigger_Event.so') 
+r.gSystem.Load('libSimCore_Event.so')
 
 print('All packages loaded!')
 
@@ -45,11 +52,15 @@ class sampleContainer:
         self.trainFrac = trainFrac
         self.isSig   = isSig
         print(f'Assigning branch address to EcalVetoResult')
-        self.ecalVeto = addBranch(self.tree, 'EcalVetoResult', 'EcalVeto_{}'.format('SegmipBDTReco'))
         if self.isSig:
             print(f'Assigning branch address to TriggerResult')
-            self.trigger = addBranch(self.tree, 'TriggerResult', '2eTrigger_{}'.format('overlay'))
+            self.ecalVeto = addBranch(self.tree, 'EcalVetoResult', 'EcalVeto_{}'.format('test'))
+            self.trigger = addBranch(self.tree, 'TriggerResult', 'Trigger_{}'.format('test'))
+            self.recoil_fiducial = addBranch(self.tree, 'FiducialFlag','RecoilTruthFiducialFlags_{}'.format('test'))
+            self.tagger = addBranch(self.tree, 'Track', 'TaggerTracksClean_{}'.format('test'))
 
+        else:
+            self.ecalVeto = addBranch(self.tree, 'EcalVetoResult', 'EcalVeto_{}'.format('reco_v1'))
 
     def root2PyEvents(self):
         """
@@ -68,6 +79,17 @@ class sampleContainer:
 
             if self.isSig: # skips signal events which failed the trigger
                 # print(f'nElectrons = {self.trigger.getAlgoVar(3)}') # prints nElectrons counted by trigger
+
+                # Preselection cuts for signal, use what you need to for training
+                if not self.recoil_fiducial.passed():
+                    print(f'Event {event_count} : failed fiducial; skipped')
+                    continue
+
+                if  len(self.tagger) != 1:
+                    print(f'Event {event_count} : failed tagger; skipped')
+                    continue
+
+                # Trigger cut for signal (bkg should already be triggered)
                 if not self.trigger.passed(): 
                     print(f'Event {event_count} : failed trigger; skipped')
                     continue
@@ -87,11 +109,6 @@ class sampleContainer:
                     result.getStdLayerHit(),
                     result.getDeepestLayerHit(),
                     result.getEcalBackEnergy(),
-                    # MIP Tracking variables
-                    result.getNStraightTracks(),
-                    result.getFirstNearPhLayer(),
-                    result.getNNearPhHits(),
-                    result.getPhotonTerritoryHits(),
                     result.getEPSep(),
                     result.getEPDot(),
                     # Longitudinal segment variables
@@ -170,47 +187,42 @@ class mergedContainer:
                 'stdLayerHit', # f8
                 'deepestLayerHit', # f9
                 'ecalBackEnergy', # f10
-                # MIP Tracking variables
-                'nStraightTracks', # f11
-                'firstNearPhLayer', # f12
-                'nNearPhHits', # f13
-                'photonTerritoryHits', # f14
-                'epSep', # f15
-                'epDot', # f16
+                'epSep', # f11
+                'epDot', # f12
                 # Longitudinal segment variables
-                'energy_s1', # f17
-                'xMean_s1', # f18
-                'yMean_s1', # f19
-                'layerMean_s1', # f20
-                'energy_s2', # f21
-                'yMean_s2', # f22
+                'energy_s1', # f13
+                'xMean_s1', # f14
+                'yMean_s1', # f15
+                'layerMean_s1', # f16
+                'energy_s2', # f17
+                'yMean_s2', # f18
                 # Electron RoC variables
-                'eContEnergy_x1_s1', # f23
-                'eContEnergy_x2_s1', # f24
-                'eContYMean_x1_s1', # f25
-                'eContEnergy_x1_s2', # f26
-                'eContEnergy_x2_s2', # f27
-                'eContYMean_x1_s2', # f28
+                'eContEnergy_x1_s1', # f19
+                'eContEnergy_x2_s1', # f20
+                'eContYMean_x1_s1', # f21
+                'eContEnergy_x1_s2', # f22
+                'eContEnergy_x2_s2', # f23
+                'eContYMean_x1_s2', # f24
                 # Photon RoC variables
-                'gContNHits_x1_s1', # f29
-                'gContYMean_x1_s1', # f30
-                'gContNHits_x1_s2', # f31
+                'gContNHits_x1_s1', # f25
+                'gContYMean_x1_s1', # f26
+                'gContNHits_x1_s2', # f27
                 # Outside RoC variables
-                'oContEnergy_x1_s1', # f32
-                'oContEnergy_x2_s1', # f33
-                'oContEnergy_x3_s1', # f34
-                'oContNHits_x1_s1', # f35
-                'oContXMean_x1_s1', # f36
-                'oContYMean_x1_s1', # f37
-                'oContYMean_x2_s1', # f38
-                'oContYStd_x1_s1', # f39
-                'oContEnergy_x1_s2', # f40
-                'oContEnergy_x2_s2', # f41
-                'oContEnergy_x3_s2', # f42
-                'oContLayerMean_x1_s2', # f43
-                'oContLayerStd_x1_s2', # f44
-                'oContEnergy_x1_s3', # f45
-                'oContLayerMean_x1_s3', # f46
+                'oContEnergy_x1_s1', # f28
+                'oContEnergy_x2_s1', # f29
+                'oContEnergy_x3_s1', # f30
+                'oContNHits_x1_s1', # f31
+                'oContXMean_x1_s1', # f32
+                'oContYMean_x1_s1', # f33
+                'oContYMean_x2_s1', # f34
+                'oContYStd_x1_s1', # f35
+                'oContEnergy_x1_s2', # f36
+                'oContEnergy_x2_s2', # f37
+                'oContEnergy_x3_s2', # f38
+                'oContLayerMean_x1_s2', # f39
+                'oContLayerStd_x1_s2', # f40
+                'oContEnergy_x1_s3', # f41
+                'oContLayerMean_x1_s3', # f42
             ]
         
         # merges train_x, train_y data

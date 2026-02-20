@@ -136,6 +136,7 @@ def main():
             f.write('#SBATCH -D %s\n\n' % cwd)
 
             f.write('module load apptainer\n')
+            f.write('export APPTAINER_USERNS=1\n')
             f.write('apptainer exec madpydel_latest.sif /madgraph/MG5_aMC_v3_5_4/bin/mg5_aMC %s\n' % (mg_config_dir + '/' + config_file))
             
             # Clean file name and MG directory
@@ -145,7 +146,7 @@ def main():
             f.write('rm -rf  %s\n' % (mg_output_dir))
 
             # Parse LHE file
-            f.write('python3 %s -i %s -o %s -m %f -min %i -max %i -s %i' % (parser_path, mg_mass_dir + '/' + mg_lhe_file_name, parsed_mass_dir, mass, args.decay_min_z, args.decay_min_z, args.seed) )
+            f.write('python3 %s -i %s -o %s -m %f -min %i -max %i -s %i' % (parser_path, mg_mass_dir + '/' + mg_lhe_file_name, parsed_mass_dir, mass, args.decay_min_z, args.decay_max_z, args.seed) )
 
         # Format submission command and submit if this is not a test
         submit_command = 'sbatch %s/sbatch_%sGeV_seed%i.sh' % (job_config_dir, str(mass), args.seed)

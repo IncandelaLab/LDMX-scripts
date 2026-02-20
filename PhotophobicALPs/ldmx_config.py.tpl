@@ -15,18 +15,21 @@ beamEnergy = 8  #in GeV
 # Import all Processors
 from LDMX.SimCore import generators
 from LDMX.SimCore import simulator
+from LDMX.Tracking import full_tracking_sequence
 
 # Instantiate the simulator.
 sim = simulator.simulator('sim')
-detector = 'ldmx-det-v14-8gev'
-sim.setDetector( detector, True )
+detector = 'ldmx-det-v15-8gev'
+sim.setDetector( detector , include_scoring_planes_minimal = True )
 sim.description = 'ALP with ' + str(beamEnergy)+ ' GeV electron events'
 sim.beamSpotSmear = [0., 0., 0.]
 sim.time_shift_primaries = False
 
 # Set ALP and decay generator
 ALP_gen = generators.lhe('ALP Generator', '{{ prod_file }}')
+ALP_gen.vertex = [ 0., 0., 0. ]
 decay_gen = generators.lhe('Decay Generator', '{{ decay_file }}')
+decay_gen.vertex = [ 0., 0., 0. ]
 sim.generators = [ALP_gen, decay_gen]
 
 #Ecal and Hcal hardwired/geometry stuff
@@ -66,11 +69,13 @@ tsClustersUp    = TrigScintClusterProducer.pad1()
 tsClustersTag   = TrigScintClusterProducer.pad2()
 tsClustersDown  = TrigScintClusterProducer.pad3()
 
-p.sequence = [ 
-    sim, 
-    ecalDigi, ecalReco, ecalVeto, 
-    hcalDigi, hcalReco, hcalVeto ]
+p.sequence=[ sim,
+        ecalDigi, ecalReco,
+        hcalDigi, hcalReco]
 
+p.sequence.extend(full_tracking_sequence.sequence)
+
+p.sequence.extend([ecalVeto, hcalVeto])
 
 layers = [17, 20]
 tList = []

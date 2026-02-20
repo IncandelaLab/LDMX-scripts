@@ -33,14 +33,12 @@ def bkg_decay_variables(sim_particles_map, TSP_hits):
         if not np.abs(daughter.getVertex()[2] - decay_vertex[2]) < 0.1: continue
         if daughter.getPdgID() == 11:
             electron_momentum = np.array([daughter.getMomentum()[0], daughter.getMomentum()[1], daughter.getMomentum()[2]])
-            # print(electron_momentum)
         elif daughter.getPdgID() == -11:
             positron_momentum = np.array([daughter.getMomentum()[0], daughter.getMomentum()[1], daughter.getMomentum()[2]])
     zero_momentum = np.array([0., 0., 0.])
     
     if (electron_momentum == zero_momentum).all() or (positron_momentum == zero_momentum).all() :
         opening_angle = -1
-        # print('bad')
     else:
         opening_angle =  np.rad2deg( np.arccos( np.dot(electron_momentum, positron_momentum) / (np.linalg.norm(electron_momentum) * np.linalg.norm(positron_momentum)) ) )
 
@@ -55,6 +53,7 @@ def bkg_decay_variables(sim_particles_map, TSP_hits):
     vertex_at_target = vertex_TSP + scale*recoil_momentum_unit_vec
 
     return decay_vertex, opening_angle, recoil_momentum, vertex_at_target, electron_momentum, positron_momentum, brem_momentum
+
 
 def signal_decay_variables(sim_particles_map, TSP_hits):
     for sim_particle in sim_particles_map:
@@ -95,7 +94,9 @@ def signal_decay_variables(sim_particles_map, TSP_hits):
     recoil_momentum_unit_vec = recoil_momentum / np.linalg.norm(recoil_momentum)
     scale = - vertex_TSP[2] / recoil_momentum_unit_vec[2]
     vertex_at_target = vertex_TSP + scale*recoil_momentum_unit_vec
+    
     return decay_vertex, opening_angle, recoil_momentum, vertex_at_target, electron_momentum, positron_momentum, alp_momentum
+
 
 class EcalVetoDataSet:
     def __init__(self):
@@ -193,10 +194,10 @@ class EcalVetoDataSet:
 
             self.bkg_chain.GetEntry(event_num)
             decay_vertex, opening_angle, recoil_momentum, vertex_at_target, electron_momentum, positron_momentum, brem_momentum = bkg_decay_variables(self.bkg_chain.SimParticles_v14_deepPhotonFromTarget, self.bkg_chain.TargetScoringPlaneHits_v14_deepPhotonFromTarget)
-
+            
             #Only keep background events where decay_z > 350
             #if decay_vertex[2] <= 350: continue
-
+            
             # Demand that the recoil electron has a postive z-momenutm
             if (recoil_momentum[2] <= 0) or (opening_angle == -1): continue
 
@@ -239,11 +240,11 @@ class EcalVetoDataSet:
 
         root_tree.Write()
 
-        # Load background data 
+        # Load signal data 
         for mass, signal_chain in self.signal_file_dict.items():
 
             if test_run:
-                n_events = np.floor( signal_chain.GetEntries() * 0.01 )
+                n_events = int(np.floor( signal_chain.GetEntries() * 0.01 ))
             else:  
                 n_events =  signal_chain.GetEntries()
 
@@ -311,7 +312,6 @@ class EcalVetoDataSet:
                 if (recoil_momentum[2] <= 0) or  (opening_angle == -1): 
                     continue
 
-                
                 nReadoutHits_array[0]       = len(signal_chain.EcalRecHits_alp)
                 avgLayerHit_array[0]        = signal_chain.EcalVeto_alp.getAvgLayerHit()
                 stdLayerHit_array[0]        = signal_chain.EcalVeto_alp.getStdLayerHit()
@@ -335,12 +335,12 @@ class EcalVetoDataSet:
                 alp_py_array[0]             = alp_momentum[1]
                 alp_pz_array[0]             = alp_momentum[2]
 
+                # --- VETO CUT ---
                 if nReadoutHits_array[0] < 10:
                     continue
 
                 hit_count = 0
                 for hit in signal_chain.EcalRecHits_alp:
-
                     # ECal Rec Hits
                     rec_energy_array[hit_count] = hit.getEnergy()
                     rec_xpos_array[hit_count]   = hit.getXPos()
@@ -357,10 +357,10 @@ class EcalVetoDataSet:
 if __name__ == '__main__':
 
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description = 'Dark Photon Generator')
-    parser.add_argument('-min',             '--decay_min_z',        type = int, help = 'Lab frame minimum decay z position (signal).')
-    parser.add_argument('-max',             '--decay_max_z',        type = int, help = 'Lab frame maximum decay z position (signal).')
-    parser.add_argument('--bkg_decay_z',                            type = int, help = 'Lab frame decay z position (bkg).')
+    parser = argparse.ArgumentParser(description = 'Dark Photon Generator (Gamma Skimmer)')
+    # Replace -min/-max with -dl for the new gamma data structure
+    parser.add_argument('-dl', '--decay_length', type = int, required=True, help = 'Lab frame decay length for Gamma distribution (signal).')
+    parser.add_argument('--bkg_decay_z', type = int, required=True, help = 'Lab frame decay z position (bkg).')
 
     args = parser.parse_args()
 
@@ -371,21 +371,33 @@ if __name__ == '__main__':
     ecal_veto_data = EcalVetoDataSet()
     test_run_bool = False
     
-    # Add signal data
+    # Add signal data - [MODIFIED FOR GAMMA FOLDER PATH]
     alp_mass_list = [0.005, 0.025, 0.05, 0.5, 1.0]
     for mass in alp_mass_list:
         file_list = []
-
-        for file_name in os.listdir(cwd + f'/alpLDMX/decay_min{str(args.decay_min_z)}_max{str(args.decay_max_z)}/{str(mass)}GeV'):
-            file_list.append(cwd + f'/alpLDMX/decay_min{str(args.decay_min_z)}_max{str(args.decay_max_z)}/{str(mass)}GeV/' + file_name)
-
-        ecal_veto_data.add_signal_file(file_list, mass)
+        
+        signal_mass_dir = cwd + f'/ALP_LDMX_Directory/gamma_decay{str(args.decay_length)}/{str(mass)}GeV'
+        
+        if os.path.exists(signal_mass_dir):
+            for file_name in os.listdir(signal_mass_dir):
+                if file_name.endswith('.root'): # Only add .root files
+                    file_list.append(os.path.join(signal_mass_dir, file_name))
+            ecal_veto_data.add_signal_file(file_list, mass)
+        else:
+            logging.warning(f'Signal directory not found: {signal_mass_dir}')
     
     # Add bkg data
     bkg_file_list = []
-    for file_name in os.listdir(cwd + f'/deepPhotonLDMX/decay{str(args.bkg_decay_z)}'):
-        bkg_file_list.append(cwd + f'/deepPhotonLDMX/decay{str(args.bkg_decay_z)}/' + file_name)
+    bkg_dir = cwd + f'/deepPhotonLDMX/decay{str(args.bkg_decay_z)}'
+    if os.path.exists(bkg_dir):
+        for file_name in os.listdir(bkg_dir):
+            if file_name.endswith('.root'):
+                bkg_file_list.append(os.path.join(bkg_dir, file_name))
+        ecal_veto_data.add_background_file(bkg_file_list)
+    else:
+         logging.warning(f'Background directory not found: {bkg_dir}')
 
-    ecal_veto_data.add_background_file(bkg_file_list)
-
-    ecal_veto_data.load_data(cwd + '/skimmed.root', test_run_bool)
+    # Save to a specific name so it doesn't overwrite your old skimmed files
+    output_skimmed_file = cwd + f'/skimmed_gamma_DL{args.decay_length}.root'
+    ecal_veto_data.load_data(output_skimmed_file, test_run_bool)
+    logging.info(f'Skimming complete! Output saved to {output_skimmed_file}')

@@ -112,6 +112,7 @@ def main():
             f.write('#SBATCH -D %s\n\n' % cwd)
 
             f.write('module load apptainer\n')
+            f.write('export APPTAINER_USERNS=1\n')
             f.write('denv fire %s\n' % (ldmx_config_dir + '/' + config_file))
             f.write('mv %s %s\n' % (output_root_file, mass_dir))
 

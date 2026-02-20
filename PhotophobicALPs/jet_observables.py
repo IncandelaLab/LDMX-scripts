@@ -6,7 +6,6 @@ from array import array
 
 # fastjet.ClusterSequence.set_fastjet_banner_stream(None)
 
-
 def azimuthal_angle(x, y, z):
     phi = np.arctan2(y, x)
     return phi
@@ -281,7 +280,7 @@ if __name__ == '__main__':
 
     cwd = os.getcwd()
 
-    analysis = CalcVetoVariable(cwd + '/skimmed.root', cwd + '/vetoVar.root', [0.005, 0.025, 0.05, 0.5], 0.4, 2.5, 0.15, 5)
+    analysis = CalcVetoVariable(cwd + '/skimmed.root', cwd + '/vetoVar.root', [0.005, 0.025, 0.05, 0.5, 1.0], 0.4, 2.5, 0.15, 5)
     analysis.calc_all_variables()
 
 

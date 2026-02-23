@@ -3,10 +3,10 @@ from LDMX.Framework import ldmxcfg
 nElectrons = 1
 passName = 'alp'
 p = ldmxcfg.Process(passName)
-p.maxTriesPerEvent = 1
-p.maxEvents = {{ n_events }}
-p.termLogLevel = 2
-p.logFrequency = 1000
+p.max_tries_per_event = 1
+p.max_events = {{ n_events }}
+p.logger.term_level = 2
+p.log_frequency = 1000
 
 # Set run parameters
 p.run = {{ seed }}
@@ -32,35 +32,33 @@ decay_gen = generators.lhe('Decay Generator', '{{ decay_file }}')
 decay_gen.vertex = [ 0., 0., 0. ]
 sim.generators = [ALP_gen, decay_gen]
 
-#Ecal and Hcal hardwired/geometry stuff
 import LDMX.Ecal.ecal_hardcoded_conditions
-from LDMX.Ecal import EcalGeometry
+from LDMX.Ecal import ecal_geometry
 
-from LDMX.Hcal import HcalGeometry
 import LDMX.Hcal.hcal_hardcoded_conditions
+import LDMX.Hcal.hcal_geometry
 
-from LDMX.Ecal import digi as eDigi
-from LDMX.Ecal import vetos
+from LDMX.Ecal import digi as ecal_digi_reco
+from LDMX.Ecal import vetos as ecal_vetos
 from LDMX.Hcal import digi as hDigi
 from LDMX.Hcal import hcal
 
-from LDMX.Recon.simpleTrigger import TriggerProcessor
+from LDMX.Recon.simple_trigger import TriggerProcessor
 
-from LDMX.TrigScint.trigScint import TrigScintDigiProducer
-from LDMX.TrigScint.trigScint import TrigScintClusterProducer
-from LDMX.TrigScint.trigScint import trigScintTrack
+from LDMX.TrigScint.trig_scint import TrigScintDigiProducer
+from LDMX.TrigScint.trig_scint import TrigScintClusterProducer
+from LDMX.TrigScint.trig_scint import trig_scint_track
 
 # Ecal Digi Chain
-ecalDigi   = eDigi.EcalDigiProducer('EcalDigis')
-ecalReco   = eDigi.EcalRecProducer('ecalRecon')
-ecalVeto   = vetos.EcalVetoProcessor('ecalVetoBDT')
+ecal_digi   = ecal_digi_reco.EcalDigiProducer('ecal_digis')
+ecal_reco   = ecal_digi_reco.EcalRecProducer('ecal_recon')
+ecal_veto   = ecal_vetos.EcalVetoProcessor('ecal_veto')
 
 # Hcal Digi Chain
-hcalDigi   = hDigi.HcalDigiProducer('hcalDigis')
-hcalReco   = hDigi.HcalRecProducer('hcalRecon')                  
-hcalVeto   = hcal.HcalVetoProcessor('hcalVeto')
+hcal_digi   = hDigi.HcalDigiProducer('hcal_digis')
+hcal_reco   = hDigi.HcalRecProducer('hcal_recon')                  
+hcal_veto   = hcal.HcalVetoProcessor('hcal_veto')
 
-# TS Digi + Clustering + Track Chain
 tsDigisUp    = TrigScintDigiProducer.pad1()
 tsDigisTag   = TrigScintDigiProducer.pad2()
 tsDigisDown  = TrigScintDigiProducer.pad3()
@@ -70,12 +68,12 @@ tsClustersTag   = TrigScintClusterProducer.pad2()
 tsClustersDown  = TrigScintClusterProducer.pad3()
 
 p.sequence=[ sim,
-        ecalDigi, ecalReco,
-        hcalDigi, hcalReco]
+        ecal_digi, ecal_reco,
+        hcal_digi, hcal_reco]
 
 p.sequence.extend(full_tracking_sequence.sequence)
 
-p.sequence.extend([ecalVeto, hcalVeto])
+p.sequence.extend([ecal_veto, hcal_veto])
 
 layers = [17, 20]
 tList = []
@@ -87,4 +85,4 @@ for iLayer in range(len(layers)) :
     tList.append(tp)
 p.sequence.extend( tList ) 
 
-p.outputFiles = [ '{{ root_file }}' ]
+p.output_files = [ '{{ root_file }}' ]

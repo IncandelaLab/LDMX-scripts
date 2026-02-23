@@ -7,7 +7,18 @@ import numpy as np
 from array import array
 
 print('Loading gSystem')
-r.gSystem.Load('libFramework.so')
+
+libs = [
+    'libFramework.so',
+    'libTracking_Event.so', 
+    'libRecon_Event.so', 
+    'libEcal_Event.so', 
+    'libHcal_Event.so', 
+    'libTrigger_Event.so', 
+    'libSimCore_Event.so'
+]
+for lib in libs:
+    r.gSystem.Load(lib)
 
 def bkg_decay_variables(sim_particles_map, TSP_hits):
     for sim_particle in sim_particles_map:
@@ -192,7 +203,7 @@ class EcalVetoDataSet:
         for event_num in range(n_events):
 
             self.bkg_chain.GetEntry(event_num)
-            decay_vertex, opening_angle, recoil_momentum, vertex_at_target, electron_momentum, positron_momentum, brem_momentum = bkg_decay_variables(self.bkg_chain.SimParticles_v14_deepPhotonFromTarget, self.bkg_chain.TargetScoringPlaneHits_v14_deepPhotonFromTarget)
+            decay_vertex, opening_angle, recoil_momentum, vertex_at_target, electron_momentum, positron_momentum, brem_momentum = bkg_decay_variables(self.bkg_chain.SimParticles_v15_deepPhotonFromTarget, self.bkg_chain.TargetScoringPlaneHits_v15_deepPhotonFromTarget)
 
             #Only keep background events where decay_z > 350
             #if decay_vertex[2] <= 350: continue
@@ -220,12 +231,12 @@ class EcalVetoDataSet:
             brem_py_array[0]            = brem_momentum[1]
             brem_pz_array[0]            = brem_momentum[2]
 
-            nReadoutHits_array[0]   = len(self.bkg_chain.EcalRecHits_v14_deepPhotonFromTarget)
-            avgLayerHit_array[0]    = self.bkg_chain.EcalVeto_v14_deepPhotonFromTarget.getAvgLayerHit()
-            stdLayerHit_array[0]    = self.bkg_chain.EcalVeto_v14_deepPhotonFromTarget.getStdLayerHit()
+            nReadoutHits_array[0]   = len(self.bkg_chain.EcalRecHits_v15_deepPhotonFromTarget)
+            avgLayerHit_array[0]    = self.bkg_chain.EcalVeto_v15_deepPhotonFromTarget.getAvgLayerHit()
+            stdLayerHit_array[0]    = self.bkg_chain.EcalVeto_v15_deepPhotonFromTarget.getStdLayerHit()
 
             hit_count = 0
-            for hit in self.bkg_chain.EcalRecHits_v14_deepPhotonFromTarget:
+            for hit in self.bkg_chain.EcalRecHits_v15_deepPhotonFromTarget:
                 
                 # ECal Rec Hits
                 rec_energy_array[hit_count] = hit.getEnergy()

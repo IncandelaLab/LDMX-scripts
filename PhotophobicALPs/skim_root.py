@@ -192,7 +192,7 @@ class EcalVetoDataSet:
         for event_num in range(n_events):
 
             self.bkg_chain.GetEntry(event_num)
-            decay_vertex, opening_angle, recoil_momentum, vertex_at_target, electron_momentum, positron_momentum, brem_momentum = bkg_decay_variables(self.bkg_chain.SimParticles_v14_deepPhotonFromTarget, self.bkg_chain.TargetScoringPlaneHits_v14_deepPhotonFromTarget)
+            decay_vertex, opening_angle, recoil_momentum, vertex_at_target, electron_momentum, positron_momentum, brem_momentum = bkg_decay_variables(self.bkg_chain.SimParticles_v15_deepPhotonFromTarget, self.bkg_chain.TargetScoringPlaneHits_v14_deepPhotonFromTarget)
 
             #Only keep background events where decay_z > 350
             #if decay_vertex[2] <= 350: continue

@@ -23,13 +23,11 @@ detector = 'ldmx-det-v15-8gev'
 sim.setDetector( detector , include_scoring_planes_minimal = True )
 sim.description = 'ALP with ' + str(beamEnergy)+ ' GeV electron events'
 sim.beamSpotSmear = [0., 0., 0.]
-sim.time_shift_primaries = False
+sim.time_shift_primaries = True
 
 # Set ALP and decay generator
 ALP_gen = generators.lhe('ALP Generator', '{{ prod_file }}')
-ALP_gen.vertex = [ 0., 0., 0. ]
 decay_gen = generators.lhe('Decay Generator', '{{ decay_file }}')
-decay_gen.vertex = [ 0., 0., 0. ]
 sim.generators = [ALP_gen, decay_gen]
 
 import LDMX.Ecal.ecal_hardcoded_conditions
@@ -75,14 +73,10 @@ p.sequence.extend(full_tracking_sequence.sequence)
 
 p.sequence.extend([ecal_veto, hcal_veto])
 
-layers = [17, 20]
-tList = []
-for iLayer in range(len(layers)) :
-    tp = TriggerProcessor("TriggerSumsLayer"+str(layers[iLayer]), 8000.)
-    tp.start_layer = 0
-    tp.end_layer = layers[iLayer]
-    tp.trigger_collection = "TriggerSums"+str(layers[iLayer])+"Layers"
-    tList.append(tp)
-p.sequence.extend( tList ) 
+#tp = TriggerProcessor("TriggerSumsLayer20", 8000.)
+#tp.start_layer = 0
+#tp.end_layer = 20
+#tp.trigger_collection = "TriggerSums20Layers"
+#p.sequence.append(tp)
 
 p.output_files = [ '{{ root_file }}' ]

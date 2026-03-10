@@ -68,14 +68,3 @@ p.sequence=[ mysim,
 p.sequence.extend(full_tracking_sequence.sequence)
 
 p.sequence.extend([ecal_veto, hcal_veto])
-
-layers = [17, 20]
-tList = []
-for iLayer in range(len(layers)) :
-    tp = TriggerProcessor("TriggerSumsLayer"+str(layers[iLayer]), 8000.)
-    tp.start_layer = 0
-    tp.end_layer = layers[iLayer]
-    tp.trigger_collection = "TriggerSums"+str(layers[iLayer])+"Layers"
-    tList.append(tp)
-p.sequence.extend( tList ) 
-

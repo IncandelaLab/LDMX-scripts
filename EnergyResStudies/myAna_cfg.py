@@ -7,21 +7,18 @@ from LDMX.Framework import ldmxcfg
 p = ldmxcfg.Process('myAna')
 
 import LDMX.Ecal.ecal_hardcoded_conditions
-from LDMX.Ecal import EcalGeometry
+from LDMX.Ecal import ecal_geometry
 from LDMX.Hcal import hcal
 from LDMX.Ecal import vetos
 
-p.maxEvents = -1
+p.max_events = -1
 p.run = 2
 
 print(fileIn)
-p.inputFiles  = fileIn
-p.histogramFile = "myHistoOnEventFile.root"
+p.input_files  = fileIn
+p.histogram_file = "myHistoOnEventFile.root"
 
 
-myAna = ldmxcfg.Analyzer.from_file('/sdf/home/t/tamasvami/ReEcalVeto/ldmx-sw/MyAna.cxx')
+my_ana = ldmxcfg.Analyzer.from_file('MyAna.cxx', needs=['Ecal_Event','Hcal_Event','Recon_Event','SimCore_Event','Tracking_Event', 'TrigScint_Event'])
 
-
-p.sequence = [myAna]
-
-
+p.sequence = [my_ana]

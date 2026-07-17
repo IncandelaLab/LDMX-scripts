@@ -1,0 +1,8 @@
+#!/bin/bash -l
+#SBATCH --job-name=roc_v15_068
+#SBATCH --nodes=1 --ntasks-per-node=1
+#SBATCH --time=24:00:00
+#SBATCH --output=%x_%j.out
+
+cd ~/LDMX-scripts/rocStudies
+denv python3 roc_calcs_v15.py 0.68

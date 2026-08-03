@@ -149,7 +149,7 @@ def process_event(
     debugPrint(f'  Event has {bin_index = }', debug)
 
     dist_energy = defaultdict(list)
-    energy_total = np.zeros(34)
+    energy_total = np.zeros(32)
     for hit in ecal_rec_hits:
         edep = hit.getEnergy()
         hit_z = round(hit.getZPos(), 3)
@@ -161,7 +161,7 @@ def process_event(
         dist_energy[layer_index].append( (dist_ele_traj, edep) )
         debugPrint(f'  Hit appended to dist_energy at {layer_index = }; {dist_ele_traj = }, {edep = }')
 
-    roc_values = np.zeros(34)
+    roc_values = np.zeros(32)
     for layer_index, dist_edep in dist_energy.items():
         if not dist_edep: continue
         dist_edep_sorted = sorted(dist_edep, key=lambda x:x[0])
@@ -207,7 +207,7 @@ def main(roc_frac=0.95, debug=True):
 
     ang_bins = [0, 10, 15, 25, 30, 40, 50, 60, 70]
     num_ang_bins = len(ang_bins) - 1
-    num_ecal_layers = 34
+    num_ecal_layers = 32
     roc_computed_values = [ [ [] for _ in range(num_ecal_layers)] for _ in range(num_ang_bins) ]
     n_entries_per_layer = np.array([np.zeros(num_ecal_layers)] * num_ang_bins)
     total_momentum = []

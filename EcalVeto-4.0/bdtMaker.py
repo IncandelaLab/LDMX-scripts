@@ -1,4 +1,5 @@
 import os, sys, logging
+import datetime
 import glob
 import numpy as np
 import pickle as pkl
@@ -17,22 +18,20 @@ mpl_logger.setLevel(logging.WARNING)
 plt.use('Agg')
 
 class sampleContainer:
-    def __init__(self,filenames,maxEvts,trainFrac,isSig):
+    def __init__(self,filenames,maxEvts,trainFrac,isSig,bkg_branch='EcalVeto_Recoil_Tracking',sig_branch='EcalVeto_reco_v1'):
 
         print("Initializing Container!")
         self.filenames = filenames
         self.maxEvts = maxEvts
         self.trainFrac = trainFrac
         self.isSig   = isSig
-        
+
         # Define branch names based on signal/background
         if self.isSig:
-            self.ecalVeto_branch = 'EcalVeto_test'
+            self.ecalVeto_branch = sig_branch
             self.trigger_branch = 'Trigger_sim'
-            # self.recoil_fiducial_branch = 'RecoilTruthFiducialFlags_test'
-            self.tagger_branch = 'TaggerTracksClean_test'
         else:
-            self.ecalVeto_branch = 'EcalVeto_test'
+            self.ecalVeto_branch = bkg_branch
 
     def root2PyEvents(self):
         """
@@ -47,10 +46,14 @@ class sampleContainer:
         for file_path in self.filenames:
             if total_loaded >= self.maxEvts:
                 break
-                
+
             with uproot.open(file_path) as file:
+                # Skip truncated/corrupt files (no LDMX_Events tree) instead of crashing
+                if not any('LDMX_Events' in k for k in file.keys()):
+                    print(f'[WARNING] Skipping corrupt file (no LDMX_Events): {os.path.basename(file_path)}')
+                    continue
                 tree = file["LDMX_Events"]
-                
+
                 # Determine how many events to load from this file
                 n_entries = tree.num_entries
                 n_to_load = min(n_entries, self.maxEvts - total_loaded)
@@ -95,6 +98,7 @@ class sampleContainer:
                     ak.to_numpy(ecal.ecal_back_energy_),
                     ak.to_numpy(ecal.ep_sep_),
                     ak.to_numpy(ecal.ep_dot_),
+                    ak.to_numpy(ecal.n_tracking_hits_),
                     # Longitudinal segment variables
                     ak.to_numpy(ecal.energy_seg_[:, 0]),
                     ak.to_numpy(ecal.x_mean_seg_[:, 0]),
@@ -150,8 +154,9 @@ class sampleContainer:
         Splits data in self.events into training and testing subsets.
         """
 
-        self.train_x = self.events[0:int(len(self.events)*self.trainFrac)]
-        self.test_x = self.events[int(len(self.events)*self.trainFrac):]
+        frac = float(self.trainFrac)
+        self.train_x = self.events[0:int(len(self.events)*frac)]
+        self.test_x = self.events[int(len(self.events)*frac):]
 
         self.train_y = np.zeros(len(self.train_x)) + (self.isSig == True)
         self.test_y = np.zeros(len(self.test_x)) + (self.isSig == True)
@@ -177,6 +182,7 @@ class mergedContainer:
                 'ecalBackEnergy', # f10
                 'epSep', # f11
                 'epDot', # f12
+                'n_tracking_hits', # f13
                 # Longitudinal segment variables
                 'energy_s1', # f13
                 'xMean_s1', # f14
@@ -282,16 +288,144 @@ def plotShap(evt_container:mergedContainer, shap_values, out_dir:str):
     plt.pyplot.close()
     print(f'SHAP summary bar plot with {num_features} features saved at {bar_mean_outpath}')
 
+def plotLearningCurve(evals_result: dict, out_dir: str, metric: str = 'error'):
+    """
+    Plots the training and evaluation learning curves from the evals_result
+    dict populated by xgb.train() and saves the figure to out_dir.
+    Saves both a linear-scale and a log-scale version.
+
+    Parameters
+    ----------
+    evals_result : dict filled in-place by xgb.train(evals_result=...)
+                   structure: {'train': {metric: [...]}, 'eval': {metric: [...]}}
+    out_dir      : directory where the PNG will be written
+    metric       : the eval metric key to plot (default 'error', matches params)
+    """
+    import json
+    train_metric = evals_result['train'][metric]
+    eval_metric  = evals_result['eval'][metric]
+
+    # Save raw history so it can be re-plotted later
+    json_path = os.path.join(out_dir, f'evals_result_{metric}.json')
+    with open(json_path, 'w') as jf:
+        json.dump({'train': {metric: train_metric}, 'eval': {metric: eval_metric}}, jf)
+
+    for log_scale in (False, True):
+        fig, ax = plt.pyplot.subplots(figsize=(8, 5))
+        ax.plot(train_metric, label='train', linewidth=1.5)
+        ax.plot(eval_metric,  label='eval',  linewidth=1.5)
+        ax.set_xlabel('Boosting Round')
+        ax.set_ylabel(metric)
+        suffix = '_log' if log_scale else ''
+        ax.set_title(f'XGBoost Learning Curve ({metric}{"  —  log scale" if log_scale else ""})')
+        if log_scale:
+            ax.set_yscale('log')
+        ax.legend()
+        ax.grid(True, alpha=0.3, which='both' if log_scale else 'major')
+
+        out_path = os.path.join(out_dir, f'model_learning_curve_{metric}{suffix}.png')
+        fig.savefig(out_path, dpi=200, bbox_inches='tight')
+        plt.pyplot.close(fig)
+        print(f'Learning curve saved at {out_path}')
+
+
+def saveRunSummary(options, params, sig_files, bkg_files,
+                   sigContainer, bkgContainer, eventContainer,
+                   gbm, out_dir: str, early_stopping_rounds: int):
+    """
+    Writes a human-readable run_summary.txt to out_dir capturing all
+    relevant metadata about the training run.
+    """
+    out_path = os.path.join(out_dir, 'run_summary.txt')
+    best_iter = getattr(gbm, 'best_iteration', None)
+    best_score = getattr(gbm, 'best_score', None)
+
+    sig_total   = len(sigContainer.events)
+    sig_train   = len(sigContainer.train_x)
+    sig_test    = len(sigContainer.test_x)
+    bkg_total   = len(bkgContainer.events)
+    bkg_train   = len(bkgContainer.train_x)
+    bkg_test    = len(bkgContainer.test_x)
+
+    lines = [
+        '=' * 60,
+        'BDT TRAINING RUN SUMMARY',
+        f'Generated : {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}',
+        '=' * 60,
+        '',
+        '--- Output ---',
+        f'Output directory : {os.path.abspath(out_dir)}',
+        '',
+        '--- Input Paths ---',
+        f'Signal path      : {options.sig_path}',
+        f'Signal files     : {len(sig_files)}',
+        f'Background path  : {options.bkg_path}',
+        f'Background files : {len(bkg_files)}',
+        '',
+        '--- Branch Names ---',
+        f'Signal EcalVeto branch     : {sigContainer.ecalVeto_branch}',
+        f'Signal trigger branch      : {sigContainer.trigger_branch}',
+        f'Background EcalVeto branch : {bkgContainer.ecalVeto_branch}',
+        '',
+        '--- Event Counts ---',
+        f'Max events per sample (max_evt) : {options.max_evt}',
+        f'Train fraction (train_frac)     : {options.train_frac}',
+        '',
+        f'  Signal   total : {sig_total:>10,}',
+        f'  Signal   train : {sig_train:>10,}',
+        f'  Signal   test  : {sig_test:>10,}',
+        f'  Bkg      total : {bkg_total:>10,}',
+        f'  Bkg      train : {bkg_train:>10,}',
+        f'  Bkg      test  : {bkg_test:>10,}',
+        '',
+        f'  Combined train : {len(eventContainer.train_x):>10,}',
+        f'  Combined test  : {len(eventContainer.test_x):>10,}',
+        '',
+        '--- XGBoost Parameters ---',
+    ] + [f'  {k:<25}: {v}' for k, v in params.items()] + [
+        '',
+        '--- Training Options ---',
+        f'  num_boost_round      : {options.tree_number}',
+        f'  early_stopping_rounds: {early_stopping_rounds}',
+        f'  numpy random seed    : {options.seed}',
+        '',
+        '--- Training Result ---',
+        f'  Best iteration : {best_iter}',
+        f'  Best score     : {best_score}',
+        '',
+        '--- Features ({} total) ---'.format(len(eventContainer.feat_names)),
+    ] + [f'  f{i:<4} {name}' for i, name in enumerate(eventContainer.feat_names)] + [
+        '',
+        '=' * 60,
+    ]
+
+    with open(out_path, 'w') as f:
+        f.write('\n'.join(lines) + '\n')
+
+    print(f'Run summary saved at {out_path}')
+
+
 if __name__ == "__main__":
     
     # Parse
     parser = OptionParser()
     parser.add_option('--seed', dest='seed',type="int",  default=1, help='Numpy random seed.')
     parser.add_option('--max_evt', dest='max_evt',type="int",  default=1500000, help='Max Events to load')
-    parser.add_option('--train_frac', dest='train_frac',  default=.9, help='Fraction of events to use for training')
+    parser.add_option('--bkg_max_evt', dest='bkg_max_evt',type="int",  default=-1, help='Max background events (default -1 = same as --max_evt). Set higher than --max_evt for a bkg:sig imbalance, e.g. 2x for a 2:1 ratio.')
+    parser.add_option('--train_frac', dest='train_frac', type='float', default=.9, help='Fraction of events to use for training')
     parser.add_option('--eta', dest='eta',type="float",  default=0.15, help='Learning Rate')
     parser.add_option('--tree_number', dest='tree_number',type="int",  default=1000, help='Tree Number')
     parser.add_option('--depth', dest='depth',type="int",  default=10, help='Max Tree Depth')
+    parser.add_option('--early_stopping_rounds', dest='early_stopping_rounds',type="int",  default=30, help='Early Stopping Rounds')
+    parser.add_option('--min_child_weight', dest='min_child_weight',type="int",  default=20, help='Minimum Child Weight')
+    parser.add_option('--subsample', dest='subsample', type="float", default=0.9, help='Subsample ratio of training instances')
+    parser.add_option('--colsample_bytree', dest='colsample_bytree', type="float", default=0.85, help='Subsample ratio of columns per tree')
+    parser.add_option('--gamma', dest='gamma', type="float", default=0.0, help='Min loss reduction to make a split (min_split_loss)')
+    parser.add_option('--reg_lambda', dest='reg_lambda', type="float", default=1.0, help='L2 regularization on weights')
+    parser.add_option('--reg_alpha', dest='reg_alpha', type="float", default=0.0, help='L1 regularization on weights')
+    parser.add_option('--scale_pos_weight', dest='scale_pos_weight', type="float", default=1.0, help='Weight of positive (signal) class relative to negative (background); set to n_bkg/n_sig to rebalance')
+    parser.add_option('--bkg_branch', dest='bkg_branch', default='EcalVeto_Recoil_Tracking', help='Background EcalVeto branch name')
+    parser.add_option('--sig_branch', dest='sig_branch', default='EcalVeto_reco_v1', help='Signal EcalVeto branch name')
     parser.add_option('-b', dest='bkg_path', help='Absolute path to background file(s)')
     parser.add_option('-s', dest='sig_path', help='Absolute path to signal file(s)')
     parser.add_option('-o', dest='out_name',  default='bdt_test', help='Output Pickle Name (excluding file extension)')
@@ -315,9 +449,28 @@ if __name__ == "__main__":
         print(f'os.path cannot read sig_path as either a file or directory')
         sys.exit(f'Problem reading sig_path\nsig_path = {options.sig_path}\nPlease check inputted parameters!')
 
+    # Mass-balance: interleave signal files by mass point (round-robin) so a --max_evt
+    # cap draws ~equally from ALL mass points instead of just the first ones (files are
+    # glob-grouped by mass, so a sequential cap would otherwise miss low masses entirely).
+    import re as _re
+    from collections import defaultdict as _dd
+    _bymass = _dd(list)
+    for _f in sorted(sig_files):
+        _m = _re.search(r'_(\d+)MeV_', os.path.basename(_f))
+        _bymass[_m.group(1) if _m else 'X'].append(_f)
+    if len(_bymass) > 1:
+        _lists = [_bymass[k] for k in sorted(_bymass, key=lambda s: int(s) if s.isdigit() else 10**9)]
+        _inter = []; _i = 0
+        while any(_i < len(l) for l in _lists):
+            for l in _lists:
+                if _i < len(l): _inter.append(l[_i])
+            _i += 1
+        sig_files = _inter
+        print(f'Interleaved {len(sig_files)} signal files across mass points {sorted(_bymass)} for balanced max_evt sampling')
+
 
     # Seed numpy's randomness
-    np.random.seed(options.seed)
+    random_seed = np.random.randint(1,999999)
    
     # Get BDT num
     bdt_num=0
@@ -336,7 +489,7 @@ if __name__ == "__main__":
     outpath = outpath + str(bdt_num)
 
     # Print run info
-    print( 'Random seed is = {}'.format(options.seed)             )
+    print( 'Random seed is = {}'.format(random_seed)             )
     print( 'You set max_evt = {}'.format(options.max_evt)         )
     print( 'You set tree number = {}'.format(options.tree_number) )
     print( 'You set max tree depth = {}'.format(options.depth)    )
@@ -344,13 +497,15 @@ if __name__ == "__main__":
 
     # Make Signal Container
     print( 'Loading sig_path = {}'.format(options.sig_path) )
-    sigContainer = sampleContainer(sig_files,options.max_evt,options.train_frac,True)
+    sigContainer = sampleContainer(sig_files,options.max_evt,options.train_frac,True,sig_branch=options.sig_branch)
     sigContainer.root2PyEvents()
     sigContainer.constructTrainAndTest()
 
     # Make Background Container
     print( 'Loading bkg_path = {}'.format(options.bkg_path) )
-    bkgContainer = sampleContainer(bkg_files,options.max_evt,options.train_frac,False)
+    _bkg_cap = options.bkg_max_evt if options.bkg_max_evt and options.bkg_max_evt > 0 else options.max_evt
+    print( 'Background cap (bkg_max_evt) = {}  [sig cap = {}]'.format(_bkg_cap, options.max_evt) )
+    bkgContainer = sampleContainer(bkg_files,_bkg_cap,options.train_frac,False,options.bkg_branch)
     bkgContainer.root2PyEvents()
     bkgContainer.constructTrainAndTest()
 
@@ -366,26 +521,37 @@ if __name__ == "__main__":
                'objective': 'binary:logistic',
                'eta': options.eta,
                'max_depth': options.depth,
-               'min_child_weight': 20,
-               # 'silent': 1,
-               'subsample':.9,
-               'colsample_bytree': .85,
-               # 'eval_metric': 'auc',
+               'min_child_weight': options.min_child_weight,
+               'subsample': options.subsample,
+               'colsample_bytree': options.colsample_bytree,
+               'gamma': options.gamma,
+               'lambda': options.reg_lambda,
+               'alpha': options.reg_alpha,
+               'scale_pos_weight': options.scale_pos_weight,
                'eval_metric': 'error',
-               'seed': 1,
+               'seed': random_seed,
                'nthread': 30,
                'verbosity': 1
-               # 'early_stopping_rounds' : 10
     }
 
     # Train the BDT model
     evallist = [(eventContainer.dtrain,'train'), (eventContainer.dtest,'eval')]
-    gbm = xgb.train(params, eventContainer.dtrain, num_boost_round = options.tree_number, evals = evallist, early_stopping_rounds = 10)
+    evals_result = {}  # xgb.train fills this dict in-place with per-round metrics
+    gbm = xgb.train(params, eventContainer.dtrain, num_boost_round = options.tree_number, evals = evallist, early_stopping_rounds = options.early_stopping_rounds, evals_result=evals_result)
     
     # Store BDT
-    output = open(outpath+'/' + \
-            outpath+'_weights.pkl', 'wb') # output file name
-    pkl.dump(gbm, output)
+    with open(outpath+'_weights.pkl', 'wb') as output:
+        pkl.dump(gbm, output)
+
+    # Plot learning curve (always saved)
+    eval_metric_key = params.get('eval_metric', 'error')
+    print( 'Plotting learning curve...' )
+    plotLearningCurve(evals_result, outpath, metric=eval_metric_key)
+
+    # Save run summary
+    saveRunSummary(options, params, sig_files, bkg_files,
+                   sigContainer, bkgContainer, eventContainer,
+                   gbm, outpath, early_stopping_rounds=options.early_stopping_rounds)
 
     # Calculate and plot shap values
     if options.shap_bool:
@@ -398,9 +564,8 @@ if __name__ == "__main__":
     # Plot feature importances
     figure_path = outpath+'_fimportance.png'
     xgb.plot_importance(gbm)
-    plt.pyplot.savefig(outpath+"/" + \
-            figure_path, # png file name
-            dpi=500, bbox_inches='tight', pad_inches=0.5) # png parameters
+    plt.pyplot.savefig(figure_path,
+            dpi=500, bbox_inches='tight', pad_inches=0.5)
     
 
     print(f'Feature importances saved under {figure_path}')

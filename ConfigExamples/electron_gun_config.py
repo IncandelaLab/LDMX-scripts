@@ -11,9 +11,9 @@ passName="sim"
 p=ldmxcfg.Process(passName)
 
 # Set run parameters.
-p.maxEvents = 10000
+p.max_events = 10000
 p.run = 1
-p.maxTriesPerEvent = 1
+p.max_tries_per_event = 1
 
 #import all processors
 from LDMX.SimCore import generators
@@ -28,17 +28,15 @@ sim = simulator.simulator("mySim")
 
 # Set the path to the detector to use (pulled from job config)
 detector='ldmx-det-v14-8gev'
-sim.setDetector( detector, True )
-sim.scoringPlanes = makeScoringPlanesPath(detector)
-sim.beamSpotSmear = [20., 80., 0]
-
+sim.set_detector( detector, True )
+sim.scoring_planes = makeScoringPlanesPath(detector)
 
 # Setup the multi-particle gun
 mpgGen = generators.multi( "mgpGen" )                                                                           
 mpgGen.vertex = [ 0., 0., 200. ] # mm                                                                                                                              
-mpgGen.nParticles = 1
-mpgGen.pdgID = 11
-mpgGen.enablePoisson = False #True                                                                                     
+mpgGen.n_particles = 1
+mpgGen.pdg_id = 11
+mpgGen.enable_poisson = False #True                                                                                     
 
 # import math
 # import numpy as np

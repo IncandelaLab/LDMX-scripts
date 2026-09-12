@@ -28,8 +28,13 @@ Generate the reference sample once and leave it alone. Pin the run number: it
 is the seed, and the whole method rests on every scan point seeing identical
 events.
 
+The beam is 8 GeV, but the recoil gun fires 4 GeV from the target: an electron
+that lost about half its energy is what a signal-like event looks like, so that
+is the working point the tolerance should be quoted at. Only the tagger sample
+runs at the full beam energy.
+
 ```sh
-# recoil: mono-energetic electrons from the target
+# recoil: mono-energetic electrons from the target, the signal-like point
 denv fire gun_sim.py --mode target --energy 4.0 --n-events 20000 --run 1
 
 # recoil: uniform in energy and angle, for the differential slopes
@@ -58,11 +63,12 @@ Flatten the results and analyse:
 denv python3 make_ntuple.py scan/tracks_*.root -o ntuples/
 ```
 
-## Known-good starting point
+## Unit test
 
-A 300-event smoke test of the whole chain — 4 GeV mono-energetic gun from the
-target, `ldmx-det-v15-8gev-no-cals`, ldmx-sw at `03b0a849` plus the knobs —
-gives, for the mean reconstructed recoil momentum at the target:
+A 300-event run of the whole chain — 4 GeV mono-energetic gun from the target
+(the signal-like working point; the beam itself is 8 GeV),
+`ldmx-det-v15-8gev-no-cals`, ldmx-sw at `03b0a849` plus the knobs — gives, for
+the mean reconstructed recoil momentum at the target:
 
 | beam-axis shift | mean p (MeV) | recoil tracks |
 | --- | --- | --- |

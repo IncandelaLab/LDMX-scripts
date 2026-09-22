@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.denv/
+*.npy
+*.out
+RoC_v15_8gev_*.csv
+smoke_test.py

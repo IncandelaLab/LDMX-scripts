@@ -8,7 +8,7 @@ point, and understand what the model uses.
     scoring   score the trained model over a large sample
     plotting  ROC curves, discriminator distributions, summary panels
     cutflow   the cutflow and the Punzi figure of merit -> the operating point
-    shap      which features the model uses (optional)
+    shap      which features the model uses
 
 Everything runs inside the container: `denv python3 <script>`.
 Exception: `smart_multifire.py` runs with plain `python3`, because it calls `sbatch`.
@@ -98,7 +98,7 @@ This is the final evaluation of a bdt model, specifically using the largest samp
 
 ---
 
-# 5. SHAP — `shap/` (optional)
+# 5. SHAP — `shap/`
 
 
     denv python3 shap_model.py --label <MODEL> \

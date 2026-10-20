@@ -49,6 +49,8 @@ ap.add_argument('--bkg', required=True)
 ap.add_argument('--sig', required=True)
 ap.add_argument('--out', default=None, help='CSV prefix (omit to skip CSVs)')
 ap.add_argument('--outdir', default='.')
+ap.add_argument('--models', default=None,
+                help='comma-separated model names to include (default: every model in both npz files)')
 ap.add_argument('--scan', default=None, help='model name: print bkg count vs disc cut, then exit')
 a = ap.parse_args()
 
@@ -83,6 +85,13 @@ else:
     ss = next((k for k in ('reco', 'reco_v1') if k in sm), None)
     if sb and ss and sb != ss:
         pairs.append(('SegMip', sb, ss))
+if a.models:
+    want = [x.strip() for x in a.models.split(',') if x.strip()]
+    pairs = [q for q in pairs if q[0] in want or q[1] in want]
+    missing = [w for w in want if not any(w in (q[0], q[1]) for q in pairs)]
+    if missing:
+        raise SystemExit('requested model(s) %s not in both npz files; available: %s'
+                         % (missing, sorted(bm & sm)))
 if not pairs:
     raise SystemExit('no model is present in both npz files\n  bkg: %s\n  sig: %s'
                      % (sorted(bm), sorted(sm)))

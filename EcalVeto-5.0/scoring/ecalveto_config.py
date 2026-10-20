@@ -9,7 +9,7 @@ parser.add_argument('-m','--maxEvent', type=int, action='store', dest='maxEvent'
 parser.add_argument('-g','--group_label', action='store', dest='group_label', help='Sample label')
 parser.add_argument('-r','--run_number', type=int, action='store', dest='run_number', help='Run number')
 parser.add_argument('--bdt', action='store', dest='bdt', default=None,
-                    help='BDT name for makeBDTPath (default: whatever vetos.py sets)')
+                    help='BDT name for make_bdt_path (default: whatever vetos.py sets)')
 args = parser.parse_args()
  
 ### ------------------LDMX CONFIG----------------- ###
@@ -19,7 +19,7 @@ import os
 import sys
 
 p = ldmxcfg.Process(args.group_label if args.group_label else 'Training_BDT')
-p.maxEvents = args.maxEvent
+p.max_events = args.maxEvent
 
 
 # Parse input string: "file1,file2,...fileN,runNumber" or "file1 file2 ... runNumber"
@@ -44,9 +44,8 @@ os.makedirs(args.outdir, exist_ok=True)
 
 outputName = os.path.join(args.outdir, outputFilename)
 
-p.inputFiles = inputFiles
-p.outputFiles = [outputName]
-p.termLogLevel = 4
+p.input_files = inputFiles
+p.output_files = [outputName]
 
 
 ### ------------------------------------------ ###
@@ -55,7 +54,7 @@ p.sequence = []
 
 
 # ECAL Veto only
-import LDMX.Ecal.EcalGeometry
+import LDMX.Ecal.ecal_geometry
 import LDMX.Ecal.ecal_hardcoded_conditions
 import LDMX.Ecal.vetos as ecal_vetos
 ecalVeto = ecal_vetos.EcalVetoProcessor()
@@ -64,12 +63,12 @@ ecalVeto = ecal_vetos.EcalVetoProcessor()
 ecalVeto.recoil_from_tracking = True
 
 if args.bdt:
-    from LDMX.Ecal.makePath import makeBDTPath
-    ecalVeto.bdt_file = makeBDTPath(args.bdt)
+    from LDMX.Ecal.make_path import make_bdt_path
+    ecalVeto.bdt_file = make_bdt_path(args.bdt)
     print(f'BDT manual input: {ecalVeto.bdt_file}')
 
 # p.logger.custom(ecalVeto, level = 0)
-p.skipCorruptedInputFiles = True
+p.skip_corrupted_input_files = True
 
 p.sequence.extend([ecalVeto])
 

@@ -15,7 +15,7 @@ from LDMX.Framework import ldmxcfg
 
 PASS = "mip_reco_v1"
 p = ldmxcfg.Process(PASS)
-p.maxEvents = args.maxEvent
+p.max_events = args.maxEvent
 
 input_args = []
 for a in args.infile:
@@ -23,13 +23,12 @@ for a in args.infile:
 inputFiles = input_args
 base = os.path.splitext(os.path.basename(inputFiles[0]))[0]
 os.makedirs(args.outdir, exist_ok=True)
-p.inputFiles = inputFiles
-p.outputFiles = [os.path.join(args.outdir, f'{base}_{args.group_label}.root')]
-p.termLogLevel = 4
+p.input_files = inputFiles
+p.output_files = [os.path.join(args.outdir, f'{base}_{args.group_label}.root')]
 
 p.sequence = []
 
-import LDMX.Ecal.EcalGeometry
+import LDMX.Ecal.ecal_geometry
 import LDMX.Ecal.ecal_hardcoded_conditions
 import LDMX.Ecal.vetos as ecal_vetos
 
@@ -43,5 +42,5 @@ ecalMip.ecal_pass_name = PASS
 ecalMip.mip_pass_name  = PASS
 
 
-p.skipCorruptedInputFiles = True
+p.skip_corrupted_input_files = True
 p.sequence.extend([ecalVeto, ecalMip])
